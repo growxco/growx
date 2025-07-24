@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'; 
 import { 
   Calendar, 
   Users, 
@@ -293,14 +294,16 @@ A Grow-X Co. começou com foco exclusivo no cultivo indoor de cannabis,
             >
               Solicitar Demonstração
             </Button>
-            
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="border-white text-white hover:bg-white hover:text-primary"
-            >
-              Ver Nossos Produtos
-            </Button>
+
+<Link to="/produtos">
+  <Button 
+    variant="outline" 
+    size="lg"
+    className="border-white text-white hover:bg-white hover:text-primary"
+  >
+    Ver Nossos Produtos
+  </Button>
+</Link>
           </div>
         </div>
       </section>
