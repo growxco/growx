@@ -1,0 +1,255 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  
+  /* Grow-X Design System Colors */
+  --growx-light: #E1EFE4;
+  --growx-green: #1A8531;
+  --growx-dark: #5D665E;
+  --growx-gray: #E0E0E0;
+  --growx-white: #F5F9F6;
+  
+  /* Theme Colors */
+  --background: #E1EFE4;
+  --foreground: #5D665E;
+  --card: #F5F9F6;
+  --card-foreground: #5D665E;
+  --popover: #F5F9F6;
+  --popover-foreground: #5D665E;
+  --primary: #1A8531;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E0E0E0;
+  --secondary-foreground: #5D665E;
+  --muted: #E0E0E0;
+  --muted-foreground: #5D665E;
+  --accent: #1A8531;
+  --accent-foreground: #FFFFFF;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #E0E0E0;
+  --input: #FFFFFF;
+  --ring: #1A8531;
+  --chart-1: #1A8531;
+  --chart-2: #5D665E;
+  --chart-3: #E1EFE4;
+  --chart-4: #E0E0E0;
+  --chart-5: #F5F9F6;
+  --sidebar: #F5F9F6;
+  --sidebar-foreground: #5D665E;
+  --sidebar-primary: #1A8531;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E1EFE4;
+  --sidebar-accent-foreground: #5D665E;
+  --sidebar-border: #E0E0E0;
+  --sidebar-ring: #1A8531;
+}
+
+.dark {
+  --background: #5D665E;
+  --foreground: #F5F9F6;
+  --card: #5D665E;
+  --card-foreground: #F5F9F6;
+  --popover: #5D665E;
+  --popover-foreground: #F5F9F6;
+  --primary: #1A8531;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E0E0E0;
+  --secondary-foreground: #5D665E;
+  --muted: #E0E0E0;
+  --muted-foreground: #5D665E;
+  --accent: #1A8531;
+  --accent-foreground: #FFFFFF;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #E0E0E0;
+  --input: #FFFFFF;
+  --ring: #1A8531;
+  --chart-1: #1A8531;
+  --chart-2: #5D665E;
+  --chart-3: #E1EFE4;
+  --chart-4: #E0E0E0;
+  --chart-5: #F5F9F6;
+  --sidebar: #5D665E;
+  --sidebar-foreground: #F5F9F6;
+  --sidebar-primary: #1A8531;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E0E0E0;
+  --sidebar-accent-foreground: #5D665E;
+  --sidebar-border: #E0E0E0;
+  --sidebar-ring: #1A8531;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Grow-X Custom Classes */
+.growx-container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.growx-section {
+  @apply py-16 lg:py-24;
+}
+
+.growx-title {
+  @apply text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight;
+}
+
+.growx-subtitle {
+  @apply text-lg md:text-xl text-muted-foreground leading-relaxed;
+}
+
+.growx-card {
+  @apply bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
+}
+
+.growx-btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center;
+}
+
+.growx-btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center;
+}
+
+.growx-gradient {
+  background: linear-gradient(135deg, #E1EFE4 0%, #F5F9F6 100%);
+}
+
+.growx-text-gradient {
+  background: linear-gradient(135deg, #1A8531 0%, #5D665E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Header Styles */
+.growx-header {
+  @apply bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-50;
+}
+
+.growx-nav-link {
+  @apply text-foreground hover:text-primary transition-colors duration-200 font-medium;
+}
+
+.growx-dropdown {
+  @apply absolute top-full left-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg py-2 opacity-0 invisible transition-all duration-200 z-50;
+}
+
+.growx-dropdown.active {
+  @apply opacity-100 visible;
+}
+
+.growx-dropdown-item {
+  @apply block px-4 py-2 text-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150;
+}
+
+/* Breadcrumb Styles */
+.growx-breadcrumb {
+  @apply flex items-center space-x-2 text-sm text-muted-foreground mb-6;
+}
+
+.growx-breadcrumb-item {
+  @apply hover:text-primary transition-colors duration-150;
+}
+
+.growx-breadcrumb-separator {
+  @apply text-muted-foreground/50;
+}
+
+/* Hero Styles */
+.growx-hero {
+  @apply relative overflow-hidden;
+  background: linear-gradient(135deg, #E1EFE4 0%, #F5F9F6 50%, #E1EFE4 100%);
+}
+
+.growx-hero-content {
+  @apply relative z-10 text-center;
+}
+
+/* Animation Classes */
+.growx-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.growx-slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  .growx-title {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  .growx-subtitle {
+    @apply text-base md:text-lg;
+  }
+}
+
