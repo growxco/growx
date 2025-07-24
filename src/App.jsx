@@ -18,7 +18,7 @@ import EstufaAutomatizadaPage from './pages/EstufaAutomatizadaPage';
 import HistoryPage from './pages/HistoryPage';
 import ExecutivePage from './pages/ExecutivePage';
 import PhilosophyPage from './pages/PhilosophyPage';
-
+import ObrigadoPage from './pages/ObrigadoPage';
 import './App.css';
 
 // Componente para scroll automático ao topo
@@ -44,7 +44,8 @@ function App() {
             {/* Páginas Principais */}
             <Route path="/" element={<HomePage />} />
             <Route path="/contato" element={<ContactPage />} />
-            
+            <Route path="/obrigado" element={<ObrigadoPage />} />
+           
             {/* Soluções */}
             <Route path="/solucoes/supply-x" element={<SupplyXPage />} />
             <Route path="/solucoes/spi" element={<SPIPage />} />
