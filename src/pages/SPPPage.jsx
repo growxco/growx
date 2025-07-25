@@ -13,7 +13,11 @@ import {
   ArrowRight,
   Thermometer,
   Gauge,
-  Smartphone
+  Smartphone,
+  NotebookPen,
+  SprayCan,
+  FlaskConical,
+  Leaf,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import sppHero from '../assets/spp-hero-rural.jpg';
@@ -43,7 +47,7 @@ const SPPPage = () => {
       description: 'Algoritmos baseados em Kc e fatores climáticos auxiliam no planejamento hídrico',
       metric: 'Mais assertividade',
       details: [
-        'Cálculo automático do coeficiente de cultura (Kc)',
+        'Cálculo automático da lâmina de irrigação com base no coeficiente de cultura (Kc)',
         'Integração com dados climáticos',
         'Ajuste por fase e tipo de cultura'
       ]
@@ -74,35 +78,35 @@ const SPPPage = () => {
 
   const features = [
     {
-      icon: Smartphone,
-      title: 'App Mobile',
-      description: 'Acompanhe sua lavoura de qualquer lugar pelo celular'
-    },
-    {
-      icon: Thermometer,
-      title: 'Sensores IoT',
-      description: 'Coleta automática de dados do solo e clima'
-    },
-    {
-      icon: BarChart3,
-      title: 'Análises Inteligentes',
-      description: 'Indicadores úteis para tomada de decisão e relatórios'
-    },
-    {
-      icon: Gauge,
-      title: 'Controle Automatizado',
-      description: 'Sistema de irrigação inteligente com base nos dados do campo'
-    },
-    {
-      icon: Users,
-      title: 'Apoio Técnico',
-      description: 'Suporte agronômico e técnico da equipe Grow-X'
-    },
-    {
-      icon: DollarSign,
-      title: 'Economia Sustentável',
-      description: 'Gestão eficiente dos recursos com impacto direto na produtividade'
-    }
+    icon: Gauge,
+    title: 'Controle Automatizado',
+    description: 'Sistema de irrigação inteligente com base nos dados do campo'
+  },
+  {
+    icon: NotebookPen,
+    title: 'Diário de Campo',
+    description: 'Registro diário das atividades realizadas na lavoura'
+  },
+  {
+    icon: FlaskConical,
+    title: 'Análise de Solo',
+    description: 'Integração com laudos laboratoriais para correção e adubação'
+  },
+  {
+    icon: Leaf,
+    title: 'Análise Foliar',
+    description: 'Acompanhamento nutricional por fase da cultura'
+  },
+  {
+    icon: Users,
+    title: 'Apoio Técnico',
+    description: 'Suporte agronômico e técnico da equipe Grow-X'
+  },
+  {
+    icon: Smartphone,
+    title: 'App Mobile',
+    description: 'Acompanhe sua lavoura de qualquer lugar pelo celular'
+  }
   ];
 
   const ruralMetrics = [
@@ -132,16 +136,16 @@ const SPPPage = () => {
 
   const testimonials = [
     {
-      name: 'Alexandre Dzierwa',
+      name: 'Alexandre de Castro',
       role: 'Produtor de Batata',
-      location: 'Holambra, SP',
-      quote: 'Com o SPP, reduzi meu consumo de água e aumentei a produtividade. E reduzi tempo que perdia fazendo calculos!'
+      location: 'Contenda, PR',
+      quote: 'Antes, eu fazia tudo na mão, anotando cálculo de irrigação no caderno. Depois que comecei a usar o SPP, ganhei tempo e parei de desperdiçar água. Agora sei exatamente o que fazer e quando fazer.'
     },
     {
-      name: 'Maria Santos',
-      role: 'Produtora de Morangos',
-      location: 'Atibaia, SP',
-      quote: 'A precisão do cálculo de irrigação é impressionante. Nunca tive cultivos tão uniformes e saudáveis.'
+      name: 'Emilio Dzierwa',
+      role: 'Produtor Rural',
+      location: 'Palmeira, PR',
+      quote: 'Com o módulo de gestão de equipamentos e área administrativa, percebi o quanto gastava com manutenção. Agora consigo decidir com base em dados quando vale mais trocar ou consertar. O controle financeiro melhorou muito.'
     }
   ];
 
@@ -312,7 +316,7 @@ const SPPPage = () => {
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Cálculos automáticos de irrigação</span>
+                  <span>Cálculo automático da lâmina de irrigação com base no coeficiente de cultura (Kc)</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />

@@ -15,12 +15,12 @@ const EstacaoMeteorologicaPage = () => {
       title: "Temperatura Precisa",
       description: "Monitoramento contínuo da temperatura ambiente com precisão de ±0.1°C"
     },
-    {
-      icon: <Droplets className="w-8 h-8 text-primary" />,
-      title: "Umidade do Solo",
-      description: "Sensores de umidade que medem a necessidade real de irrigação"
-    },
-    {
+      {
+    icon: <Droplets className="w-8 h-8 text-primary" />,
+    title: "Umidade do Solo e do Ar",
+    description: "Sensores que monitoram a umidade do solo e a umidade relativa do ar, permitindo decisões precisas de irrigação e manejo climático"
+  },
+      {
       icon: <Wind className="w-8 h-8 text-primary" />,
       title: "Velocidade do Vento",
       description: "Dados de vento para otimizar aplicação de defensivos e irrigação"
@@ -66,7 +66,7 @@ const EstacaoMeteorologicaPage = () => {
     { label: "Resistência", value: "IP67 - À prova d'água" },
     { label: "Temperatura", value: "-40°C a +85°C" },
     { label: "Conectividade", value: "LoRa + 4G (opcional)" },
-    { label: "Sensores", value: "Temperatura, umidade, vento, chuva" }
+    { label: "Sensores", value: "Temperatura, umidade do solo e do ar, vento, chuva, radiação" }
   ];
 
   return (

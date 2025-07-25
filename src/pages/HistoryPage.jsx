@@ -56,15 +56,17 @@ const HistoryPage = () => {
               A História da <span className="text-primary">Grow-X</span>
             </h1>
             
-            <p className="growx-subtitle max-w-4xl mx-auto mb-12">
-               De Startup Visionária a Referência em Cultivo Tecnológico
-A Grow-X Co. começou com foco exclusivo no cultivo indoor de cannabis,
- desenvolvendo soluções como o Grow-X App, que integra inteligência artificial
-  para suporte e marketplace especializado. Ao longo do tempo, 
-  expandimos nossa atuação para outros tipos de cultivos, sempre focados na automação e otimização.
-   Com a integração da PLK DO BRASIL, passamos a oferecer também o SUPPLY-X, uma plataforma robusta 
-   que conecta todas as etapas da cadeia produtiva agrícola, do plantio à fase final de processamento. 
-            </p>
+<p className="growx-subtitle max-w-4xl mx-auto mb-6 text-justify">
+  A Grow-X Co. surgiu com a missão de transformar a experiência do cultivo indoor, aliando tecnologia de ponta, automação e inteligência artificial para criar ambientes altamente controlados, eficientes e sustentáveis. Seu primeiro produto, o Grow-X App, consolidou-se como uma plataforma inteligente e intuitiva voltada para o cultivo de cannabis, oferecendo aos growers recursos de monitoramento em tempo real, controle climático automatizado e integração com sensores ambientais.
+</p>
+
+<p className="growx-subtitle max-w-4xl mx-auto mb-6 text-justify">
+  Com o amadurecimento da empresa e a crescente demanda por soluções mais amplas e integradas, a Grow-X expandiu seu portfólio para além do universo indoor. A expertise acumulada em sensoriamento, conectividade e automação agrícola impulsionou o desenvolvimento do SUPPLY-X, uma plataforma modular que conecta produtores, transportadoras e indústrias em uma cadeia produtiva agrícola inteligente, rastreável e altamente eficiente.
+</p>
+
+<p className="growx-subtitle max-w-4xl mx-auto mb-12 text-justify">
+  Hoje, a Grow-X Co. posiciona-se como uma referência nacional em tecnologia para o agronegócio, oferecendo soluções escaláveis para pequenos, médios e grandes produtores. Suas ferramentas promovem decisões mais assertivas, redução de desperdícios, rastreabilidade total e ganhos operacionais tangíveis para toda a cadeia.
+</p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 

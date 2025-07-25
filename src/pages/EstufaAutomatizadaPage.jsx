@@ -23,7 +23,7 @@ const EstufaAutomatizadaPage = () => {
     {
       icon: <Sun className="w-8 h-8 text-primary" />,
       title: "Iluminação LED",
-      description: "Sistema de iluminação LED full spectrum para crescimento otimizado"
+      description: "LEDs full spectrum com simulação de nascer e pôr do sol, controle de intensidade e ciclos de luz personalizáveis"
     },
     {
       icon: <Wind className="w-8 h-8 text-primary" />,
@@ -82,7 +82,7 @@ const EstufaAutomatizadaPage = () => {
     },
     {
       title: "Sistema de Iluminação",
-      description: "LEDs full spectrum com controle de intensidade e ciclos de luz personalizáveis",
+      description: "LEDs full spectrum com simulação de nascer e pôr do sol, controle de intensidade e ciclos de luz personalizáveis",
       icon: <Sun className="w-8 h-8 text-primary" />
     },
     {
