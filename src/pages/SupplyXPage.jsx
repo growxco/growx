@@ -39,7 +39,7 @@ const SupplyXPage = () => {
         { value: 'Módulos Adaptáveis', label: '	Escolha quais eventos deseja rastrear e configurar' },
         { value: 'Conexão com SPP', label: 'Conecte-se diretamente aos seus produtores e antecipe problemas na fábrica' }
       ],
-      color: 'bg-blue-500',
+      color: 'bg-amber-600',
       href: '/solucoes/spi'
     },
     {
