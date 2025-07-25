@@ -29,7 +29,7 @@ const ProductsPage = () => {
       id: 'estacao-meteorologica',
       name: 'Estação Meteorológica Grow-X',
       category: 'Hardware para Agricultura',
-      price: 'Consulte',
+      price: 'Sob demanda',
       image: estacaoMeteorologica,
       description: 'Sensores de alta precisão com transmissão LoRa para monitoramento ambiental completo. Ideal para produtores rurais que precisam de dados meteorológicos precisos.',
       features: [
@@ -61,7 +61,7 @@ const ProductsPage = () => {
       id: 'modulo-sem-fio',
       name: 'Módulo Sem Fio para Controle de Estufas',
       category: 'Hardware para Automação',
-      price: 'Consulte',
+      price: 'Sob demanda',
       image: chipImage,
       description: 'Controle de até 4 estufas com tecnologia wireless avançada. Perfeito para cultivos domésticos e projetos estruturados de cannabis.',
       features: [
@@ -93,7 +93,7 @@ const ProductsPage = () => {
       id: 'estufa-automatizada',
       name: 'Estufa Automatizada Grow-X',
       category: 'Hardware Completo',
-      price: 'Sob Consulta',
+      price: 'Em desenvolvimento',
       image: estufaAutomatizada,
       description: 'Sistema completo de automação para cultivo controlado e otimizado. Em desenvolvimento com tecnologia de ponta para máxima eficiência.',
       features: [
@@ -280,7 +280,7 @@ const ProductsPage = () => {
                     
                     {/* Price Badge */}
                     <div className="absolute top-6 right-6 bg-card border border-border rounded-lg p-3 shadow-lg">
-                      <div className="text-sm text-muted-foreground">Preço</div>
+                      <div className="text-sm text-muted-foreground">Produto</div>
                       <div className="text-lg font-bold text-primary">{product.price}</div>
                     </div>
                   </div>

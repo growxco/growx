@@ -18,6 +18,8 @@ import {
 import { Button } from '@/components/ui/button';
 import heroImage from '../assets/hero-agriculture-modern.jpg';
 import technologyImage from '../assets/technology-showcase.jpg';
+import { Sprout } from 'lucide-react';
+import { CloudSun } from 'lucide-react';
 
 const HomePage = () => {
   const handleWhatsApp = () => {
@@ -58,21 +60,22 @@ const HomePage = () => {
   ];
 
   const products = [
+    
     {
       icon: Cpu,
-      title: 'Estação Meteorológica',
-      description: 'Sensores de alta precisão com transmissão LoRa para monitoramento ambiental completo.'
-    },
-    {
-      icon: Zap,
       title: 'Módulo Sem Fio',
-      description: 'Controle de até 4 estufas com tecnologia wireless avançada.'
+      description: 'Controle inteligente de até 4 estufas com tecnologia wireless avançada, integrando sensores, atuadores e irrigação automatizada em tempo real.'
     },
     {
-      icon: Factory,
+      icon: Sprout,
       title: 'Estufa Automatizada',
-      description: 'Sistema completo de automação para cultivo controlado e otimizado.'
-    }
+      description: 'Ambiente de cultivo completo com automação climática, iluminação programável e irrigação de precisão — tudo otimizado para alto desempenho e rastreabilidade.'
+    },
+    {
+      icon: CloudSun,
+      title: 'Estação Meteorológica',
+      description: 'Sensores ambientais de alta precisão com conectividade LoRa, fornecendo dados climáticos locais em tempo real para decisões agrícolas mais eficientes e assertivas.'
+    },
   ];
 
   const stats = [
@@ -188,7 +191,7 @@ const HomePage = () => {
             </div>
             <h2 className="growx-title mb-4">
               Soluções tecnológicas para<br />
-              <span className="text-primary">Produtores e Indústrias</span>
+              <span className="text-primary">Agricultura e Indústrias</span>
             </h2>
             <p className="growx-subtitle max-w-3xl mx-auto">
               Plataformas integradas que conectam campo e indústria, otimizam operações e garantem rastreabilidade em tempo real.
@@ -270,7 +273,7 @@ const HomePage = () => {
               <div className="mt-8">
                 <Link to="/produtos">
                   <Button className="growx-btn-primary">
-                    Ver Todos os Produtos
+                    Ver detalhes dos Produtos
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
@@ -289,20 +292,20 @@ const HomePage = () => {
                 <div className="p-6 text-white">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <div className="text-2xl font-bold">100%</div>
-                      <div className="text-sm opacity-90">Rastreabilidade</div>
+                      <div className="text-2xl font-bold"></div>
+                      <div className="text-sm opacity-90"></div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold">10+</div>
-                      <div className="text-sm opacity-90">Módulos</div>
+                      <div className="text-2xl font-bold"></div>
+                      <div className="text-sm opacity-90"></div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold">24/7</div>
-                      <div className="text-sm opacity-90">Monitoramento</div>
+                      <div className="text-2xl font-bold"></div>
+                      <div className="text-sm opacity-90"></div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold">∞</div>
-                      <div className="text-sm opacity-90">Escalabilidade</div>
+                      <div className="text-2xl font-bold"></div>
+                      <div className="text-sm opacity-90"></div>
                     </div>
                   </div>
                 </div>

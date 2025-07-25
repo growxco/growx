@@ -26,51 +26,51 @@ const SPIPage = () => {
   };
 
   const benefits = [
-    {
-      icon: DollarSign,
-      title: 'Redução de Insumos',
-      description: 'Uso racional de recursos com base em dados operacionais confiáveis',
-      metric: 'Redução gradual',
-      details: [
-        'Planejamento com base em histórico de produção',
-        'Evita desperdícios por falhas operacionais',
-        'Apoia decisões logísticas com dados reais'
-      ]
-    },
-    {
-      icon: Truck,
-      title: 'Logística Conectada',
-      description: 'Integração com armazenadoras e transportadoras melhora previsibilidade',
-      metric: 'Operação fluida',
-      details: [
-        'Agendamento digital de entregas',
-        'Visualização antecipada de falhas',
-        'Interface com sistemas externos'
-      ]
-    },
-    {
-      icon: Factory,
-      title: 'Menos Interrupções',
-      description: 'Controle e alerta sobre atrasos ou mudanças no status da carga',
-      metric: 'Mais estabilidade',
-      details: [
-        'Notificações em tempo real',
-        'Comunicação proativa com a fábrica',
-        'Relatórios acessíveis'
-      ]
-    },
-    {
-      icon: Users,
-      title: 'Comunicação Rastreável',
-      description: 'Registro completo dos eventos da cadeia com histórico acessível',
-      metric: '100% digital',
-      details: [
-        'Acesso a dados e documentos',
-        'Organização da comunicação por carga',
-        'Transparência entre produtor e indústria'
-      ]
-    }
-  ];
+  {
+    icon: DollarSign,
+    title: 'Reduza Insumos com Inteligência',
+    description: 'Planeje com dados reais e elimine desperdícios operacionais de forma progressiva',
+    metric: 'Economia recorrente',
+    details: [
+      'Planejamento com base em histórico de produção',
+      'Evita desperdícios por falhas operacionais',
+      'Apoia decisões logísticas com dados confiáveis'
+    ]
+  },
+  {
+    icon: Truck,
+    title: 'Conecte sua Logística em Tempo Real',
+    description: 'Mais fluidez no fluxo entre campo, transporte, armazenagem e indústria',
+    metric: 'Operação sem gargalos',
+    details: [
+      'Agendamento digital de entregas',
+      'Visualização antecipada de falhas',
+      'Interface com sistemas externos (API)'
+    ]
+  },
+  {
+    icon: Factory,
+    title: 'Garanta Estabilidade Operacional',
+    description: 'Detecte atrasos e riscos antes que impactem o processo industrial',
+    metric: 'Menos paradas, mais produção',
+    details: [
+      'Notificações em tempo real',
+      'Comunicação proativa com a fábrica',
+      'Relatórios de acompanhamento'
+    ]
+  },
+  {
+    icon: Users,
+    title: 'Tenha Rastreabilidade de Ponta a Ponta',
+    description: 'Organize toda a comunicação com registro automático e histórico acessível',
+    metric: 'Transparência total',
+    details: [
+      'Acesso a dados e documentos por carga',
+      'Organização da comunicação por evento',
+      'Visibilidade compartilhada entre todos os elos'
+    ]
+  }
+];
 
   const features = [
     {
@@ -139,7 +139,7 @@ const SPIPage = () => {
             <div>
               <div className="inline-flex items-center px-4 py-2 bg-amber-100 text-amber-600 rounded-full text-sm font-medium mb-6">
                 <Factory className="w-4 h-4 mr-2" />
-                Solução Corporativa para Grandes Indústrias
+                Plataforma Inteligente para Indústrias
               </div>
               
               <h1 className="growx-title mb-6">
@@ -147,8 +147,7 @@ const SPIPage = () => {
               </h1>
               
               <p className="growx-subtitle mb-8">
-                Plataforma para grandes indústrias que automatiza o recebimento, rastreabilidade 
-                e controle de qualidade de cargas agrícolas em tempo real.
+                Sistema completo que automatiza o recebimento de cargas agrícolas, assegura rastreabilidade ponta a ponta e eleva o controle de qualidade com monitoramento em tempo real. Reduza perdas, ganhe eficiência e tome decisões com base em dados confiáveis desde a origem até o destino final.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -397,3 +396,4 @@ const SPIPage = () => {
 };
 
 export default SPIPage;
+

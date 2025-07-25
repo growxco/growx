@@ -202,7 +202,7 @@ const SPPPage = () => {
               />
               
               {/* Status Indicator */}
-              <div className="absolute top-6 right-6 bg-card border border-border rounded-lg p-3 shadow-lg">
+              <div className="absolute top-6 left-6 bg-card border border-border rounded-lg p-3 shadow-lg">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <div className="text-sm font-medium text-foreground">Sistema Rural</div>

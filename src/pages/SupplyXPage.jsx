@@ -26,7 +26,7 @@ const SupplyXPage = () => {
       id: 'spi',
       icon: Factory,
       title: 'SPI - Indústria',
-      subtitle: 'Para Grandes Indústrias',
+      subtitle: 'Para todas Indústrias',
       description: 'Sistema digital para gestão de recebimento agrícola e rastreabilidade, com foco em reduzir erros operacionais e facilitar a comunicação entre produtores, transportadoras e indústria.',
       benefits: [
         'Economia de insumos',
@@ -136,16 +136,16 @@ const SupplyXPage = () => {
               {/* Quick Stats */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">100%</div>
-                  <div className="text-sm text-muted-foreground">Rastreabilidade</div>
+                  <div className="text-2xl font-bold text-primary">.</div>
+                  <div className="text-sm text-muted-foreground">.</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">2</div>
-                  <div className="text-sm text-muted-foreground">Módulos</div>
+                  <div className="text-2xl font-bold text-primary">.</div>
+                  <div className="text-sm text-muted-foreground">.</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">∞</div>
-                  <div className="text-sm text-muted-foreground">Escalabilidade</div>
+                  <div className="text-2xl font-bold text-primary">.</div>
+                  <div className="text-sm text-muted-foreground">.</div>
                 </div>
               </div>
             </div>
