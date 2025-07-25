@@ -137,13 +137,13 @@ const SPIPage = () => {
         <div className="growx-container">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-flex items-center px-4 py-2 bg-blue-500/10 text-blue-600 rounded-full text-sm font-medium mb-6">
+              <div className="inline-flex items-center px-4 py-2 bg-amber-100 text-amber-600 rounded-full text-sm font-medium mb-6">
                 <Factory className="w-4 h-4 mr-2" />
                 Solução Corporativa para Grandes Indústrias
               </div>
               
               <h1 className="growx-title mb-6">
-                SPI - <span className="text-blue-600">Indústria</span>
+                SPI - <span className="text-amber-600">Indústria</span>
               </h1>
               
               <p className="growx-subtitle mb-8">
@@ -154,7 +154,7 @@ const SPIPage = () => {
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <Button 
                   onClick={handleWhatsApp}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
                 >
                   Solicitar Demonstração
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -171,8 +171,8 @@ const SPIPage = () => {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {industrialMetrics.map((metric, index) => (
                   <div key={index} className="text-center p-3 bg-card rounded-lg border">
-                    <div className="text-lg font-bold text-blue-600">{metric.value}</div>
-                    <div className="text-xs text-muted-foreground">{metric.label}</div>
+                    <div className="text-lg font-bold text-amber-600">{metric.value}</div>
+                    <div className="text-xs text-green-700">{metric.label}</div>
                   </div>
                 ))}
               </div>
@@ -188,12 +188,12 @@ const SPIPage = () => {
               {/* Status Indicator */}
               <div className="absolute top-6 right-6 bg-card border border-border rounded-lg p-3 shadow-lg">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <div className="text-sm font-medium text-foreground">Sistema Industrial</div>
+                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                  <div className="text-sm font-medium text-gray-800">Sistema Industrial</div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-xs text-green-700 mt-1">
                   Disponibilidade  <br />
-                  <span className="text-blue-600 font-medium">Sob demanda</span>
+                  <span className="text-amber-600 font-medium">Sob demanda</span>
                 </div>
               </div>
             </div>
@@ -206,7 +206,7 @@ const SPIPage = () => {
         <div className="growx-container">
           <div className="text-center mb-16">
             <h2 className="growx-title mb-4">
-              Benefícios <span className="text-blue-600">Potenciais</span>
+              Benefícios <span className="text-amber-600">Potenciais</span>
             </h2>
             <p className="growx-subtitle max-w-3xl mx-auto">
               Indicadores mensuráveis que impactam diretamente o bottom line da sua operação
@@ -219,23 +219,23 @@ const SPIPage = () => {
               return (
                 <div key={index} className="growx-card p-8">
                   <div className="flex items-center mb-6">
-                    <div className="w-16 h-16 bg-blue-500 rounded-xl flex items-center justify-center mr-4">
+                    <div className="w-16 h-16 bg-amber-500 rounded-xl flex items-center justify-center mr-4">
                       <IconComponent className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-foreground">{benefit.title}</h3>
-                      <div className="text-2xl font-bold text-blue-600">{benefit.metric}</div>
+                      <h3 className="text-xl font-bold text-gray-800">{benefit.title}</h3>
+                      <div className="text-2xl font-bold text-amber-600">{benefit.metric}</div>
                     </div>
                   </div>
                   
-                  <p className="text-muted-foreground mb-6">
+                  <p className="text-green-700 mb-6">
                     {benefit.description}
                   </p>
 
                   <ul className="space-y-2">
                     {benefit.details.map((detail, idx) => (
-                      <li key={idx} className="flex items-center text-sm text-foreground">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mr-3 flex-shrink-0" />
+                      <li key={idx} className="flex items-center text-sm text-gray-800">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
                         {detail}
                       </li>
                     ))}
@@ -252,7 +252,7 @@ const SPIPage = () => {
         <div className="growx-container">
           <div className="text-center mb-16">
             <h2 className="growx-title mb-4">
-              Recursos <span className="text-blue-600">Avançados</span>
+              Recursos <span className="text-amber-600">Avançados</span>
             </h2>
             <p className="growx-subtitle max-w-3xl mx-auto">
               Tecnologias industriais de ponta para máxima eficiência operacional
@@ -264,11 +264,11 @@ const SPIPage = () => {
               const IconComponent = feature.icon;
               return (
                 <div key={index} className="text-center p-6">
-                  <div className="w-16 h-16 bg-blue-500/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <IconComponent className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <IconComponent className="w-8 h-8 text-amber-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">{feature.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">{feature.title}</h3>
+                  <p className="text-green-700 text-sm leading-relaxed">{feature.description}</p>
                 </div>
               );
             })}
@@ -282,7 +282,7 @@ const SPIPage = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="growx-title mb-6">
-                Dashboard <span className="text-blue-600">Industrial</span>
+                Dashboard <span className="text-amber-600">Industrial</span>
               </h2>
               <p className="growx-subtitle mb-8">
                 Interface intuitiva com métricas em tempo real, alertas inteligentes e 
@@ -291,26 +291,26 @@ const SPIPage = () => {
 
               <div className="space-y-4 mb-8">
                 <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <CheckCircle className="w-5 h-5 text-green-600" />
                   <span>Métricas de produção em tempo real</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <CheckCircle className="w-5 h-5 text-green-600" />
                   <span>Alertas preventivos e preditivos</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <CheckCircle className="w-5 h-5 text-green-600" />
                   <span>Controles operacionais centralizados</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <CheckCircle className="w-5 h-5 text-green-600" />
                   <span>Relatórios automatizados</span>
                 </div>
               </div>
 
               <Button 
                 onClick={handleWhatsApp}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
               >
                 Ver Demo do Dashboard
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -333,7 +333,7 @@ const SPIPage = () => {
         <div className="growx-container">
           <div className="text-center mb-16">
             <h2 className="growx-title mb-4">
-              Casos de <span className="text-blue-600">Uso</span>
+              Casos de <span className="text-amber-600">Uso</span>
             </h2>
             <p className="growx-subtitle max-w-3xl mx-auto">
               Soluções adaptadas para diferentes segmentos industriais
@@ -343,13 +343,13 @@ const SPIPage = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             {useCases.map((useCase, index) => (
               <div key={index} className="growx-card p-6">
-                <h3 className="text-xl font-bold text-foreground mb-4">{useCase.title}</h3>
-                <p className="text-muted-foreground mb-6">{useCase.description}</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">{useCase.title}</h3>
+                <p className="text-green-700 mb-6">{useCase.description}</p>
                 
                 <ul className="space-y-2">
                   {useCase.benefits.map((benefit, idx) => (
-                    <li key={idx} className="flex items-center text-sm text-foreground">
-                      <CheckCircle className="w-4 h-4 text-blue-600 mr-3 flex-shrink-0" />
+                    <li key={idx} className="flex items-center text-sm text-gray-800">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
                       {benefit}
                     </li>
                   ))}
@@ -361,7 +361,7 @@ const SPIPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="growx-section bg-blue-600 text-white">
+      <section className="growx-section bg-amber-600 text-white">
         <div className="growx-container text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Pronto para Otimizar sua Indústria?
@@ -375,7 +375,7 @@ const SPIPage = () => {
               variant="secondary" 
               size="lg"
               onClick={handleWhatsApp}
-              className="bg-white text-blue-600 hover:bg-white/90"
+              className="bg-white text-amber-600 hover:bg-white/90"
             >
               Solicitar Demonstração
             </Button>
@@ -384,7 +384,7 @@ const SPIPage = () => {
               <Button 
                 variant="outline" 
                 size="lg"
-                className="bg-gray-100 text-blue-600 hover:bg-gray-200"
+                className="bg-gray-100 text-amber-600 hover:bg-gray-200"
               >
                 Ver Supply-X Completo
               </Button>
@@ -397,4 +397,3 @@ const SPIPage = () => {
 };
 
 export default SPIPage;
-
