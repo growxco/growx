@@ -191,7 +191,27 @@ export default async function handler(req, res) {
 
   // Enrichment AI (não-bloqueante visualmente, mas await pra incluir no payload final)
   const enrichment = await enrichLead(lead);
-  const enriched = { ...lead, _enrichment: enrichment };
+
+  // Build email subject with priority flag + form type + company — identificável na inbox
+  const flag = enrichment?.priority === 'hot' ? '🔥'
+             : enrichment?.priority === 'warm' ? '⚡'
+             : '🌱';
+  const formLabel = lead._form === 'demo-b2b' ? 'DEMO'
+                  : lead._form === 'contact'  ? 'CONTATO'
+                  : lead._form === 'waitlist-app' ? 'LISTA-APP'
+                  : (lead._form || 'lead').toUpperCase();
+  const score = enrichment?.score != null ? ` · score ${enrichment.score}` : '';
+  const subjectLine = `${flag} [${formLabel}] ${lead.name}${lead.company ? ' · ' + lead.company : ''}${score}`;
+
+  const enriched = {
+    ...lead,
+    _enrichment: enrichment,
+    // FormSubmit-specific overrides for human-readable inbox
+    _subject: subjectLine,
+    _replyto: lead.email,
+    _template: 'table',
+    _captcha: 'false',
+  };
 
   // Routing destinations (todos paralelos, fire-and-forget)
   // ORDER MATTERS in `results` array — used for the `forwarded_to` count.
