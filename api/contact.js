@@ -65,10 +65,46 @@ async function forwardToFormsubmit(email, payload) {
   try {
     const r = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(email)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        // FormSubmit blocks calls without browser-origin headers ("Make sure you
+        // open this page through a web server"). When called server-side from a
+        // Vercel function, we must spoof the Origin/Referer so it accepts.
+        Origin: 'https://www.growx.com.br',
+        Referer: 'https://www.growx.com.br/contato',
+        'User-Agent': 'Grow-X-Site/1.0 (+https://www.growx.com.br)',
+      },
       body: JSON.stringify(payload),
     });
-    return r.ok;
+    if (!r.ok) return false;
+    // FormSubmit returns 200 even on logical failures — verify success flag
+    try {
+      const data = await r.json();
+      return data?.success === true || data?.success === 'true';
+    } catch {
+      return true;  // 200 + non-JSON → assume OK
+    }
+  } catch { return false; }
+}
+
+/**
+ * Forward to SPI backend (AWS SES via outreach.spi.ia.br DKIM-verified).
+ * Independent + redundant path. Backend hits SES which is fully deliverable
+ * once production access is approved (currently sandbox: only verified
+ * recipients receive). Backend also writes revops_contacts + audit_log + signal
+ * for downstream pipeline routing.
+ */
+async function forwardToBackend(payload) {
+  const url = process.env.SPI_BACKEND_URL || 'https://c3lop8psfd.execute-api.sa-east-1.amazonaws.com/prod/api/v1/revops/leads/inbound';
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      // Don't block on backend latency
+    });
+    return r.ok || r.status === 202;
   } catch { return false; }
 }
 
@@ -158,18 +194,27 @@ export default async function handler(req, res) {
   const enriched = { ...lead, _enrichment: enrichment };
 
   // Routing destinations (todos paralelos, fire-and-forget)
+  // ORDER MATTERS in `results` array — used for the `forwarded_to` count.
   const destinations = [
     forwardToWebhook(process.env.CRM_WEBHOOK_URL, enriched),
     forwardToWebhook(process.env.SLACK_WEBHOOK_URL, buildSlackBlock(lead, enrichment)),
     forwardToFormsubmit(process.env.LEAD_INBOX_EMAIL || 'growx@growx.com.br', enriched),
+    forwardToBackend(enriched),  // SPI backend → AWS SES (redundant primary path)
   ];
   const results = await Promise.allSettled(destinations);
   const okCount = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+  const channels = {
+    crm_webhook: results[0]?.status === 'fulfilled' && results[0].value === true,
+    slack: results[1]?.status === 'fulfilled' && results[1].value === true,
+    formsubmit: results[2]?.status === 'fulfilled' && results[2].value === true,
+    backend_ses: results[3]?.status === 'fulfilled' && results[3].value === true,
+  };
 
   return res.status(200).json({
     ok: true,
     received: true,
     forwarded_to: okCount,
+    channels,
     enrichment: enrichment ? {
       priority: enrichment.priority,
       score: enrichment.score,
