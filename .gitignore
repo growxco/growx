@@ -1,2 +1,51 @@
+# dependencies
 node_modules
+.pnp
+.pnp.*
+
+# build output
+dist
+dist-ssr
+build
+.cache
+.parcel-cache
+
+# environment / secrets — NEVER COMMIT
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# vercel
+.vercel
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# local QA artifacts
+tmp-screens/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+
+# image originals + intermediates (kept locally as backup, not deployed)
+src/assets/*.bak
+src/assets/*.raw.png
+src/assets/*.tmp.*
+
 .vercel

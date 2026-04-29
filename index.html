@@ -1,13 +1,139 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1a13" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>growx-completo</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#3DB55A" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Grow-X" />
+    <meta name="application-name" content="Grow-X" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Grow-X — Inteligência operacional para o agro brasileiro</title>
+    <meta name="description" content="Stack agro brasileira: hardware, software e dados conectados de ponta a ponta. Supply-X, SPI, SPP e Grow-X App." />
+    <meta name="author" content="Grow-X Co." />
+    <meta name="keywords" content="agtech brasileira, supply-x, spi, spp, grow-x app, IoT agro, sensor LoRa, cultivo controlado, cannabis medicinal, rastreabilidade agroindustrial, automação de estufa" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Grow-X" />
+    <meta property="og:title" content="Grow-X — Inteligência operacional para o agro brasileiro" />
+    <meta property="og:description" content="Stack agro brasileira: hardware, software e dados conectados de ponta a ponta. Construída em produção, operando 24/7." />
+    <meta property="og:url" content="https://www.growx.com.br" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:image" content="https://www.growx.com.br/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Grow-X — Inteligência operacional para o agro brasileiro" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Grow-X — Inteligência operacional para o agro brasileiro" />
+    <meta name="twitter:description" content="Stack agro brasileira: hardware, software e dados conectados de ponta a ponta." />
+    <meta name="twitter:image" content="https://www.growx.com.br/og-image.png" />
+
+    <link rel="canonical" href="https://www.growx.com.br" />
+
+    <!-- Performance hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+    <link rel="dns-prefetch" href="https://vitals.vercel-insights.com" />
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+    <link rel="dns-prefetch" href="https://www.clarity.ms" />
+    <link rel="dns-prefetch" href="https://connect.facebook.net" />
+
+    <!-- Critical fonts (preload Geist + Sora subsets) -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #102017;
+      }
+      .static-fallback {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 48px 20px;
+        color: #eaf5ec;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .static-fallback h1 {
+        margin: 0;
+        max-width: 780px;
+        font-size: clamp(2.25rem, 8vw, 4.75rem);
+        line-height: 1;
+      }
+      .static-fallback p {
+        max-width: 720px;
+        color: #b8c8bd;
+        font-size: 1.05rem;
+        line-height: 1.7;
+      }
+      .static-fallback a {
+        color: #7ef0a0;
+      }
+      .static-fallback ul {
+        display: grid;
+        gap: 12px;
+        padding: 0;
+        list-style: none;
+      }
+      .static-fallback li {
+        padding: 14px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="static-fallback" aria-label="Conteúdo essencial Grow-X">
+        <h1>Grow-X — inteligência operacional para o agro brasileiro.</h1>
+        <p>
+          Hardware, software e dados conectados de ponta a ponta para indústria agroalimentar,
+          produtores, cultivo controlado e cannabis medicinal.
+        </p>
+        <ul>
+          <li><strong>Supply-X:</strong> orquestra SPI e SPP em uma cadeia rastreável, auditável e integrada a ERP.</li>
+          <li><strong>SPI:</strong> recebimento agroindustrial digital, logística, qualidade, documentos e governança operacional.</li>
+          <li><strong>SPP:</strong> app agronômico para produtores, com cálculo de irrigação por Kc, diário de campo e suporte técnico.</li>
+          <li><strong>Grow-X App:</strong> cultivo controlado com IoT, IA, comunidade e ferramentas para cannabis medicinal.</li>
+          <li><strong>Hardware:</strong> estação meteorológica LoRa, módulo sem fio e estufa automatizada para condições reais de campo.</li>
+        </ul>
+        <p>
+          Links principais:
+          <a href="/solucoes/supply-x">Supply-X</a>,
+          <a href="/solucoes/spi">SPI</a>,
+          <a href="/solucoes/spp">SPP</a>,
+          <a href="/solucoes/growx-app">Grow-X App</a>,
+          <a href="/produtos">Produtos</a>,
+          <a href="/demo">Agendar demo</a>,
+          <a href="/contato">Contato</a>.
+        </p>
+      </main>
+    </div>
+    <noscript>O site completo usa JavaScript, mas o conteúdo essencial e os links principais estão disponíveis acima.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

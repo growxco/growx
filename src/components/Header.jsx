@@ -1,364 +1,278 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  ChevronDown, Menu, X, ArrowRight, Globe, Factory, Tractor, Smartphone,
+  CloudSun, Cpu, Sprout, Compass, Users, Lightbulb, Search, Languages,
+} from 'lucide-react';
+import { Container, ThemeToggle, AIAssistant } from '@/components/visual';
+import { useI18n } from '@/i18n/I18nProvider';
+import CommandPalette from './CommandPalette';
 import logoGrowX from '../assets/logo-growx-oficial.png';
+import { cn } from '@/lib/utils';
 
-const Header = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState(null);
+const NAV = [
+  { name: 'Início', href: '/', type: 'link' },
+  {
+    name: 'Soluções',
+    type: 'mega',
+    items: [
+      { name: 'Supply-X', href: '/solucoes/supply-x', icon: Globe, desc: 'Plataforma completa SPI + SPP' },
+      { name: 'SPI — Indústria', href: '/solucoes/spi', icon: Factory, desc: 'Para grandes indústrias agroalimentares' },
+      { name: 'SPP — Produtores', href: '/solucoes/spp', icon: Tractor, desc: 'O app que organiza o produtor real' },
+      { name: 'Grow-X App', href: '/solucoes/growx-app', icon: Smartphone, desc: 'Cannabis medicinal & cultivo controlado' },
+    ],
+  },
+  {
+    name: 'Produtos',
+    type: 'mega',
+    href: '/produtos',
+    items: [
+      { name: 'Estação Meteorológica', href: '/produtos/estacao-meteorologica', icon: CloudSun, desc: 'Sensores LoRa de alta precisão' },
+      { name: 'Módulo Sem Fio', href: '/produtos/modulo-sem-fio', icon: Cpu, desc: 'Controle de até 4 estufas' },
+      { name: 'Estufa Automatizada', href: '/produtos/estufa-automatizada', icon: Sprout, desc: 'Cultivo controlado completo' },
+    ],
+  },
+  {
+    name: 'Sobre',
+    type: 'mega',
+    items: [
+      { name: 'História', href: '/sobre/historia', icon: Compass, desc: 'Nossa trajetória' },
+      { name: 'Executivo', href: '/sobre/executivo', icon: Users, desc: 'Liderança e equipe' },
+      { name: 'Filosofia & Valores', href: '/sobre/filosofia', icon: Lightbulb, desc: 'Nossos princípios' },
+    ],
+  },
+  { name: 'Insights', href: '/insights', type: 'link' },
+  { name: 'Contato', href: '/contato', type: 'link' },
+];
+
+export default function Header() {
+  const [open, setOpen] = useState(null);
+  const [mobile, setMobile] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [search, setSearch] = useState(false);
+  const { lang, toggle: toggleLang, t } = useI18n();
   const location = useLocation();
 
-  const navigationItems = [
-    {
-      name: 'Início',
-      href: '/',
-      type: 'link'
-    },
-    {
-      name: 'Soluções',
-      type: 'dropdown',
-      items: [
-        {
-          name: 'Supply-X',
-          href: '/solucoes/supply-x',
-          description: 'Plataforma completa SPI + SPP'
-        },
-        {
-          name: 'SPI - Indústria',
-          href: '/solucoes/spi',
-          description: 'Para grandes indústrias'
-        },
-        {
-          name: 'SPP - Produtores',
-          href: '/solucoes/spp',
-          description: 'App que salva o produtor'
-        },
-        {
-          name: 'Grow-X App',
-          href: '/solucoes/growx-app',
-          description: 'Cannabis & Agricultura Urbana'
-        }
-      ]
-    },
-    {
-      name: 'Produtos',
-      type: 'link-with-dropdown',
-      href: '/produtos',
-      items: [
-        {
-          name: 'Estação Meteorológica',
-          href: '/produtos/estacao-meteorologica',
-          description: 'Sensores LoRa para monitoramento'
-        },
-        {
-          name: 'Módulo Sem Fio',
-          href: '/produtos/modulo-sem-fio',
-          description: 'Controle de estufas'
-        },
-        {
-          name: 'Estufa Automatizada',
-          href: '/produtos/estufa-automatizada',
-          description: 'Sistema completo de cultivo'
-        }
-      ]
-    },
-    {
-      name: 'Sobre Nós',
-      type: 'dropdown',
-      items: [
-        {
-          name: 'História',
-          href: '/sobre/historia',
-          description: 'Nossa trajetória'
-        },
-        {
-          name: 'Executivo',
-          href: '/sobre/executivo',
-          description: 'Liderança e equipe'
-        },
-        {
-          name: 'Filosofia, Missão e Valores',
-          href: '/sobre/filosofia',
-          description: 'Nossos princípios'
-        }
-      ]
-    },
-    {
-      name: 'Contato',
-      href: '/contato',
-      type: 'link'
-    }
-  ];
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
-  const handleDropdownToggle = (itemName) => {
-    setActiveDropdown(activeDropdown === itemName ? null : itemName);
-  };
+  useEffect(() => {
+    setOpen(null);
+    setMobile(false);
+    setSearch(false);
+  }, [location.pathname]);
 
-  const handleWhatsApp = () => {
-    window.open('https://wa.me/5541995494343', '_blank');
-  };
+  // ⌘K / Ctrl+K opens search
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearch((s) => !s);
+      }
+      if (e.key === 'Escape') setSearch(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
-  const isActivePath = (href) => {
-    if (href === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(href);
-  };
+  const isActive = (href) => href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-      <div className="growx-container">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <img 
-              src={logoGrowX} 
-              alt="Grow-X" 
-              className="h-8 w-auto"
-            />
+    <>
+      <header
+        className={cn(
+          'fixed inset-x-0 top-0 z-50 transition-all duration-500',
+          scrolled
+            ? 'border-b border-[oklch(1_0_0/8%)] bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/55'
+            : 'bg-transparent',
+        )}
+      >
+        <div className="mx-auto flex h-16 w-full max-w-[100vw] items-center justify-between gap-3 px-5 sm:px-6 lg:h-[72px] lg:max-w-7xl lg:gap-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-2.5">
+            <img src={logoGrowX} alt="Grow-X" className="h-7 w-auto sm:h-8" />
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
-            {navigationItems.map((item) => (
-              <div key={item.name} className="relative">
-                {item.type === 'link' ? (
+          {/* Desktop nav */}
+          <nav className="hidden items-center gap-1 lg:flex">
+            {NAV.map((item) => {
+              if (item.type === 'link') {
+                return (
                   <Link
+                    key={item.name}
                     to={item.href}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActivePath(item.href) ? 'text-primary' : 'text-muted-foreground'
-                    }`}
+                    className={cn(
+                      'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      isActive(item.href) ? 'text-emerald-glow' : 'text-foreground/70 hover:text-foreground',
+                    )}
                   >
                     {item.name}
                   </Link>
-                ) : item.type === 'link-with-dropdown' ? (
-                  <div className="flex items-center">
-                    <Link
-                      to={item.href}
-                      className={`text-sm font-medium transition-colors hover:text-primary ${
-                        isActivePath(item.href) ? 'text-primary' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
-                    <button
-                      onClick={() => handleDropdownToggle(item.name)}
-                      className={`flex items-center text-sm font-medium transition-colors hover:text-primary ${
-                        activeDropdown === item.name ? 'text-primary' : 'text-muted-foreground'
-                      }`}
-                    >
-                      <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${
-                        activeDropdown === item.name ? 'rotate-180' : ''
-                      }`} />
-                    </button>
-
-                    {/* Dropdown Menu */}
-                    {activeDropdown === item.name && (
-                      <div className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg py-2 z-50">
-                        {item.items.map((subItem) => (
-                          <Link
-                            key={subItem.name}
-                            to={subItem.href}
-                            onClick={() => setActiveDropdown(null)}
-                            className={`block px-4 py-3 text-sm hover:bg-accent transition-colors ${
-                              isActivePath(subItem.href) ? 'text-primary bg-accent' : 'text-foreground'
-                            }`}
-                          >
-                            <div className="font-medium">{subItem.name}</div>
-                            <div className="text-xs text-muted-foreground mt-1">{subItem.description}</div>
-                          </Link>
-                        ))}
-                      </div>
+                );
+              }
+              const isOpen = open === item.name;
+              return (
+                <div key={item.name} className="relative">
+                  <button
+                    type="button"
+                    onMouseEnter={() => setOpen(item.name)}
+                    onClick={() => setOpen(isOpen ? null : item.name)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      isOpen ? 'text-foreground' : 'text-foreground/70 hover:text-foreground',
                     )}
-                  </div>
-                ) : (
-                  <div>
-                    <button
-                      onClick={() => handleDropdownToggle(item.name)}
-                      className={`flex items-center text-sm font-medium transition-colors hover:text-primary ${
-                        activeDropdown === item.name ? 'text-primary' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {item.name}
-                      <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${
-                        activeDropdown === item.name ? 'rotate-180' : ''
-                      }`} />
-                    </button>
+                  >
+                    {item.name}
+                    <ChevronDown className={cn('size-3.5 transition-transform', isOpen && 'rotate-180')} />
+                  </button>
 
-                    {/* Dropdown Menu */}
-                    {activeDropdown === item.name && (
-                      <div className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg py-2 z-50">
-                        {item.items.map((subItem) => (
-                          <Link
-                            key={subItem.name}
-                            to={subItem.href}
-                            onClick={() => setActiveDropdown(null)}
-                            className={`block px-4 py-3 text-sm hover:bg-accent transition-colors ${
-                              isActivePath(subItem.href) ? 'text-primary bg-accent' : 'text-foreground'
-                            }`}
-                          >
-                            <div className="font-medium">{subItem.name}</div>
-                            <div className="text-xs text-muted-foreground mt-1">{subItem.description}</div>
-                          </Link>
-                        ))}
+                  {isOpen && (
+                    <div
+                      onMouseLeave={() => setOpen(null)}
+                      className="absolute left-1/2 top-full z-50 mt-2 w-[460px] -translate-x-1/2 overflow-hidden rounded-2xl glass-strong shadow-elevated"
+                    >
+                      <div className="grid gap-1 p-3">
+                        {item.items.map((sub) => {
+                          const Icon = sub.icon;
+                          return (
+                            <Link
+                              key={sub.href}
+                              to={sub.href}
+                              className="group flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-foreground/5"
+                            >
+                              <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald/15 text-emerald-glow ring-hairline">
+                                <Icon className="size-4" />
+                              </span>
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-foreground">{sub.name}</div>
+                                <div className="mt-0.5 text-xs leading-snug text-muted-foreground">{sub.desc}</div>
+                              </div>
+                              <ArrowRight className="ml-auto mt-1 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+                            </Link>
+                          );
+                        })}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-
-          {/* CTA Button */}
-          <div className="hidden lg:flex items-center space-x-4">
-            <Button 
-              onClick={handleWhatsApp}
-              className="growx-btn-primary"
-            >
-              Agendar Demo
-            </Button>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-border">
-            <nav className="py-4 space-y-2 flex flex-col items-start">
-              {navigationItems.map((item) => (
-                <div key={item.name}>
-                  {item.type === 'link' ? (
-                    <Link
-                      to={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`block px-4 py-2 text-sm font-medium transition-colors hover:text-primary ${
-                        isActivePath(item.href) ? 'text-primary' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
-                  ) : item.type === 'link-with-dropdown' ? (
-                    <div className="flex flex-col w-full">
-                    <Link
-                      to={item.href}
-                      onClick={() => {
-                        handleDropdownToggle(item.name);
-                        if (item.type === 'link-with-dropdown') {
-                          setIsMobileMenuOpen(false);
-                        }
-                      }}
-                      className={`flex items-center justify-between w-full px-4 py-2 text-sm font-medium transition-colors hover:text-primary ${
-                        isActivePath(item.href) ? 'text-primary' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {item.name}
-                      <ChevronDown className={`h-4 w-4 transition-transform ${
-                        activeDropdown === item.name ? 'rotate-180' : ''
-                      }`} />
-                    </Link>
-
-                      {activeDropdown === item.name && (
-                        <div className="pl-4 py-2 space-y-1">
-                          {item.items.map((subItem) => (
-                            <Link
-                              key={subItem.name}
-                              to={subItem.href}
-                              onClick={() => {
-                                setActiveDropdown(null);
-                                setIsMobileMenuOpen(false);
-                              }}
-                              className={`block px-4 py-2 text-sm hover:text-primary transition-colors ${
-                                isActivePath(subItem.href) ? 'text-primary' : 'text-muted-foreground'
-                              }`}
-                            >
-                              {subItem.name}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col w-full">
-                    <Link
-                      to={item.href}
-                      onClick={() => {
-                        handleDropdownToggle(item.name);
-                        if (item.type === 'link-with-dropdown') {
-                          setIsMobileMenuOpen(false);
-                        }
-                      }}
-                      className={`flex items-center justify-between w-full px-4 py-2 text-sm font-medium transition-colors hover:text-primary ${
-                        isActivePath(item.href) ? 'text-primary' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {item.name}
-                      <ChevronDown className={`h-4 w-4 transition-transform ${
-                        activeDropdown === item.name ? 'rotate-180' : ''
-                      }`} />
-                    </Link>
-
-                      {activeDropdown === item.name && (
-                        <div className="pl-4 py-2 space-y-1">
-                          {item.items.map((subItem) => (
-                            <Link
-                              key={subItem.name}
-                              to={subItem.href}
-                              onClick={() => {
-                                setActiveDropdown(null);
-                                setIsMobileMenuOpen(false);
-                              }}
-                              className={`block px-4 py-2 text-sm hover:text-primary transition-colors ${
-                                isActivePath(subItem.href) ? 'text-primary' : 'text-muted-foreground'
-                              }`}
-                            >
-                              {subItem.name}
-                            </Link>
-                          ))}
+                      {item.href && (
+                        <div className="border-t border-foreground/10 px-4 py-3">
+                          <Link to={item.href} className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-glow">
+                            Ver todos os {item.name.toLowerCase()}
+                            <ArrowRight className="size-3.5" />
+                          </Link>
                         </div>
                       )}
                     </div>
                   )}
                 </div>
-              ))}
-              
-              <div className="px-4 pt-4">
-                <Button 
-                  onClick={() => {
-                    handleWhatsApp();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="growx-btn-primary w-full"
-                >
-                  Agendar Demo
-                </Button>
-              </div>
-            </nav>
+              );
+            })}
+          </nav>
+
+          {/* Right cluster */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Buscar (⌘K)"
+              onClick={() => setSearch(true)}
+              className="hidden h-9 items-center gap-2 rounded-lg border border-foreground/10 bg-foreground/[0.04] px-3 text-xs text-muted-foreground transition-colors hover:border-emerald/40 hover:text-foreground sm:inline-flex"
+            >
+              <Search className="size-3.5" />
+              <span>{t('common.search')}</span>
+              <kbd className="hidden rounded border border-foreground/10 bg-background/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">⌘K</kbd>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleLang}
+              aria-label="Trocar idioma"
+              className="hidden h-9 items-center gap-1.5 rounded-lg border border-foreground/10 bg-foreground/[0.04] px-2.5 text-xs font-mono uppercase tracking-wider text-foreground/70 transition-colors hover:border-emerald/40 hover:text-foreground sm:inline-flex"
+            >
+              <Languages className="size-3.5" />
+              {lang}
+            </button>
+
+            <AIAssistant />
+
+            <ThemeToggle className="hidden sm:inline-flex" />
+
+            <div className="hidden lg:block">
+              <Link to="/demo" className="btn-primary text-xs sm:text-sm">
+                {t('common.scheduleDemo')}
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMobile(!mobile)}
+              className="fixed left-[min(calc(100dvw-56px),330px)] top-3.5 z-[60] inline-flex size-9 items-center justify-center rounded-lg border border-foreground/10 bg-foreground/5 text-foreground lg:static lg:hidden"
+              aria-label="Menu"
+            >
+              {mobile ? <X className="size-4" /> : <Menu className="size-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* mobile drawer */}
+        {mobile && (
+          <div className="lg:hidden">
+            <div className="border-t border-foreground/[0.08] bg-background/95 backdrop-blur-xl">
+              <Container className="py-5">
+                <nav className="flex flex-col gap-1">
+                  {NAV.map((item) => {
+                    if (item.type === 'link') {
+                      return (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className={cn(
+                            'rounded-lg px-3 py-3 text-sm font-medium',
+                            isActive(item.href) ? 'bg-emerald/10 text-emerald-glow' : 'text-foreground',
+                          )}
+                        >
+                          {item.name}
+                        </Link>
+                      );
+                    }
+                    return (
+                      <details key={item.name} className="group rounded-lg">
+                        <summary className="flex cursor-pointer items-center justify-between px-3 py-3 text-sm font-medium text-foreground">
+                          {item.name}
+                          <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div className="ml-3 flex flex-col gap-1 border-l border-foreground/10 pl-3 pb-2">
+                          {item.items.map((sub) => (
+                            <Link
+                              key={sub.href}
+                              to={sub.href}
+                              className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+                            >
+                              {sub.name}
+                            </Link>
+                          ))}
+                          {item.href && (
+                            <Link to={item.href} className="rounded-lg px-3 py-2 text-sm font-semibold text-emerald-glow">
+                              Ver todos →
+                            </Link>
+                          )}
+                        </div>
+                      </details>
+                    );
+                  })}
+                  <Link to="/demo" className="btn-primary mt-3 w-full">
+                    Agendar demo
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </nav>
+              </Container>
+            </div>
           </div>
         )}
-      </div>
+      </header>
 
-      {/* Overlay for dropdown */}
-      {activeDropdown && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setActiveDropdown(null)}
-        />
-      )}
-    </header>
+      <CommandPalette open={search} onClose={() => setSearch(false)} />
+    </>
   );
-};
-
-export default Header;
-
+}

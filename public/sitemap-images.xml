@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://www.growx.com.br/</loc>
+    <image:image>
+      <image:loc>https://www.growx.com.br/og-image.svg</image:loc>
+      <image:title>Grow-X — Inteligência operacional para o agro brasileiro</image:title>
+      <image:caption>Stack agro brasileira: hardware, software e dados conectados de ponta a ponta.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.growx.com.br/sobre/executivo</loc>
+    <image:image>
+      <image:loc>https://www.growx.com.br/og-image.svg</image:loc>
+      <image:title>Liderança Grow-X — Schreiber + Calcagnotto</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.growx.com.br/produtos/estacao-meteorologica</loc>
+    <image:image>
+      <image:loc>https://www.growx.com.br/og-image.svg</image:loc>
+      <image:title>Estação Meteorológica Grow-X · LoRa</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.growx.com.br/produtos/modulo-sem-fio</loc>
+    <image:image>
+      <image:loc>https://www.growx.com.br/og-image.svg</image:loc>
+      <image:title>Módulo Sem Fio Grow-X</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.growx.com.br/produtos/estufa-automatizada</loc>
+    <image:image>
+      <image:loc>https://www.growx.com.br/og-image.svg</image:loc>
+      <image:title>Estufa Automatizada Grow-X</image:title>
+    </image:image>
+  </url>
+</urlset>

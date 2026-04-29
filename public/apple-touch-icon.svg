@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0F1A13"/>
+      <stop offset="100%" stop-color="#0A130E"/>
+    </linearGradient>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#3DB55A"/>
+      <stop offset="100%" stop-color="#A8E0B8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#3DB55A" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#3DB55A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="url(#bg)"/>
+  <rect width="180" height="180" rx="40" fill="url(#glow)"/>
+  <rect x="1.5" y="1.5" width="177" height="177" rx="38.5" fill="none" stroke="#3DB55A" stroke-opacity="0.4"/>
+  <!-- monogram G -->
+  <path d="M 64 52 A 38 38 0 1 0 102 90 L 86 90" fill="none" stroke="url(#g)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- X marker -->
+  <circle cx="124" cy="62" r="8" fill="#A8E0B8"/>
+  <circle cx="124" cy="62" r="16" fill="#3DB55A" fill-opacity="0.3"/>
+  <text x="90" y="158" text-anchor="middle" font-family="Geist Mono, monospace" font-size="14" fill="#A8E0B8" letter-spacing="3">GROW-X</text>
+</svg>
