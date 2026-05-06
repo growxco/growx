@@ -1,0 +1,147 @@
+name: Aikido
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  aikido-workspace-gate:
+    name: Aikido workspace gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AIKIDO_GATE_REPO: growx
+      AIKIDO_GATE_BASELINE_COUNT: "0"
+      AIKIDO_GATE_HIGH_BASELINE: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Aikido workspace gate
+        env:
+          AIKIDO_CLIENT_ID: ${{ secrets.AIKIDO_CLIENT_ID }}
+          AIKIDO_CLIENT_SECRET: ${{ secrets.AIKIDO_CLIENT_SECRET }}
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import base64
+          import json
+          import os
+          import sys
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          OAUTH_URL = "https://app.aikido.dev/api/oauth/token"
+          ISSUES_URL = "https://app.aikido.dev/api/public/v1/issues/export"
+
+          def http(method: str, url: str, *, headers=None, data=None, retries=3):
+              req = urllib.request.Request(url, method=method, headers=headers or {}, data=data)
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      return resp.status, resp.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as exc:
+                  if exc.code == 429 and retries > 0:
+                      time.sleep(30)
+                      return http(method, url, headers=headers, data=data, retries=retries - 1)
+                  return exc.code, exc.read().decode("utf-8", "replace")
+
+          def oauth_token(client_id: str, secret: str) -> str:
+              basic = base64.b64encode(f"{client_id}:{secret}".encode()).decode("ascii")
+              body = urllib.parse.urlencode({"grant_type": "client_credentials"}).encode()
+              status, raw = http(
+                  "POST",
+                  OAUTH_URL,
+                  headers={
+                      "Authorization": f"Basic {basic}",
+                      "Content-Type": "application/x-www-form-urlencoded",
+                      "Accept": "application/json",
+                  },
+                  data=body,
+              )
+              if status != 200:
+                  raise SystemExit(f"OAuth failed: HTTP {status}: {raw[:300]}")
+              return json.loads(raw)["access_token"]
+
+          def issue_items(raw: str):
+              data = json.loads(raw)
+              if isinstance(data, list):
+                  return [item for item in data if isinstance(item, dict)]
+              if isinstance(data, dict):
+                  for key in ("data", "items", "issues", "results"):
+                      value = data.get(key)
+                      if isinstance(value, list):
+                          return [item for item in value if isinstance(item, dict)]
+              return []
+
+          def main() -> int:
+              client_id = os.environ.get("AIKIDO_CLIENT_ID", "").strip()
+              secret = os.environ.get("AIKIDO_CLIENT_SECRET", "").strip()
+              if not client_id or not secret:
+                  print("::error::AIKIDO_CLIENT_ID / AIKIDO_CLIENT_SECRET missing", flush=True)
+                  return 1
+
+              repo = os.environ["AIKIDO_GATE_REPO"].lower()
+              critical_baseline = int(os.environ["AIKIDO_GATE_BASELINE_COUNT"])
+              high_baseline = int(os.environ["AIKIDO_GATE_HIGH_BASELINE"])
+              token = oauth_token(client_id, secret)
+              params = urllib.parse.urlencode({"filter_status": "open", "per_page": 2000})
+              status, raw = http(
+                  "GET",
+                  f"{ISSUES_URL}?{params}",
+                  headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+              )
+              if status != 200:
+                  print(f"::error::Aikido issues export failed: HTTP {status}: {raw[:300]}", flush=True)
+                  return 1
+
+              seen = set()
+              counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+              total = 0
+              for item in issue_items(raw):
+                  if (item.get("code_repo_name") or "").lower() != repo:
+                      continue
+                  issue_id = item.get("id")
+                  if issue_id in seen:
+                      continue
+                  seen.add(issue_id)
+                  total += 1
+                  severity = (item.get("severity") or "unknown").lower()
+                  counts[severity] = counts.get(severity, 0) + 1
+
+              summary = "\n".join(
+                  [
+                      "## Aikido gate",
+                      "",
+                      f"Repo: `{repo}` - Total open: **{total}**",
+                      "",
+                      "| Severity | Count | Baseline | Status |",
+                      "| --- | ---: | ---: | --- |",
+                      f"| critical | {counts.get('critical', 0)} | {critical_baseline} | {'OK' if counts.get('critical', 0) <= critical_baseline else 'FAIL'} |",
+                      f"| high | {counts.get('high', 0)} | {high_baseline} | {'OK' if counts.get('high', 0) <= high_baseline else 'FAIL'} |",
+                      f"| medium | {counts.get('medium', 0)} | (not gated) | -- |",
+                      f"| low | {counts.get('low', 0)} | (not gated) | -- |",
+                  ]
+              )
+              print(summary, flush=True)
+              if os.environ.get("GITHUB_STEP_SUMMARY"):
+                  with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
+                      handle.write(summary + "\n")
+
+              if counts.get("critical", 0) > critical_baseline or counts.get("high", 0) > high_baseline:
+                  print("::error::Aikido baseline exceeded", flush=True)
+                  return 1
+              return 0
+
+          raise SystemExit(main())
+          PY
