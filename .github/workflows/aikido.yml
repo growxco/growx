@@ -1,0 +1,19 @@
+name: Aikido
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  aikido-workspace-gate:
+    name: Aikido workspace gate
+    uses: growxco/argus/.github/workflows/aikido-gate-reusable.yml@main
+    with:
+      aikido_repo: growx
+      baseline_critical: 0
+      baseline_high: 0
+    secrets:
+      AIKIDO_CLIENT_ID: ${{ secrets.AIKIDO_CLIENT_ID }}
+      AIKIDO_CLIENT_SECRET: ${{ secrets.AIKIDO_CLIENT_SECRET }}
