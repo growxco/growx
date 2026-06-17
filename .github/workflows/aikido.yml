@@ -88,6 +88,19 @@ jobs:
               client_id = os.environ.get("AIKIDO_CLIENT_ID", "").strip()
               secret = os.environ.get("AIKIDO_CLIENT_SECRET", "").strip()
               if not client_id or not secret:
+                  is_dependabot_pr = (
+                      os.environ.get("GITHUB_EVENT_NAME") == "pull_request"
+                      and (
+                          os.environ.get("GITHUB_ACTOR") == "dependabot[bot]"
+                          or os.environ.get("GITHUB_HEAD_REF", "").startswith("dependabot/")
+                      )
+                  )
+                  if is_dependabot_pr:
+                      print(
+                          "::notice::Skipping Aikido workspace gate: Dependabot pull_request workflows do not receive repository secrets.",
+                          flush=True,
+                      )
+                      return 0
                   print("::error::AIKIDO_CLIENT_ID / AIKIDO_CLIENT_SECRET missing", flush=True)
                   return 1
 
