@@ -1,8 +1,9 @@
-import { MapPin, Phone, Mail, MessageCircle, Linkedin, Instagram, Facebook, ArrowRight, Calendar } from 'lucide-react';
+import { MapPin, Phone, Mail, MessageCircle, Linkedin, Instagram, Facebook, ArrowRight, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SEO, Container, Eyebrow, Reveal, GlassCard, Aurora, GridPattern, StatusDot, LeadForm } from '@/components/visual';
 import { CONTACT, whatsappLink } from '@/lib/crm';
 import { analytics } from '@/lib/analytics';
+import { CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 
 const FIELDS = [
   { name: 'name', label: 'Nome completo', required: true, placeholder: 'Como você se chama?' },
@@ -15,7 +16,7 @@ const FIELDS = [
     type: 'select',
     required: true,
     options: [
-      { value: 'demo', label: 'Quero agendar uma demo' },
+      { value: 'spi-enterprise', label: 'Contato corporativo SPI / Supply-X' },
       { value: 'parceiro', label: 'Quero ser parceiro' },
       { value: 'imprensa', label: 'Imprensa / pauta' },
       { value: 'suporte', label: 'Suporte / cliente atual' },
@@ -42,7 +43,7 @@ export default function ContactPage() {
     <>
       <SEO
         title="Contato · Grow-X"
-        description="Time Grow-X disponível em Curitiba/PR. WhatsApp, e-mail e formulário direto. Demo, parceria, imprensa, suporte."
+        description="Time Grow-X disponível em Curitiba/PR. WhatsApp, e-mail e formulário direto para contato corporativo, parceria, imprensa e suporte."
         path="/contato"
       />
 
@@ -56,8 +57,7 @@ export default function ContactPage() {
               Vamos conversar sobre sua <span className="text-emerald-glow">operação?</span>
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Quer demo? Use <Link to="/demo" className="text-emerald-glow hover:underline">/demo</Link> que é direto.
-              Pra qualquer outra coisa (parceria, imprensa, suporte, investidor), use o canal certo abaixo ou o formulário.
+              Para SPI e Supply-X, use o contato corporativo. Para parceria, imprensa, suporte ou investidor, use o canal certo abaixo ou o formulário.
             </p>
             <div className="mt-6">
               <StatusDot label="Atendimento ativo" />
@@ -70,7 +70,7 @@ export default function ContactPage() {
         <Container>
           <div className="grid gap-5 lg:grid-cols-3">
             {[
-              { icon: Calendar, title: 'Demo qualificada', desc: 'Form com triagem BANT, agenda direta com time fundador.', cta: 'Ir pra /demo', to: '/demo' },
+              { icon: Building2, title: 'Contato corporativo SPI', desc: 'Triagem de operação, volume, integração e escopo com o time Grow-X.', cta: 'Solicitar contato', to: CORPORATE_CONTACT_PATH },
               { icon: MessageCircle, title: 'WhatsApp', desc: 'Resposta humana em horário comercial.', cta: 'Abrir WhatsApp', onClick: onWhatsApp },
               { icon: Mail, title: 'E-mail', desc: 'Pra propostas, parcerias e contato comercial estruturado.', cta: CONTACT.email, href: `mailto:${CONTACT.email}` },
             ].map((b, i) => {

@@ -1,8 +1,8 @@
 import { Factory, BarChart3, Cog, AlertTriangle, Shield, Clock, Zap } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { PageHero, FeatureGrid, SplitFeature, MetricStrip, UseCases, FinalCTA, LiveTicker } from '@/components/sections';
-import spiHero from '../assets/spi-hero-v2.webp';
-import spiDashboard from '../assets/spi-dashboard-industrial.webp';
+import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
+import spiScreen from '../assets/real-spi-app.webp';
 
 const FEATURES = [
   { icon: BarChart3, title: 'Dashboard operacional', description: 'Status logístico e indicadores de recebimento em uma só tela.' },
@@ -34,10 +34,10 @@ export default function SPIPage() {
         eyebrowIcon={Factory}
         title={<>Indústria <span className="text-emerald-glow">conectada</span> à originação.</>}
         intro="Sistema completo que automatiza o recebimento de cargas agrícolas, assegura rastreabilidade ponta-a-ponta e eleva o controle de qualidade com monitoramento em tempo real."
-        primaryCta={{ label: 'Solicitar demonstração', href: '/contato' }}
-        secondaryCta={{ label: 'Ver Supply-X', href: '/solucoes/supply-x' }}
-        image={spiHero}
-        imageAlt="SPI plataforma industrial"
+        primaryCta={{ label: 'Solicitar acesso corporativo', href: CORPORATE_CONTACT_PATH }}
+        secondaryCta={{ label: 'Abrir portal SPI', href: APP_PORTAL_URLS.spi, external: true }}
+        image={spiScreen}
+        imageAlt="Tela real do portal SPI"
       />
 
       <LiveTicker />
@@ -71,9 +71,9 @@ export default function SPIPage() {
           'Controles operacionais centralizados',
           'Relatórios automatizados',
         ]}
-        cta={{ label: 'Ver demo do dashboard', href: '/contato' }}
-        image={spiDashboard}
-        imageAlt="Dashboard SPI"
+        cta={{ label: 'Falar com a Grow-X', href: CORPORATE_CONTACT_PATH }}
+        image={spiScreen}
+        imageAlt="Portal corporativo SPI"
       />
 
       <UseCases

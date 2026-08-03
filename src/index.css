@@ -271,8 +271,8 @@
   }
 
   /* Display scale with stable breakpoints to avoid mobile text clipping. */
-  .text-display-2xl { font-size: 2rem; line-height: 1.06; letter-spacing: 0; font-weight: 700; }
-  .text-display-xl  { font-size: 2rem; line-height: 1.06; letter-spacing: 0; font-weight: 700; }
+  .text-display-2xl { font-size: 2rem; line-height: 1.1; letter-spacing: 0; font-weight: 700; }
+  .text-display-xl  { font-size: 2rem; line-height: 1.1; letter-spacing: 0; font-weight: 700; }
   .text-display-lg  { font-size: 1.875rem; line-height: 1.08; letter-spacing: 0; font-weight: 700; }
   .text-display-md  { font-size: 1.625rem; line-height: 1.12; letter-spacing: 0; font-weight: 600; }
 

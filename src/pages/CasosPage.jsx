@@ -78,7 +78,7 @@ export default function CasosPage() {
                     <div className="mt-1 font-display text-2xl font-bold text-foreground">{c.metric}</div>
                   </div>
                   <p className="mt-auto text-xs text-muted-foreground">
-                    Detalhamento sob NDA até liberação. Quer ver dados completos? Agende demo.
+                    Detalhamento sob NDA até liberação. Quer ver dados completos? Fale com a Grow-X.
                   </p>
                 </GlassCard>
               </Reveal>

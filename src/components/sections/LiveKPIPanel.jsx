@@ -24,25 +24,25 @@ export default function LiveKPIPanel() {
   const ss = String(time.getSeconds()).padStart(2, '0');
 
   return (
-    <GlassCard variant="strong" className="border-gradient-emerald shadow-elevated overflow-hidden">
+    <GlassCard variant="strong" className="border-gradient-emerald shadow-elevated min-w-0 overflow-hidden">
       {/* header */}
       <div className="flex items-center gap-2.5 border-b border-white/10 px-4 py-3">
         <span className="size-2 rounded-full bg-foreground/30" />
         <span className="size-2 rounded-full bg-foreground/30" />
         <span className="size-2 rounded-full bg-foreground/30" />
-        <span className="ml-3 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+        <span className="ml-3 min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
           grow-x · ops console
         </span>
-        <span className="ml-auto flex items-center gap-2.5">
+        <span className="ml-auto flex shrink-0 items-center gap-2.5">
           <StatusDot label="LIVE" />
-          <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+          <span className="hidden font-mono text-[11px] text-muted-foreground tabular-nums sm:inline">
             {hh}:{mm}:{ss}
           </span>
         </span>
       </div>
 
       {/* sparkline chart */}
-      <div className="relative border-b border-white/[0.06] bg-gradient-to-br from-[oklch(0.18_0.022_150)] to-[oklch(0.22_0.025_150)] p-5">
+      <div className="relative border-b border-white/[0.06] bg-gradient-to-br from-[oklch(0.18_0.022_150)] to-[oklch(0.22_0.025_150)] p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <div>
             <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Throughput de eventos</div>
@@ -58,7 +58,7 @@ export default function LiveKPIPanel() {
           </div>
         </div>
         <div className="mt-3">
-          <Sparkline width={320} height={64} className="w-full" />
+          <Sparkline width={280} height={64} className="w-full" />
         </div>
       </div>
 

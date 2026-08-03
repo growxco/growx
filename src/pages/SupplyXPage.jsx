@@ -6,6 +6,7 @@ import {
 import supplyXHero from '../assets/supply-x-hero-v2.webp';
 import spiBanner from '../assets/supply-x-spi-v2.webp';
 import sppBanner from '../assets/supply-x-spp-v2.webp';
+import { CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 
 const FEATURES = [
   { icon: Globe, title: 'Plataforma unificada', description: 'Indústria e produtor numa só camada de dados auditável.' },
@@ -35,7 +36,7 @@ export default function SupplyXPage() {
         eyebrowIcon={Globe}
         title={<>A camada que <span className="text-emerald-glow">orquestra</span> indústria e campo.</>}
         intro="Plataforma modular que une SPI e SPP numa única operação rastreável — do insumo ao produto final."
-        primaryCta={{ label: 'Solicitar demonstração', href: '/contato' }}
+        primaryCta={{ label: 'Contato corporativo SPI', href: CORPORATE_CONTACT_PATH }}
         secondaryCta={{ label: 'Falar com especialista', href: '/contato' }}
         image={supplyXHero}
         imageAlt="Supply-X plataforma"

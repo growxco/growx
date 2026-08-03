@@ -196,7 +196,7 @@ export default async function handler(req, res) {
   const flag = enrichment?.priority === 'hot' ? '🔥'
              : enrichment?.priority === 'warm' ? '⚡'
              : '🌱';
-  const formLabel = lead._form === 'demo-b2b' ? 'DEMO'
+  const formLabel = ['demo-b2b', 'spi-enterprise-contact'].includes(lead._form) ? 'SPI-CORP'
                   : lead._form === 'contact'  ? 'CONTATO'
                   : lead._form === 'waitlist-app' ? 'LISTA-APP'
                   : (lead._form || 'lead').toUpperCase();

@@ -7,15 +7,15 @@ import { analytics } from '@/lib/analytics';
 const PAGE_INTENTS = [
   { match: /^\/solucoes\/supply-x/, label: 'Supply-X', msg: 'Olá! Quero saber mais sobre o Supply-X (SPI + SPP).' },
   { match: /^\/solucoes\/spi/, label: 'SPI · Indústria', msg: 'Olá! Quero falar sobre o SPI para minha indústria.' },
-  { match: /^\/solucoes\/spp/, label: 'SPP · Produtores', msg: 'Olá! Sou produtor e quero saber sobre o SPP.' },
-  { match: /^\/solucoes\/growx-app/, label: 'Grow-X App', msg: 'Olá! Quero entrar na lista de espera do Grow-X App.' },
+  { match: /^\/solucoes\/spp/, label: 'SPP · Produtores', msg: 'Olá! Sou produtor e quero assinar o SPP.' },
+  { match: /^\/solucoes\/growx-app/, label: 'GXP', msg: 'Olá! Quero assinar o GXP.' },
   { match: /^\/produtos\/estacao-meteorologica/, label: 'Estação Meteorológica', msg: 'Olá! Quero orçamento da Estação Meteorológica Grow-X.' },
   { match: /^\/produtos\/modulo-sem-fio/, label: 'Módulo Sem Fio', msg: 'Olá! Quero orçamento do Módulo Sem Fio Grow-X.' },
   { match: /^\/produtos\/estufa-automatizada/, label: 'Estufa Automatizada', msg: 'Olá! Quero orçamento da Estufa Automatizada Grow-X.' },
   { match: /^\/produtos/, label: 'Produtos', msg: 'Olá! Quero saber mais sobre o hardware Grow-X.' },
-  { match: /^\/cannabis-medicinal/, label: 'Cannabis medicinal', msg: 'Olá! Sou paciente medicinal e quero saber sobre o Grow-X App.' },
+  { match: /^\/cannabis-medicinal/, label: 'Cannabis medicinal', msg: 'Olá! Quero saber sobre GXP para cultivo medicinal legal.' },
   { match: /^\/parceiros/, label: 'Parceiros', msg: 'Olá! Quero conhecer o programa de parceiros Grow-X.' },
-  { match: /^\/demo/, label: 'Demo', msg: 'Olá! Quero agendar uma demo Grow-X.' },
+  { match: /^\/(demo|contato-corporativo-spi)/, label: 'Contato corporativo SPI', msg: 'Olá! Quero falar com a Grow-X sobre SPI para empresa.' },
   { match: /.*/, label: 'Grow-X', msg: 'Olá! Quero conversar sobre a Grow-X.' },
 ];
 

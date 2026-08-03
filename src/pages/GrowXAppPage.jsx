@@ -4,7 +4,8 @@ import {
 } from 'lucide-react';
 import { SEO, softwareSchema } from '@/components/visual';
 import { PageHero, FeatureGrid, MetricStrip, UseCases, FinalCTA, LiveTicker } from '@/components/sections';
-import growxAppHero from '../assets/growx-app-hero-v2.webp';
+import { APP_PORTAL_URLS } from '@/lib/portalLinks';
+import gxpScreen from '../assets/real-gxp-app.webp';
 
 const MAIN_FEATURES = [
   { icon: Wifi, title: 'Controle remoto de estufas', description: 'Monitore e controle suas estufas de qualquer lugar via IoT.' },
@@ -49,11 +50,11 @@ export default function GrowXAppPage() {
         eyebrowIcon={Leaf}
         title={<>Cultivo <span className="text-emerald-glow">controlado</span> com padrão farmacêutico.</>}
         intro="Solução pra pacientes medicinais, cultivadores estruturados e operações em escala. Hardware + software + comunidade — tudo brasileiro."
-        primaryCta={{ label: 'Lista de espera', href: '/contato' }}
+        primaryCta={{ label: 'Assinar GXP', href: APP_PORTAL_URLS.gxp, external: true }}
         secondaryCta={{ label: 'Falar com especialista', href: '/contato' }}
-        image={growxAppHero}
-        imageAlt="Grow-X App"
-        status="Pré-lançamento · Nov 2026"
+        image={gxpScreen}
+        imageAlt="Tela real do GXP App"
+        status="Clube e app Grow-X"
       />
 
       <LiveTicker />

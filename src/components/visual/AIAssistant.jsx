@@ -140,8 +140,8 @@ export default function AIAssistant() {
                 {messages.length === 0 && (
                   <>
                     <Bubble role="assistant">
-                      Oi — sou o assistente da Grow-X. Posso explicar Supply-X, SPI, SPP, o Grow-X App e nosso hardware.
-                      Pra demo real, agendo com nosso time. Em o que ajudo?
+                      Oi — sou o assistente da Grow-X. Posso explicar Supply-X, SPI, SPP, GXP e nosso hardware.
+                      Para SPI, encaminho contato corporativo; para SPP/GXP, levo ao portal certo. Em o que ajudo?
                     </Bubble>
                     <div className="space-y-2">
                       <div className="text-eyebrow text-muted-foreground">Sugestões</div>

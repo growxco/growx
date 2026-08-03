@@ -11,7 +11,7 @@ export default function PageHero({
   eyebrowIcon,
   title, // string ou node
   intro,
-  primaryCta = { label: 'Agendar demo', href: '/contato' },
+  primaryCta = { label: 'Falar com a Grow-X', href: '/contato' },
   secondaryCta,
   image,
   imageAlt = '',
@@ -41,14 +41,14 @@ export default function PageHero({
             <Reveal delay={0.22}>
               <div className="mt-9 flex flex-wrap items-center gap-3">
                 {primaryCta && (
-                  <Link to={primaryCta.href} className="btn-primary">
+                  <HeroCta cta={primaryCta} className="btn-primary">
                     {primaryCta.label}
                     <ArrowRight className="size-4" />
-                  </Link>
+                  </HeroCta>
                 )}
                 {secondaryCta && (
-                  secondaryCta.href ? (
-                    <Link to={secondaryCta.href} className="btn-ghost">{secondaryCta.label}</Link>
+                  secondaryCta.href || secondaryCta.external ? (
+                    <HeroCta cta={secondaryCta} className="btn-ghost">{secondaryCta.label}</HeroCta>
                   ) : (
                     <button type="button" onClick={secondaryCta.onClick} className="btn-ghost">
                       {secondaryCta.label}
@@ -84,5 +84,21 @@ export default function PageHero({
         </div>
       </Container>
     </section>
+  );
+}
+
+function HeroCta({ cta, className, children }) {
+  if (cta.external) {
+    return (
+      <a href={cta.href} target="_blank" rel="noreferrer noopener" className={className}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={cta.href} className={className}>
+      {children}
+    </Link>
   );
 }

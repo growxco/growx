@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import {
-  MapPin, Phone, Mail, Linkedin, Instagram, Facebook, ArrowUpRight, Leaf,
+  MapPin, Phone, Mail, Linkedin, Instagram, Facebook, ArrowUpRight, Leaf, Factory, Tractor, AppWindow, Gamepad2,
 } from 'lucide-react';
 import { Container, GridPattern, StatusDot, NewsletterSignup } from '@/components/visual';
 import logoGrowX from '../assets/logo-growx-oficial.png';
+import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 
 const SOLUTIONS = [
   { name: 'Supply-X', href: '/solucoes/supply-x' },
@@ -20,6 +21,13 @@ const PRODUCTS = [
   { name: 'Catálogo completo', href: '/produtos' },
 ];
 
+const APP_PORTALS = [
+  { name: 'SPI App', href: APP_PORTAL_URLS.spi, external: true, icon: Factory },
+  { name: 'SPP App', href: APP_PORTAL_URLS.spp, external: true, icon: Tractor },
+  { name: 'GXP App', href: APP_PORTAL_URLS.gxp, external: true, icon: AppWindow },
+  { name: 'GreenVeil', href: '/#greenveil', hash: true, icon: Gamepad2 },
+];
+
 const COMPANY = [
   { name: 'História', href: '/sobre/historia' },
   { name: 'Executivo', href: '/sobre/executivo' },
@@ -30,8 +38,9 @@ const COMPANY = [
 ];
 
 const ACTION = [
-  { name: 'Agendar demo', href: '/demo' },
-  { name: 'Lista de espera App', href: '/lista-espera-app' },
+  { name: 'Contato corporativo SPI', href: CORPORATE_CONTACT_PATH },
+  { name: 'Assinar SPP', href: APP_PORTAL_URLS.spp, external: true },
+  { name: 'Assinar GXP', href: APP_PORTAL_URLS.gxp, external: true },
   { name: 'Insights', href: '/insights' },
   { name: 'Contato', href: '/contato' },
 ];
@@ -60,11 +69,11 @@ export default function Footer() {
               Vamos conversar sobre a sua operação?
             </h3>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Em 30 minutos a gente entende seu cenário e mostra onde a Grow-X encaixa.
+              SPP e GXP entram por assinatura. SPI começa por contato corporativo qualificado.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 lg:col-span-5 lg:justify-end">
-            <Link to="/demo" className="btn-primary">Agendar demo</Link>
+            <Link to={CORPORATE_CONTACT_PATH} className="btn-primary">Contato corporativo SPI</Link>
             <button onClick={handleWhatsApp} className="btn-ghost">WhatsApp</button>
           </div>
         </div>
@@ -104,9 +113,10 @@ export default function Footer() {
           </div>
 
           {/* Link cols */}
-          <div className="grid gap-10 sm:grid-cols-2 lg:col-span-9 lg:grid-cols-4">
+          <div className="grid gap-10 sm:grid-cols-2 lg:col-span-9 lg:grid-cols-5">
             <FooterCol title="Soluções" links={SOLUTIONS} />
             <FooterCol title="Produtos" links={PRODUCTS} />
+            <FooterCol title="Apps" links={APP_PORTALS} />
             <FooterCol title="Empresa" links={COMPANY} />
             <FooterCol title="Ações" links={ACTION} />
           </div>
@@ -159,16 +169,38 @@ function FooterCol({ title, links }) {
       <ul className="mt-5 space-y-3">
         {links.map((l) => (
           <li key={l.href}>
-            <Link
-              to={l.href}
+            <FooterLink
+              item={l}
               className="group inline-flex items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-emerald-glow"
             >
+              {l.icon && <l.icon className="size-3.5 text-emerald-glow/80" />}
               {l.name}
               <ArrowUpRight className="size-3.5 -translate-y-px opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-            </Link>
+            </FooterLink>
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+function FooterLink({ item, className, children }) {
+  if (item.external || item.hash) {
+    return (
+      <a
+        href={item.href}
+        target={item.external ? '_blank' : undefined}
+        rel={item.external ? 'noreferrer noopener' : undefined}
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={item.href} className={className}>
+      {children}
+    </Link>
   );
 }

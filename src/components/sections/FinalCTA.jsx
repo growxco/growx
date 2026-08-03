@@ -25,8 +25,11 @@ export default function FinalCTA() {
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link to="/contato" className="btn-primary">
-              {t('common.scheduleDemo')}
+              Falar com a Grow-X
               <ArrowRight className="size-4" />
+            </Link>
+            <Link to="/contato-corporativo-spi" className="btn-ghost">
+              Contato corporativo SPI
             </Link>
             <button type="button" onClick={handleWhatsApp} className="btn-ghost">
               <MessageCircle className="size-4" />

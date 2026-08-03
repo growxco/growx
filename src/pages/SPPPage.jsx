@@ -4,8 +4,8 @@ import {
 } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { PageHero, FeatureGrid, SplitFeature, MetricStrip, UseCases, Testimonials, FinalCTA, LiveTicker } from '@/components/sections';
-import sppHero from '../assets/spp-hero-v2.webp';
-import sppDashboard from '../assets/spp-dashboard-irrigation.webp';
+import { APP_PORTAL_URLS } from '@/lib/portalLinks';
+import sppScreen from '../assets/real-spp-app.webp';
 
 const FEATURES = [
   { icon: Gauge, title: 'Controle automatizado', description: 'Irrigação inteligente com base nos dados do campo.' },
@@ -42,10 +42,10 @@ export default function SPPPage() {
         eyebrowIcon={Tractor}
         title={<>O app que <span className="text-emerald-glow">organiza</span> o produtor real.</>}
         intro="Plataforma agronômica que cobre todas as etapas do cultivo — do planejamento à colheita — com cálculo técnico e linguagem do campo."
-        primaryCta={{ label: 'Solicitar demonstração', href: '/contato' }}
-        secondaryCta={{ label: 'Falar com especialista', href: '/contato' }}
-        image={sppHero}
-        imageAlt="SPP App rural"
+        primaryCta={{ label: 'Assinar SPP', href: APP_PORTAL_URLS.spp, external: true }}
+        secondaryCta={{ label: 'Falar com suporte Grow-X', href: '/contato' }}
+        image={sppScreen}
+        imageAlt="Tela real do SPP App"
       />
 
       <LiveTicker />
@@ -78,9 +78,9 @@ export default function SPPPage() {
           'Alertas meteorológicos personalizados',
           'Relatórios de produtividade',
         ]}
-        cta={{ label: 'Testar o app', href: '/contato' }}
-        image={sppDashboard}
-        imageAlt="Dashboard SPP"
+        cta={{ label: 'Assinar SPP', href: APP_PORTAL_URLS.spp, external: true }}
+        image={sppScreen}
+        imageAlt="Centro de decisão do SPP"
       />
 
       <UseCases

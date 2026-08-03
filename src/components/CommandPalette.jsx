@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, ArrowRight, Globe, Factory, Tractor, Smartphone, CloudSun, Cpu, Sprout,
   Compass, Users, Lightbulb, Mail, Sun, Moon, Languages, Home, FileText,
+  AppWindow, Gamepad2, ExternalLink,
 } from 'lucide-react';
 import { useTheme } from '@/components/visual/ThemeProvider';
 import { useI18n } from '@/i18n/I18nProvider';
+import { APP_PORTAL_URLS } from '@/lib/portalLinks';
 
 export default function CommandPalette({ open, onClose }) {
   const navigate = useNavigate();
@@ -23,6 +25,10 @@ export default function CommandPalette({ open, onClose }) {
       { group: t('common.solutions'), icon: Factory, label: 'SPI · Indústria', to: '/solucoes/spi', desc: 'Recebimento e governança' },
       { group: t('common.solutions'), icon: Tractor, label: 'SPP · Produtores', to: '/solucoes/spp', desc: 'App agronômico' },
       { group: t('common.solutions'), icon: Smartphone, label: 'Grow-X App', to: '/solucoes/growx-app', desc: 'Cannabis & cultivo controlado' },
+      { group: 'Apps', icon: Factory, label: 'SPI App', href: APP_PORTAL_URLS.spi, desc: 'Abrir spi.ia.br' },
+      { group: 'Apps', icon: Tractor, label: 'SPP App', href: APP_PORTAL_URLS.spp, desc: 'Abrir spp.ia.br' },
+      { group: 'Apps', icon: AppWindow, label: 'GXP App', href: APP_PORTAL_URLS.gxp, desc: 'Abrir gxp.ia.br' },
+      { group: 'Apps', icon: Gamepad2, label: 'GreenVeil', href: '/#greenveil', desc: 'Universo imersivo Grow-X' },
       { group: t('common.products'), icon: Cpu, label: t('common.products'), to: '/produtos' },
       { group: t('common.products'), icon: CloudSun, label: 'Estação Meteorológica', to: '/produtos/estacao-meteorologica' },
       { group: t('common.products'), icon: Cpu, label: 'Módulo Sem Fio', to: '/produtos/modulo-sem-fio' },
@@ -75,6 +81,10 @@ export default function CommandPalette({ open, onClose }) {
         if (!item) return;
         if (item.to) {
           navigate(item.to);
+          onClose();
+        } else if (item.href) {
+          if (item.href.startsWith('http')) window.open(item.href, '_blank', 'noopener,noreferrer');
+          else window.location.href = item.href;
           onClose();
         } else if (item.action) {
           item.action();
@@ -150,6 +160,10 @@ export default function CommandPalette({ open, onClose }) {
                             if (it.to) {
                               navigate(it.to);
                               onClose();
+                            } else if (it.href) {
+                              if (it.href.startsWith('http')) window.open(it.href, '_blank', 'noopener,noreferrer');
+                              else window.location.href = it.href;
+                              onClose();
                             } else if (it.action) {
                               it.action();
                             }
@@ -164,7 +178,11 @@ export default function CommandPalette({ open, onClose }) {
                           {it.desc && (
                             <span className="hidden truncate text-xs text-muted-foreground sm:inline">{it.desc}</span>
                           )}
-                          {it.to && <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />}
+                          {it.href?.startsWith('http') ? (
+                            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                          ) : (it.to || it.href) && (
+                            <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
+                          )}
                         </button>
                       </li>
                     );

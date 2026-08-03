@@ -15,7 +15,7 @@
     { "src": "/apple-touch-icon.svg", "sizes": "180x180", "type": "image/svg+xml", "purpose": "any maskable" }
   ],
   "shortcuts": [
-    { "name": "Agendar demo", "short_name": "Demo", "url": "/demo", "description": "Agendar demonstração com o time fundador" },
+    { "name": "Contato corporativo SPI", "short_name": "SPI", "url": "/contato-corporativo-spi", "description": "Solicitar contato empresarial para SPI e Supply-X" },
     { "name": "Lista de espera App", "short_name": "App", "url": "/lista-espera-app", "description": "Entrar na lista do Grow-X App" },
     { "name": "Insights", "short_name": "Insights", "url": "/insights", "description": "Teses e conteúdo técnico" }
   ]

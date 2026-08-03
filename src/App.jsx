@@ -31,6 +31,8 @@ const ObrigadoPage = lazy(() => import('./pages/ObrigadoPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 // New routes (wave 4)
 const DemoPage = lazy(() => import('./pages/DemoPage'));
+const PreVendaPage = lazy(() => import('./pages/PreVendaPage'));
+const PreVendaSucessoPage = lazy(() => import('./pages/PreVendaSucessoPage'));
 const WaitlistAppPage = lazy(() => import('./pages/WaitlistAppPage'));
 const CasosPage = lazy(() => import('./pages/CasosPage'));
 const ParceirosPage = lazy(() => import('./pages/ParceirosPage'));
@@ -66,8 +68,13 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/contato" element={<ContactPage />} />
                 <Route path="/obrigado" element={<ObrigadoPage />} />
+                <Route path="/contato-corporativo-spi" element={<DemoPage />} />
                 <Route path="/demo" element={<DemoPage />} />
                 <Route path="/lista-espera-app" element={<WaitlistAppPage />} />
+
+                <Route path="/prevenda" element={<PreVendaPage />} />
+                <Route path="/prevenda/sucesso" element={<PreVendaSucessoPage />} />
+                <Route path="/modulo" element={<PreVendaPage />} />
 
                 <Route path="/solucoes/supply-x" element={<SupplyXPage />} />
                 <Route path="/solucoes/spi" element={<SPIPage />} />

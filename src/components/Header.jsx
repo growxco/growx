@@ -3,15 +3,18 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   ChevronDown, Menu, X, ArrowRight, Globe, Factory, Tractor, Smartphone,
   CloudSun, Cpu, Sprout, Compass, Users, Lightbulb, Search, Languages,
+  AppWindow, ExternalLink, Gamepad2,
 } from 'lucide-react';
 import { Container, ThemeToggle, AIAssistant } from '@/components/visual';
 import { useI18n } from '@/i18n/I18nProvider';
 import CommandPalette from './CommandPalette';
 import logoGrowX from '../assets/logo-growx-oficial.png';
 import { cn } from '@/lib/utils';
+import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 
 const NAV = [
   { name: 'Início', href: '/', type: 'link' },
+  { name: 'Pré-venda', href: '/prevenda', type: 'link' },
   {
     name: 'Soluções',
     type: 'mega',
@@ -27,9 +30,20 @@ const NAV = [
     type: 'mega',
     href: '/produtos',
     items: [
+      { name: 'Módulo Grow-X · Pré-venda', href: '/prevenda', icon: Cpu, desc: 'Lote Founder R$ 2.997 · ExpoCannabis 2026' },
       { name: 'Estação Meteorológica', href: '/produtos/estacao-meteorologica', icon: CloudSun, desc: 'Sensores LoRa de alta precisão' },
       { name: 'Módulo Sem Fio', href: '/produtos/modulo-sem-fio', icon: Cpu, desc: 'Controle de até 4 estufas' },
       { name: 'Estufa Automatizada', href: '/produtos/estufa-automatizada', icon: Sprout, desc: 'Cultivo controlado completo' },
+    ],
+  },
+  {
+    name: 'Apps',
+    type: 'mega',
+    items: [
+      { name: 'SPI App', href: APP_PORTAL_URLS.spi, icon: Factory, desc: 'Portal industrial da operação SPI', external: true },
+      { name: 'SPP App', href: APP_PORTAL_URLS.spp, icon: Tractor, desc: 'Assinatura rural e agronômica SPP', external: true },
+      { name: 'GXP App', href: APP_PORTAL_URLS.gxp, icon: AppWindow, desc: 'Assinatura Grow-X App para cultivo controlado', external: true },
+      { name: 'GreenVeil', href: '/#greenveil', icon: Gamepad2, desc: 'Universo imersivo e game IP da Grow-X Co.', hash: true },
     ],
   },
   {
@@ -138,9 +152,9 @@ export default function Header() {
                         {item.items.map((sub) => {
                           const Icon = sub.icon;
                           return (
-                            <Link
+                            <NavItemLink
                               key={sub.href}
-                              to={sub.href}
+                              item={sub}
                               className="group flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-foreground/5"
                             >
                               <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald/15 text-emerald-glow ring-hairline">
@@ -150,8 +164,12 @@ export default function Header() {
                                 <div className="text-sm font-semibold text-foreground">{sub.name}</div>
                                 <div className="mt-0.5 text-xs leading-snug text-muted-foreground">{sub.desc}</div>
                               </div>
-                              <ArrowRight className="ml-auto mt-1 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-                            </Link>
+                              {sub.external ? (
+                                <ExternalLink className="ml-auto mt-1 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+                              ) : (
+                                <ArrowRight className="ml-auto mt-1 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+                              )}
+                            </NavItemLink>
                           );
                         })}
                       </div>
@@ -198,8 +216,8 @@ export default function Header() {
             <ThemeToggle className="hidden sm:inline-flex" />
 
             <div className="hidden lg:block">
-              <Link to="/demo" className="btn-primary text-xs sm:text-sm">
-                {t('common.scheduleDemo')}
+              <Link to={CORPORATE_CONTACT_PATH} className="btn-primary text-xs sm:text-sm">
+                Contato corporativo
                 <ArrowRight className="size-3.5" />
               </Link>
             </div>
@@ -244,13 +262,16 @@ export default function Header() {
                         </summary>
                         <div className="ml-3 flex flex-col gap-1 border-l border-foreground/10 pl-3 pb-2">
                           {item.items.map((sub) => (
-                            <Link
+                            <NavItemLink
                               key={sub.href}
-                              to={sub.href}
+                              item={sub}
                               className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
                             >
-                              {sub.name}
-                            </Link>
+                              <span className="inline-flex items-center gap-1.5">
+                                {sub.name}
+                                {sub.external && <ExternalLink className="size-3" />}
+                              </span>
+                            </NavItemLink>
                           ))}
                           {item.href && (
                             <Link to={item.href} className="rounded-lg px-3 py-2 text-sm font-semibold text-emerald-glow">
@@ -261,8 +282,8 @@ export default function Header() {
                       </details>
                     );
                   })}
-                  <Link to="/demo" className="btn-primary mt-3 w-full">
-                    Agendar demo
+                  <Link to={CORPORATE_CONTACT_PATH} className="btn-primary mt-3 w-full">
+                    Contato corporativo
                     <ArrowRight className="size-4" />
                   </Link>
                 </nav>
@@ -274,5 +295,26 @@ export default function Header() {
 
       <CommandPalette open={search} onClose={() => setSearch(false)} />
     </>
+  );
+}
+
+function NavItemLink({ item, className, children }) {
+  if (item.external || item.hash) {
+    return (
+      <a
+        href={item.href}
+        target={item.external ? '_blank' : undefined}
+        rel={item.external ? 'noreferrer noopener' : undefined}
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={item.href} className={className}>
+      {children}
+    </Link>
   );
 }

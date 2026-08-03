@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Factory, Sprout, ArrowRight } from 'lucide-react';
+import { Factory, Sprout, ArrowRight, Tractor } from 'lucide-react';
 import { Section, Reveal } from '@/components/visual';
+import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 
 const PATHS = [
   {
@@ -10,8 +11,20 @@ const PATHS = [
     title: 'Operação industrial',
     desc: 'Recebimento digital, governança, integração ERP, rastreabilidade ponta-a-ponta. Para quem precisa de stack robusta com contrato.',
     products: ['Supply-X', 'SPI', 'SPP'],
-    cta: 'Ver soluções industriais',
-    to: '/solucoes/supply-x',
+    cta: 'Contato corporativo SPI',
+    to: CORPORATE_CONTACT_PATH,
+    accent: 'emerald',
+  },
+  {
+    key: 'producer',
+    icon: Tractor,
+    label: 'Produtor rural, consultoria ou operação agrícola',
+    title: 'Gestão da safra',
+    desc: 'SPP é assinatura: talhão, safra, diário, clima local e decisão agronômica no portal do produtor.',
+    products: ['SPP', 'Kc', 'Diário'],
+    cta: 'Assinar SPP',
+    to: APP_PORTAL_URLS.spp,
+    external: true,
     accent: 'emerald',
   },
   {
@@ -21,8 +34,9 @@ const PATHS = [
     title: 'Cultivo controlado',
     desc: 'Hardware, app, comunidade e marketplace. Padrão farmacêutico para cannabis medicinal e cultivadores estruturados.',
     products: ['Grow-X App', 'Estufa', 'Módulo SF'],
-    cta: 'Conhecer o Grow-X App',
-    to: '/solucoes/growx-app',
+    cta: 'Assinar GXP',
+    to: APP_PORTAL_URLS.gxp,
+    external: true,
     accent: 'amber',
   },
 ];
@@ -32,15 +46,19 @@ export default function ChoosePath() {
     <Section
       eyebrow="Escolha seu caminho"
       title={<>Duas operações. <span className="text-emerald-glow">Uma stack.</span></>}
-      intro="A Grow-X opera duas frentes complementares. Diga onde você está pra mostrar exatamente o que importa pra você."
+      intro="Cada público entra pelo funil certo: assinatura SPP/GXP ou contato corporativo SPI."
     >
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-3">
         {PATHS.map((p, i) => {
           const Icon = p.icon;
+          const CardTag = p.external ? 'a' : Link;
+          const navProps = p.external
+            ? { href: p.to, target: '_blank', rel: 'noreferrer noopener' }
+            : { to: p.to };
           return (
             <Reveal key={p.key} delay={i * 0.08} className="h-full">
-              <Link
-                to={p.to}
+              <CardTag
+                {...navProps}
                 className="group relative block h-full overflow-hidden rounded-2xl glass-strong p-7 ring-hairline lift hover:border-[oklch(0.700_0.180_145/45%)] sm:p-9"
               >
                 <div className="flex items-center gap-4">
@@ -62,7 +80,7 @@ export default function ChoosePath() {
                   {p.cta}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
                 </div>
-              </Link>
+              </CardTag>
             </Reveal>
           );
         })}

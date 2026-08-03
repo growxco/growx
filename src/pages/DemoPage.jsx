@@ -1,7 +1,8 @@
-import { Calendar, MessageCircle, ShieldCheck, Clock, Users, Factory } from 'lucide-react';
+import { Building2, MessageCircle, ShieldCheck, Clock, Users, Factory } from 'lucide-react';
 import { SEO, Container, Eyebrow, Reveal, GlassCard, Aurora, GridPattern, StatusDot, LeadForm } from '@/components/visual';
 import { CONTACT, whatsappLink } from '@/lib/crm';
 import { analytics } from '@/lib/analytics';
+import { CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 
 const FIELDS = [
   { name: 'name', label: 'Nome completo', required: true, placeholder: 'Como você se chama?' },
@@ -16,15 +17,13 @@ const FIELDS = [
     options: [
       { value: 'industrial', label: 'Indústria agroalimentar' },
       { value: 'cooperativa', label: 'Cooperativa / cadeia integrada' },
-      { value: 'producer', label: 'Produtor rural (médio/grande)' },
-      { value: 'cultivo', label: 'Cultivo controlado / cannabis' },
       { value: 'integrator', label: 'Integrador / consultoria agtech' },
       { value: 'other', label: 'Outro' },
     ],
   },
   {
     name: 'companySize',
-    label: 'Porte da operação',
+    label: 'Porte da empresa',
     type: 'select',
     required: true,
     options: [
@@ -34,6 +33,18 @@ const FIELDS = [
       { value: '201-1000', label: '201–1.000 pessoas' },
       { value: '1000+', label: 'Mais de 1.000' },
     ],
+  },
+  {
+    name: 'operationVolume',
+    label: 'Volume / operação',
+    required: true,
+    placeholder: 'Ex.: 300 caminhões/dia, 12 unidades, 4 cooperativas integradas',
+  },
+  {
+    name: 'currentSystem',
+    label: 'Sistema atual',
+    required: true,
+    placeholder: 'Ex.: Totvs, SAP, planilha, sistema próprio, nada conectado',
   },
   {
     name: 'role',
@@ -57,24 +68,24 @@ const FIELDS = [
 ];
 
 const PROOFS = [
-  { icon: Clock, t: '30 minutos', d: 'Direto ao ponto. Sem deck institucional.' },
+  { icon: Clock, t: 'Contato qualificado', d: 'Primeiro entendemos a operação.' },
   { icon: Factory, t: 'Diagnóstico real', d: 'Mostramos onde a Grow-X encaixa na sua operação.' },
   { icon: Users, t: 'Time fundador', d: 'Quem fala é o time que constrói o produto.' },
-  { icon: ShieldCheck, t: 'Sem compromisso', d: 'Você sai com mockup do seu cenário, decide depois.' },
+  { icon: ShieldCheck, t: 'Acesso empresarial', d: 'SPI entra com escopo, integração e governança.' },
 ];
 
 export default function DemoPage() {
   const onWhatsApp = () => {
-    analytics.ctaWhatsApp('/demo', 'demo');
-    window.open(whatsappLink('Olá! Quero agendar uma demo Grow-X.'), '_blank', 'noopener');
+    analytics.ctaWhatsApp(CORPORATE_CONTACT_PATH, 'spi-enterprise');
+    window.open(whatsappLink('Olá! Quero falar com a Grow-X sobre SPI para empresa.'), '_blank', 'noopener');
   };
 
   return (
     <>
       <SEO
-        title="Agendar demo · Grow-X"
-        description="30 minutos com o time fundador. Mostramos onde a Grow-X encaixa na sua operação — com mockup do seu cenário."
-        path="/demo"
+        title="Contato corporativo SPI · Grow-X"
+        description="Contato empresarial para SPI/Supply-X. Recebimento, qualidade, logística, ERP, rastreabilidade e governança industrial."
+        path={CORPORATE_CONTACT_PATH}
       />
 
       <section className="relative isolate overflow-hidden pt-16 pb-16 sm:pt-20 lg:pt-28">
@@ -84,17 +95,16 @@ export default function DemoPage() {
           <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-14">
             <div className="lg:col-span-6">
               <Reveal>
-                <Eyebrow icon={Calendar}>Agendar demo</Eyebrow>
+                <Eyebrow icon={Building2}>Contato corporativo SPI</Eyebrow>
               </Reveal>
               <Reveal delay={0.06}>
                 <h1 className="mt-6 text-display-xl text-foreground">
-                  30 minutos. <span className="text-emerald-glow">Direto ao ponto.</span>
+                  Empresa entra por <span className="text-emerald-glow">diagnóstico real.</span>
                 </h1>
               </Reveal>
               <Reveal delay={0.14}>
                 <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                  A gente entende sua operação, mostra onde a Grow-X encaixa e sai com um mockup do seu cenário.
-                  Sem deck institucional, sem promessa vazia.
+                  SPI/Supply-X não é assinatura aberta. A Grow-X entende seu fluxo, integrações, volume e risco antes de liberar acesso corporativo.
                 </p>
               </Reveal>
               <Reveal delay={0.22}>
@@ -134,16 +144,16 @@ export default function DemoPage() {
               <GlassCard variant="strong" className="p-7 sm:p-9">
                 <h2 className="font-display text-xl font-bold text-foreground sm:text-2xl">Conte sua operação.</h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  O time prepara a demo com base no que você responder.
+                  Quanto mais concreto, mais rápido o time responde com o caminho certo.
                 </p>
                 <div className="mt-6">
                   <LeadForm
-                    form="demo-b2b"
+                    form="spi-enterprise-contact"
                     segment="industrial"
                     fields={FIELDS}
-                    submitLabel="Agendar demo"
-                    successTitle="Pedido de demo recebido."
-                    successText="Em até 1 dia útil, nosso time entra em contato pra fechar a agenda."
+                    submitLabel="Solicitar contato corporativo"
+                    successTitle="Contato corporativo recebido."
+                    successText="Em até 1 dia útil, a Grow-X retorna com o próximo passo para SPI/Supply-X."
                   />
                 </div>
               </GlassCard>

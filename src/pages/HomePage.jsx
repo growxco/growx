@@ -6,11 +6,13 @@ import TrustStrip from '@/components/sections/TrustStrip';
 import LogoCloud from '@/components/sections/LogoCloud';
 import ProblemSection from '@/components/sections/ProblemSection';
 import BentoSolutions from '@/components/sections/BentoSolutions';
+import AppPortals from '@/components/sections/AppPortals';
 import SensorRingSection from '@/components/sections/SensorRingSection';
 import LiveTerminal from '@/components/sections/LiveTerminal';
 import HardwareSVG from '@/components/sections/HardwareSVG';
 import Differentiators from '@/components/sections/Differentiators';
 import ByProfile from '@/components/sections/ByProfile';
+import GreenVeilSection from '@/components/sections/GreenVeilSection';
 import Insights from '@/components/sections/Insights';
 import StorySection from '@/components/sections/StorySection';
 import FAQ from '@/components/sections/FAQ';
@@ -35,7 +37,7 @@ const HOME_FAQ = [
   },
   {
     q: 'Como funciona a cobrança / contrato?',
-    a: 'B2B: contrato anual ou plurianual com setup + mensalidade. Cultivo: hardware sob demanda + assinatura mensal do app. Detalhes na demo.',
+    a: 'B2B industrial: contrato anual ou plurianual com setup + mensalidade. SPP e GXP: assinatura pelo portal, com hardware sob demanda quando fizer sentido.',
   },
   {
     q: 'Onde a Grow-X opera?',
@@ -47,8 +49,8 @@ export default function HomePage() {
   return (
     <>
       <SEO
-        title="Inteligência operacional para o agro brasileiro"
-        description="Stack agro brasileira: hardware, software e dados operando 24/7. Supply-X, SPI, SPP e Grow-X App — construídos em produção."
+        title="Grow-X Co. — agro, dados, portais e universos digitais"
+        description="Grow-X Co. conecta Supply-X, SPI, SPP, GXP, hardware agro, portais operacionais e GreenVeil em uma marca brasileira de tecnologia aplicada."
         path="/"
       />
       <Hero />
@@ -57,11 +59,13 @@ export default function HomePage() {
       <TrustStrip />
       <ProblemSection />
       <BentoSolutions />
+      <AppPortals />
       <SensorRingSection />
       <LiveTerminal />
       <HardwareSVG />
       <Differentiators />
       <ByProfile />
+      <GreenVeilSection />
       <Insights />
       <StorySection />
       <LogoCloud />

@@ -3,7 +3,7 @@
 
 export const PT = {
   common: {
-    scheduleDemo: 'Agendar demo',
+    scheduleDemo: 'Contato corporativo',
     seeSolutions: 'Ver soluções',
     talkSpecialist: 'Falar com especialista',
     operationActive: 'Operação ativa · Curitiba/PR',
@@ -35,7 +35,7 @@ export const PT = {
     headline: 'Campo, indústria e dados',
     headlineAccent: 'operando no mesmo sistema.',
     sub: 'A Grow-X é a stack agro brasileira: hardware, software e dados conectados de ponta a ponta — construída em produção, operando 24/7 onde a tecnologia importada não chega.',
-    cta1: 'Agendar demo',
+    cta1: 'Escolher operação',
     cta2: 'Ver soluções',
   },
   ticker: {
@@ -56,7 +56,7 @@ export const PT = {
 
 export const EN = {
   common: {
-    scheduleDemo: 'Schedule a demo',
+    scheduleDemo: 'Corporate contact',
     seeSolutions: 'See solutions',
     talkSpecialist: 'Talk to a specialist',
     operationActive: 'Active operation · Curitiba/Brazil',
@@ -88,7 +88,7 @@ export const EN = {
     headline: 'Field, factory and data',
     headlineAccent: 'running on a single system.',
     sub: 'Grow-X is the Brazilian agritech stack: hardware, software and data wired end-to-end — built in production, running 24/7 where imported tech falls short.',
-    cta1: 'Schedule a demo',
+    cta1: 'Choose operation',
     cta2: 'See solutions',
   },
   ticker: {

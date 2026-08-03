@@ -37,10 +37,17 @@ export default function SplitFeature({
             </ul>
           )}
           {cta && (
-            <Link to={cta.href} className="btn-primary mt-8">
-              {cta.label}
-              <ArrowRight className="size-4" />
-            </Link>
+            cta.external ? (
+              <a href={cta.href} target="_blank" rel="noreferrer noopener" className="btn-primary mt-8">
+                {cta.label}
+                <ArrowRight className="size-4" />
+              </a>
+            ) : (
+              <Link to={cta.href} className="btn-primary mt-8">
+                {cta.label}
+                <ArrowRight className="size-4" />
+              </Link>
+            )
           )}
         </Reveal>
         <Reveal delay={0.1} className={reversed ? 'order-2 lg:order-1' : 'order-2'}>

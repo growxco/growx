@@ -17,7 +17,7 @@ export default function Hero() {
 
       <Container>
         <div className="grid items-center gap-14 lg:grid-cols-12 lg:gap-12">
-          <div className="lg:col-span-7">
+          <div className="min-w-0 lg:col-span-7">
             <Reveal>
               <Eyebrow>{t('home.eyebrow')}</Eyebrow>
             </Reveal>
@@ -53,13 +53,13 @@ export default function Hero() {
             </Reveal>
 
             <Reveal delay={0.22}>
-              <div className="mt-9 flex flex-wrap items-center gap-3">
-                <Link to="/contato" className="btn-primary">
-                  {t('home.cta1')}
+              <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <a href="/#portais" className="btn-primary justify-center sm:justify-start">
+                  Escolher operação
                   <ArrowRight className="size-4" />
-                </Link>
-                <Link to="/produtos" className="btn-ghost">
-                  {t('home.cta2')}
+                </a>
+                <Link to="/contato-corporativo-spi" className="btn-ghost justify-center sm:justify-start">
+                  Contato corporativo SPI
                 </Link>
                 <StatusDot label={t('common.operationActive')} className="ml-1 hidden sm:inline-flex" />
               </div>
@@ -82,7 +82,7 @@ export default function Hero() {
             </Reveal>
           </div>
 
-          <div className="relative lg:col-span-5">
+          <div className="relative min-w-0 lg:col-span-5">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}

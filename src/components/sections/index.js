@@ -2,6 +2,8 @@ export { default as Hero } from './Hero';
 export { default as TrustBar } from './TrustBar';
 export { default as ProblemSection } from './ProblemSection';
 export { default as BentoSolutions } from './BentoSolutions';
+export { default as AppPortals } from './AppPortals';
+export { default as GreenVeilSection } from './GreenVeilSection';
 export { default as ProductShowcase } from './ProductShowcase';
 export { default as Differentiators } from './Differentiators';
 export { default as ByProfile } from './ByProfile';

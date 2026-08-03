@@ -107,6 +107,8 @@ export function track(name, params = {}) {
       form_submit: 'Lead',
       schedule_demo: 'Schedule',
       click_cta_waitlist: 'CompleteRegistration',
+      begin_checkout: 'InitiateCheckout',
+      purchase: 'Purchase',
     };
     if (stdMap[name]) window.fbq?.('track', stdMap[name], safeParams);
     else window.fbq?.('trackCustom', name, safeParams);
@@ -125,6 +127,10 @@ export const analytics = {
   ctaDemo: (page) => track('click_cta_demo', { page }),
   ctaWaitlist: (page) => track('click_cta_waitlist', { page }),
   ctaWhatsApp: (page, intent) => track('click_whatsapp', { page, intent }),
+  externalAppOpen: (app, page) => track('external_app_open', { app, page }),
+  ctaSppSubscription: (page) => track('cta_spp_subscription', { page }),
+  ctaGxpSubscription: (page) => track('cta_gxp_subscription', { page }),
+  ctaSpiEnterpriseContact: (page) => track('cta_spi_enterprise_contact', { page }),
   formStart: (form) => track('form_start', { form }),
   formSubmit: (form, segment) => track('form_submit', { form, segment }),
   formQualified: (form, score) => track('form_qualified', { form, score }),

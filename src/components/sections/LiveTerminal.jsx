@@ -37,7 +37,7 @@ export default function LiveTerminal() {
       eyebrow="Operação ao vivo"
       title={
         <>
-          Isso aqui não é <span className="text-emerald-glow">demo.</span>
+          Isso aqui não é <span className="text-emerald-glow">slide.</span>
         </>
       }
       intro="Uma amostra da camada operacional — eventos, throughput e estado de estufas acontecendo agora mesmo."
