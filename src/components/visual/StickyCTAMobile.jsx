@@ -11,6 +11,7 @@ const ROUTE_CTA = [
   { match: /^\/cannabis-medicinal/, label: 'Assinar GXP', to: APP_PORTAL_URLS.gxp, kind: 'gxp', external: true },
   { match: /^\/produtos/, label: 'Solicitar orçamento', to: '/contato', kind: 'contact' },
   { match: /^\/parceiros/, label: 'Quero ser parceiro', to: '/contato', kind: 'contact' },
+  { match: /^\/prevenda|^\/modulo/, label: null }, // página tem buy-bar própria
   { match: /^\/(demo|contato-corporativo-spi)/, label: null },
   { match: /^\/contato|^\/obrigado|^\/lista-espera-app/, label: null },
   { match: /.*/, label: 'Escolher operação', to: '/#portais', kind: 'portals' },
