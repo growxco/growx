@@ -123,6 +123,7 @@ async function createMpPreference() {
         failure: `${SITE}/prevenda?checkout=falhou`,
       },
       auto_return: 'approved',
+      notification_url: `${SITE}/api/mp-webhook?source=ipn`,
       statement_descriptor: 'GROWX MODULO',
       external_reference: 'gx-modulo-prevenda',
       metadata: { sku: 'prevenda_pix', source: 'growx.com.br/prevenda' },
