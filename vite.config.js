@@ -14,5 +14,13 @@ export default defineConfig({
     target: 'es2020',
     cssCodeSplit: true,
     chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        // Entrada dedicada pro /prevenda: mesmas bundles, mas com Open Graph
+        // próprio (crawlers de WhatsApp/Meta não executam JS).
+        prevenda: path.resolve(__dirname, 'prevenda.html'),
+      },
+    },
   },
 })
