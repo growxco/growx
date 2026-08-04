@@ -4,10 +4,23 @@
  * MP envia formatos variados (?type=payment&data.id=X, ?topic=payment&id=X,
  * body {action, data:{id}}). Extraímos o payment id e REFETCHAMOS o pagamento
  * autenticado na API do MP — payload forjado sem pagamento real é ignorado.
+ *
+ * Só avisamos em transição que mexe em dinheiro de verdade: pagamento aprovado,
+ * reembolsado ou estornado. Pix apenas GERADO (pending/in_process) não é venda —
+ * avisar nesse momento encheria a caixa de entrada de alarme falso a cada QR
+ * abandonado, e o MP reenvia a mesma notificação várias vezes.
  */
 import { notifySale } from './_lib/notify.js';
 
 export const config = { runtime: 'nodejs' };
+
+const REF = 'gx-modulo-prevenda';
+
+const AVISA = {
+  approved: 'PAGO',
+  refunded: 'REEMBOLSADO',
+  charged_back: 'ESTORNADO (chargeback)',
+};
 
 export default async function handler(req, res) {
   if (req.method === 'GET') return res.status(200).json({ ok: true }); // ping de verificação do MP
@@ -33,28 +46,43 @@ export default async function handler(req, res) {
     const r = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!r.ok) return res.status(200).json({ ok: true, ignored: 'payment_not_found' });
+    if (r.status === 404) return res.status(200).json({ ok: true, ignored: 'payment_not_found' });
+    if (!r.ok) {
+      console.error('[mp-webhook] refetch falhou:', r.status, paymentId);
+      return res.status(500).json({ error: 'mp_refetch_failed' }); // MP reenvia
+    }
     pmt = await r.json();
   } catch {
     return res.status(500).json({ error: 'mp_fetch_failed' }); // MP reenvia
   }
 
-  // Notifica só em transição relevante (aprovado ou pendente de pix gerado)
-  if (!['approved', 'pending', 'in_process'].includes(pmt.status)) {
-    return res.status(200).json({ ok: true, ignored: pmt.status });
+  // A conta do MP pode atender outros produtos — só a pré-venda é nossa.
+  if (pmt.external_reference && pmt.external_reference !== REF) {
+    return res.status(200).json({ ok: true, ignored: 'outro_produto' });
   }
 
-  await notifySale({
+  const rotulo = AVISA[pmt.status];
+  if (!rotulo) return res.status(200).json({ ok: true, ignored: pmt.status });
+
+  const avisou = await notifySale({
     provider: 'mercadopago',
     method: pmt.payment_type_id === 'bank_transfer' ? 'Pix' : (pmt.payment_type_id || 'Pix'),
     amountCents: Math.round((pmt.transaction_amount || 0) * 100),
     currency: pmt.currency_id,
     email: pmt.payer?.email,
-    name: [pmt.payer?.first_name, pmt.payer?.last_name].filter(Boolean).join(' '),
+    name: pmt.metadata?.nome || [pmt.payer?.first_name, pmt.payer?.last_name].filter(Boolean).join(' '),
     phone: pmt.payer?.phone?.number,
+    cpf: pmt.metadata?.cpf || pmt.payer?.identification?.number,
     reference: `mp_${pmt.id}`,
-    status: pmt.status === 'approved' ? 'PAGO' : 'PENDENTE (aguardando Pix)',
+    status: rotulo,
   });
+
+  // Sem aviso entregue, devolvemos erro pro MP reenviar — 200 aqui perderia a
+  // venda em silêncio.
+  if (!avisou) {
+    console.error('[mp-webhook] pagamento sem aviso entregue:', pmt.id, pmt.status);
+    return res.status(500).json({ error: 'notificacao_falhou' });
+  }
 
   return res.status(200).json({ ok: true });
 }

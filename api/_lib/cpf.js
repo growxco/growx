@@ -1,8 +1,7 @@
-/** Utilidades de CPF compartilhadas pelas funções da API. */
+/** Documento do comprador (CPF ou CNPJ) — usado pela API e espelhado em src/lib/cpf.js. */
 
 export const digitos = (v) => String(v || '').replace(/\D/g, '');
 
-/** Valida CPF pelos dois dígitos verificadores. */
 export function cpfValido(valor) {
   const c = digitos(valor);
   if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
@@ -16,10 +15,38 @@ export function cpfValido(valor) {
   return true;
 }
 
-/** ***.***.649-45 — o suficiente pro cliente reconhecer o próprio pedido. */
+export function cnpjValido(valor) {
+  const c = digitos(valor);
+  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  const calc = (len) => {
+    let soma = 0;
+    let peso = len - 7;
+    for (let i = 0; i < len; i++) {
+      soma += Number(c[i]) * peso;
+      peso = peso - 1 < 2 ? 9 : peso - 1;
+    }
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return calc(12) === Number(c[12]) && calc(13) === Number(c[13]);
+}
+
+/** Associações e grow shops compram como PJ — aceitar só CPF barraria o público B2B. */
+export const documentoValido = (v) => cpfValido(v) || cnpjValido(v);
+
+export const tipoDocumento = (v) => {
+  const c = digitos(v);
+  if (c.length === 14 && cnpjValido(c)) return 'CNPJ';
+  if (c.length === 11 && cpfValido(c)) return 'CPF';
+  return null;
+};
+
+/** Mascara o documento (mantém só os últimos dígitos) pro cliente reconhecer o pedido. */
 export function mascaraCpf(valor) {
   const c = digitos(valor);
-  return c.length === 11 ? `***.***.${c.slice(6, 9)}-${c.slice(9)}` : null;
+  if (c.length === 11) return `***.***.${c.slice(6, 9)}-${c.slice(9)}`;
+  if (c.length === 14) return `**.***.***/${c.slice(8, 12)}-${c.slice(12)}`;
+  return null;
 }
 
 export const emailValido = (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v || '').trim());

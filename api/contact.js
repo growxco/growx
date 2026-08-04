@@ -230,6 +230,20 @@ export default async function handler(req, res) {
     backend_ses: results[3]?.status === 'fulfilled' && results[3].value === true,
   };
 
+  // Se NENHUM destino aceitou, o lead não existe em lugar nenhum. Responder 200
+  // aqui faria o site dizer "recebemos" pra alguém que sumiu — o formulário
+  // precisa saber pra pedir o WhatsApp como alternativa.
+  if (okCount === 0) {
+    console.error('[contact] lead perdido — nenhum destino aceitou:', lead._form, lead.email);
+    return res.status(502).json({
+      ok: false,
+      received: false,
+      forwarded_to: 0,
+      channels,
+      error: 'nenhum_destino_aceitou',
+    });
+  }
+
   return res.status(200).json({
     ok: true,
     received: true,

@@ -15,7 +15,7 @@
  * responde 503 — nunca simula pagamento.
  */
 import { rateLimit, clientIp } from './_lib/ai.js';
-import { cpfValido, digitos, emailValido } from './_lib/cpf.js';
+import { documentoValido, tipoDocumento, digitos, emailValido } from './_lib/cpf.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -187,7 +187,7 @@ async function createMpPreference(comprador) {
         name: primeiro,
         surname: resto.join(' ') || primeiro,
         email: comprador.email,
-        identification: { type: 'CPF', number: comprador.cpf },
+        identification: { type: tipoDocumento(comprador.cpf) || 'CPF', number: comprador.cpf },
       },
       payment_methods: {
         excluded_payment_types: [
@@ -211,6 +211,10 @@ async function createMpPreference(comprador) {
         delivery: ENTREGA,
         cpf: comprador.cpf,
         nome: comprador.nome,
+        // O payer.email só sugere; o pagamento fica com o e-mail da CONTA do
+        // Mercado Pago do comprador. Sem gravar aqui o e-mail que ele digitou,
+        // a área do cliente nunca casaria o pedido dele.
+        email: comprador.email,
         aceite_contrato: 'true',
         aceite_em: comprador.aceiteEm,
       },
@@ -307,7 +311,7 @@ export default async function handler(req, res) {
 
   if (nome.split(' ').filter(Boolean).length < 2) return res.status(400).json({ error: 'nome_incompleto' });
   if (!emailValido(email)) return res.status(400).json({ error: 'email_invalido' });
-  if (!cpfValido(cpf)) return res.status(400).json({ error: 'cpf_invalido' });
+  if (!documentoValido(cpf)) return res.status(400).json({ error: 'documento_invalido' });
   if (body?.aceite !== true) return res.status(400).json({ error: 'aceite_obrigatorio' });
 
   const comprador = { nome, email, cpf, aceiteEm: new Date().toISOString() };

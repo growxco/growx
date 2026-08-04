@@ -8,6 +8,7 @@
  * Rate limit apertado — evita varredura de e-mails.
  */
 import { rateLimit, clientIp } from './_lib/ai.js';
+import { documentoValido, mascaraCpf, digitos } from './_lib/cpf.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -32,8 +33,6 @@ export function etapaAtual(agora = Date.now()) {
   return atual;
 }
 
-const digitos = (v) => String(v || '').replace(/\D/g, '');
-
 /** Status dos provedores em português — nunca vaza rótulo cru pra tela. */
 const STATUS = {
   paid: 'pago', approved: 'pago',
@@ -44,25 +43,6 @@ const STATUS = {
   refunded: 'reembolsado', charged_back: 'estornado',
 };
 const traduzStatus = (s) => STATUS[String(s || '').toLowerCase()] || 'em processamento';
-
-/** Valida CPF pelos dígitos verificadores — barra lixo antes de bater na API. */
-function cpfValido(cpf) {
-  const c = digitos(cpf);
-  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
-  for (const [len, pos] of [[9, 10], [10, 11]]) {
-    let soma = 0;
-    for (let i = 0; i < len; i++) soma += Number(c[i]) * (pos - i);
-    let dv = (soma * 10) % 11;
-    if (dv === 10) dv = 0;
-    if (dv !== Number(c[len])) return false;
-  }
-  return true;
-}
-
-const mascaraCpf = (cpf) => {
-  const c = digitos(cpf);
-  return c.length === 11 ? `***.***.${c.slice(6, 9)}-${c.slice(9)}` : null;
-};
 
 async function stripeGet(path) {
   const r = await fetch(`${STRIPE_API}${path}`, {
@@ -93,7 +73,9 @@ async function buscarStripe(email, cpf) {
       // ordem de confiança: o que nós coletamos > tax id da sessão > cadastro do cliente
       const cpfSessao = digitos((s.customer_details?.tax_ids || []).find((t) => t.type === 'br_cpf')?.value);
       const cpfPedido = digitos(s.metadata?.cpf) || cpfSessao || cpfCliente;
-      if (cpfPedido && cpfPedido !== cpf) continue; // CPF registrado e diferente → não é dele
+      // Exige CPF gravado e igual. Sem isso, bastaria saber o e-mail de alguém
+      // pra ver o pedido dela — o CPF é o segundo fator.
+      if (!cpfPedido || cpfPedido !== cpf) continue;
 
       encontrados.push({
         provedor: 'stripe',
@@ -120,22 +102,37 @@ async function buscarMercadoPago(email, cpf) {
   const token = process.env.MP_ACCESS_TOKEN;
   if (!token) return { ok: false, pedidos: [] };
 
-  const r = await fetch(
-    `${MP_API}/v1/payments/search?external_reference=${encodeURIComponent(MP_REF)}&sort=date_created&criteria=desc&limit=50`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  if (!r.ok) {
-    // Falha aqui esconderia pedidos Pix do cliente — precisa ser visível, não silenciosa.
-    console.error('[pedido] busca Mercado Pago falhou:', r.status);
-    return { ok: false, pedidos: [] };
+  // Paginado: com limite fixo de 50 o comprador nº 51 sumiria da área do cliente.
+  const resultados = [];
+  const PAGINA = 50;
+  for (let offset = 0; offset < 1000; offset += PAGINA) {
+    const r = await fetch(
+      `${MP_API}/v1/payments/search?external_reference=${encodeURIComponent(MP_REF)}` +
+      `&sort=date_created&criteria=desc&limit=${PAGINA}&offset=${offset}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!r.ok) {
+      // Falha aqui esconderia pedidos Pix do cliente — precisa ser visível, não silenciosa.
+      console.error('[pedido] busca Mercado Pago falhou:', r.status, 'offset', offset);
+      return { ok: false, pedidos: [] };
+    }
+    const data = await r.json().catch(() => null);
+    const lote = data?.results || [];
+    resultados.push(...lote);
+    const total = data?.paging?.total ?? lote.length;
+    if (lote.length < PAGINA || resultados.length >= total) break;
   }
-  const data = await r.json().catch(() => null);
 
-  const pedidos = (data?.results || [])
+  const pedidos = resultados
     .filter((p) => {
-      const mailOk = String(p.payer?.email || '').toLowerCase() === email;
+      // O e-mail que vale é o que ele digitou na nossa página (metadata); o
+      // payer.email é o da conta do Mercado Pago e costuma ser outro.
+      const mails = [p.metadata?.email, p.payer?.email]
+        .filter(Boolean).map((m) => String(m).toLowerCase());
       const cpfPedido = digitos(p.metadata?.cpf) || digitos(p.payer?.identification?.number);
-      return mailOk && (!cpfPedido || cpfPedido === cpf);
+      // Dois fatores sempre: CPF gravado no pedido E um dos e-mails conhecidos.
+      // Pedido sem CPF gravado não é liberado só pelo e-mail.
+      return Boolean(cpfPedido) && cpfPedido === cpf && mails.includes(email);
     })
     .map((p) => {
       const cpfPedido = digitos(p.metadata?.cpf) || digitos(p.payer?.identification?.number);
@@ -182,8 +179,8 @@ export default async function handler(req, res) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return res.status(400).json({ error: 'email_invalido' });
   }
-  if (!cpfValido(cpf)) {
-    return res.status(400).json({ error: 'cpf_invalido' });
+  if (!documentoValido(cpf)) {
+    return res.status(400).json({ error: 'documento_invalido' });
   }
 
   try {

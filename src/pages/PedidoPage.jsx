@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
+import { formataDocumento } from '@/lib/cpf';
 
 const BG = '#080b09';
 const SURFACE = 'rgba(255,255,255,0.035)';
@@ -16,13 +17,6 @@ const dataBr = (iso) => {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
 };
 
-function mascaraCpf(v) {
-  const c = v.replace(/\D/g, '').slice(0, 11);
-  return c
-    .replace(/^(\d{3})(\d)/, '$1.$2')
-    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
-}
 
 function Etapas({ etapas, atual }) {
   const idx = etapas.findIndex((e) => e.id === atual);
@@ -135,7 +129,7 @@ export default function PedidoPage() {
       if (!r.ok) {
         const msgs = {
           email_invalido: 'Confere o e-mail — parece incompleto.',
-          cpf_invalido: 'Esse CPF não é válido. Digita de novo.',
+          documento_invalido: 'Documento inválido. Confere o CPF (ou o CNPJ, se a compra foi pela empresa).',
           rate_limited: 'Muitas consultas seguidas. Espera um minuto e tenta de novo.',
           consulta_indisponivel: 'A consulta está indisponível agora. Tenta em instantes ou chama no WhatsApp.',
         };
@@ -180,8 +174,8 @@ export default function PedidoPage() {
             />
             <input
               type="text" inputMode="numeric" value={cpf}
-              onChange={(ev) => setCpf(mascaraCpf(ev.target.value))}
-              placeholder="CPF" required aria-label="CPF"
+              onChange={(ev) => setCpf(formataDocumento(ev.target.value))}
+              placeholder="CPF ou CNPJ" required aria-label="CPF ou CNPJ"
               className="rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
               style={{ borderColor: LINE }}
             />
@@ -241,13 +235,30 @@ export default function PedidoPage() {
               {dados.pedidos.map((p) => <CardPedido key={`${p.provedor}-${p.referencia}`} p={p} />)}
             </div>
 
-            <div className="rounded-2xl border p-6" style={{ borderColor: LINE, background: SURFACE }}>
-              <h2 className="text-base font-bold text-white">Status de produção e envio</h2>
-              <p className="mt-1 text-xs" style={{ color: MUTED }}>
-                O lote de lançamento é produzido em conjunto e embarca a partir de 20/11/2026.
-              </p>
-              <Etapas etapas={dados.etapas} atual={dados.etapa_atual} />
-            </div>
+            {/* A régua de produção só faz sentido pra quem tem pagamento confirmado.
+                Mostrar "Pedido confirmado ✓" pra pagamento recusado seria mentira. */}
+            {dados.pedidos.some((p) => p.status === 'pago') ? (
+              <div className="rounded-2xl border p-6" style={{ borderColor: LINE, background: SURFACE }}>
+                <h2 className="text-base font-bold text-white">Status de produção e envio</h2>
+                <p className="mt-1 text-xs" style={{ color: MUTED }}>
+                  O lote de lançamento é produzido em conjunto e embarca a partir de 20/11/2026.
+                  As datas abaixo são previsões do cronograma do lote.
+                </p>
+                <Etapas etapas={dados.etapas} atual={dados.etapa_atual} />
+              </div>
+            ) : (
+              <div className="rounded-2xl border p-6" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.07)' }}>
+                <h2 className="text-base font-bold text-white">Pagamento ainda não confirmado</h2>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: '#f6e3bd' }}>
+                  Encontramos seu pedido, mas o pagamento não consta como aprovado. Se você pagou por
+                  Pix agora, pode levar alguns minutos. Se pagou e continua assim,{' '}
+                  <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
+                    chama a gente no WhatsApp
+                  </a>{' '}
+                  com o comprovante que a gente resolve.
+                </p>
+              </div>
+            )}
 
             <div className="rounded-2xl border p-6" style={{ borderColor: LINE, background: SURFACE }}>
               <h2 className="text-base font-bold text-white">Cancelamento e garantia</h2>

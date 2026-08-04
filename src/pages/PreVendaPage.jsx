@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
-import { cpfValido, emailValido, formataCpf, nomeCompleto } from '@/lib/cpf';
+import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
 
 import logoGrowX from '../assets/logo-growx-oficial.png';
 import fotoHero from '../assets/modulo-hero.webp';
@@ -88,6 +88,18 @@ function useDiasRestantes() {
 function useCheckout() {
   const [loading, setLoading] = useState(null);
   const [erro, setErro] = useState(null);
+
+  // Ao mandar o comprador pro provedor a gente deixa o botão em "Abrindo…".
+  // Se ele voltar (botão voltar do navegador), a página volta do bfcache com
+  // esse estado congelado e os dois botões ficam travados pra sempre.
+  useEffect(() => {
+    const destravar = () => { setLoading(null); setErro(null); };
+    window.addEventListener('pageshow', destravar);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') destravar();
+    });
+    return () => window.removeEventListener('pageshow', destravar);
+  }, []);
 
   const pagar = async (metodo, comprador) => {
     if (loading) return;
@@ -325,7 +337,7 @@ export default function PreVendaPage() {
     const falhas = {
       nome: !nomeCompleto(form.nome),
       email: !emailValido(form.email),
-      cpf: !cpfValido(form.cpf),
+      cpf: !documentoValido(form.cpf),
       aceite: !form.aceite,
     };
     setErroCampo(falhas);
@@ -335,7 +347,7 @@ export default function PreVendaPage() {
       setAvisoForm({
         nome: 'Informe seu nome completo (nome e sobrenome).',
         email: 'Confere o e-mail — é nele que chega o comprovante.',
-        cpf: 'Esse CPF não é válido. Digita de novo.',
+        cpf: 'Documento inválido. Confere o CPF — ou informe o CNPJ, se a compra for pela empresa.',
         aceite: 'Marque o aceite do contrato pra seguir pro pagamento.',
       }[primeiraFalha]);
       track('checkout_dados_invalidos', { campo: primeiraFalha, method: metodo, page: '/prevenda' });
@@ -600,8 +612,8 @@ export default function PreVendaPage() {
                 />
                 <input
                   type="text" inputMode="numeric" value={form.cpf}
-                  onChange={(e) => setForm((f) => ({ ...f, cpf: formataCpf(e.target.value) }))}
-                  placeholder="CPF" aria-label="CPF"
+                  onChange={(e) => setForm((f) => ({ ...f, cpf: formataDocumento(e.target.value) }))}
+                  placeholder="CPF ou CNPJ" aria-label="CPF ou CNPJ"
                   className="w-full rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
                   style={{ borderColor: erroCampo.cpf ? 'rgba(245,181,68,0.6)' : LINE }}
                 />

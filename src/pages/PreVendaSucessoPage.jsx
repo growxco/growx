@@ -47,6 +47,8 @@ export default function PreVendaSucessoPage() {
 
   const pago = info?.payment_status === 'paid';
   const pendente = info && !pago;
+  // Sem referência ou sem resposta da consulta a gente NÃO afirma que deu certo.
+  const indefinido = !referencia || !info;
 
   const copiar = () => {
     navigator.clipboard?.writeText(referencia).then(() => {
@@ -63,20 +65,30 @@ export default function PreVendaSucessoPage() {
         <div className="text-center">
           <span
             className="mx-auto flex size-14 items-center justify-center rounded-full text-2xl font-bold"
-            style={{ background: 'rgba(74,222,128,0.14)', color: GREEN }}
+            style={pago
+              ? { background: 'rgba(74,222,128,0.14)', color: GREEN }
+              : { background: 'rgba(245,181,68,0.12)', color: '#f5b544' }}
           >
-            ✓
+            {pago ? '✓' : '⏳'}
           </span>
           <h1 className="mt-7 text-display-lg font-extrabold text-white">
-            {pago ? 'Você está dentro.' : pendente ? 'Quase lá.' : 'Recebemos seu pedido.'}
+            {pago ? 'Você está dentro.' : pendente ? 'Quase lá.' : 'Vamos confirmar seu pagamento.'}
           </h1>
           <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed" style={{ color: MUTED }}>
             {pago
               ? 'Sua unidade do Módulo Grow-X está reservada no lote de lançamento, com 3 meses de GXP Premium inclusos. O comprovante chega no seu e-mail.'
               : pendente
                 ? 'Seu pagamento está sendo confirmado — o Pix pode levar alguns instantes. Assim que compensar, a reserva aparece na área do cliente.'
-                : 'Se o pagamento foi concluído, o comprovante chega no seu e-mail em instantes.'}
+                : 'Ainda não conseguimos confirmar o pagamento por aqui. Se você concluiu o pagamento, consulte a área do cliente em instantes ou fale com a gente — não refaça a compra.'}
           </p>
+          {indefinido && (
+            <p className="mx-auto mt-4 max-w-lg rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: '#f6e3bd' }}>
+              Esta página não recebeu a confirmação do provedor. Isso <strong>não</strong> significa que
+              o pagamento falhou — confira na{' '}
+              <Link to="/prevenda/pedido" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>área do cliente</Link>{' '}
+              antes de tentar pagar de novo.
+            </p>
+          )}
         </div>
 
         {referencia && (

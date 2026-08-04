@@ -3,9 +3,16 @@
  * Envia pra inbox (FormSubmit → LEAD_INBOX_EMAIL) e, se configurado, Slack.
  */
 
-export async function notifySale({ provider, method, amountCents, currency, email, name, phone, reference, status }) {
+const mascaraCpf = (v) => {
+  const c = String(v || '').replace(/\D/g, '');
+  return c.length === 11 ? `***.***.${c.slice(6, 9)}-${c.slice(9)}` : null;
+};
+
+export async function notifySale({ provider, method, amountCents, currency, email, name, phone, cpf, reference, status }) {
   const valor = `R$ ${((amountCents || 0) / 100).toFixed(2).replace('.', ',')}`;
-  const subject = `💰 VENDA Módulo Grow-X — ${valor} · ${method} · ${status}`;
+  // referência no assunto: o provedor reenvia notificações, e assim as repetidas
+  // caem na mesma thread do e-mail em vez de parecerem vendas diferentes.
+  const subject = `💰 VENDA Módulo Grow-X — ${valor} · ${method} · ${status} · ${reference || 's/ref'}`;
 
   const payload = {
     _subject: subject,
@@ -20,6 +27,7 @@ export async function notifySale({ provider, method, amountCents, currency, emai
     cliente_nome: name || '—',
     cliente_email: email || '—',
     cliente_fone: phone || '—',
+    cliente_cpf: mascaraCpf(cpf) || '—',
     referencia: reference || '—',
     _ts: new Date().toISOString(),
   };
@@ -46,12 +54,22 @@ async function sendFormsubmit(payload) {
       },
       body: JSON.stringify(payload),
     });
-    if (!r.ok) return false;
+    if (!r.ok) {
+      console.error('[notify] formsubmit HTTP', r.status);
+      return false;
+    }
     try {
       const data = await r.json();
-      return data?.success === true || data?.success === 'true';
+      const ok = data?.success === true || data?.success === 'true';
+      // Modo de falha mais provável: 200 com success=false quando o e-mail de
+      // destino não está ativado no FormSubmit. Sem log, some sem deixar rastro.
+      if (!ok) console.error('[notify] formsubmit recusou:', JSON.stringify(data).slice(0, 200));
+      return ok;
     } catch { return true; }
-  } catch { return false; }
+  } catch (e) {
+    console.error('[notify] formsubmit falhou:', e.message);
+    return false;
+  }
 }
 
 async function sendSlack(text, payload) {
