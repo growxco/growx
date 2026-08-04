@@ -26,23 +26,47 @@ export default function PreVendaSucessoPage() {
         ? `payment_id=${encodeURIComponent(mpPaymentId)}`
         : null;
     if (!ref) return;
+
+    // A referência do pedido some da URL: ela vaza pro GA4/Meta/Clarity como
+    // page_location e é a chave que abre os dados do pedido.
+    try {
+      if (window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch { /* sem history: segue */ }
+
     const dedupeKey = `gx-purchase-${referencia}`;
-    fetch(`/api/checkout?${ref}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        setInfo(data);
-        if (!sessionStorage.getItem(dedupeKey) && data.payment_status === 'paid') {
-          sessionStorage.setItem(dedupeKey, '1');
-          track('purchase', {
-            value: (data.amount_total || 0) / 100,
-            currency: (data.currency || 'brl').toUpperCase(),
-            sku: data.sku || 'prevenda',
-            page: '/prevenda/sucesso',
-          });
-        }
-      })
-      .catch(() => {});
+    let parado = false;
+    let tentativas = 0;
+
+    const consultar = () => {
+      fetch(`/api/checkout?${ref}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (parado || !data) return;
+          setInfo(data);
+          if (data.payment_status === 'paid') {
+            parado = true;
+            if (!sessionStorage.getItem(dedupeKey)) {
+              sessionStorage.setItem(dedupeKey, '1');
+              track('purchase', {
+                value: (data.amount_total || 0) / 100,
+                currency: (data.currency || 'brl').toUpperCase(),
+                sku: data.sku || 'prevenda',
+                page: '/prevenda/sucesso',
+              });
+            }
+            return;
+          }
+          // Pix compensa alguns segundos depois do redirect. Sem reconsultar, a
+          // tela ficaria travada em "Quase lá" e a venda nunca viraria conversão.
+          if (++tentativas < 40) setTimeout(consultar, 3000);
+        })
+        .catch(() => { if (!parado && ++tentativas < 40) setTimeout(consultar, 5000); });
+    };
+
+    consultar();
+    return () => { parado = true; };
   }, [sessionId, mpPaymentId, referencia]);
 
   const pago = info?.payment_status === 'paid';

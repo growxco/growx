@@ -265,7 +265,8 @@ export default async function handler(req, res) {
           currency: s.currency,
           sku: s.metadata?.sku || 'prevenda_cartao',
           reference: s.id,
-          email: s.customer_details?.email || null,
+          // Sem e-mail aqui: este GET não tem autenticação e o id viaja na URL
+          // (indo parar em GA4/Meta/Clarity). Dado pessoal só na área do cliente.
           contract_accepted: s.consent?.terms_of_service === 'accepted',
           contract_version: s.metadata?.contract_version || null,
         });
@@ -284,7 +285,6 @@ export default async function handler(req, res) {
           currency: (pmt.currency_id || 'BRL').toLowerCase(),
           sku: pmt.metadata?.sku || 'prevenda_pix',
           reference: String(pmt.id),
-          email: pmt.payer?.email || null,
           contract_version: pmt.metadata?.contract_version || null,
         });
       } catch (e) {
