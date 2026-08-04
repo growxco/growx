@@ -75,9 +75,10 @@ async function stripeGet(path) {
 /** Pedidos no cartão: clientes com aquele e-mail → sessões de checkout deles. */
 async function buscarStripe(email, cpf) {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || !key.startsWith('sk_')) return [];
+  if (!key || !key.startsWith('sk_')) return { ok: false, pedidos: [] };
 
   const clientes = await stripeGet(`/customers?email=${encodeURIComponent(email)}&limit=10`);
+  if (!clientes) return { ok: false, pedidos: [] };
   const encontrados = [];
 
   for (const c of clientes?.data || []) {
@@ -111,22 +112,26 @@ async function buscarStripe(email, cpf) {
       });
     }
   }
-  return encontrados;
+  return { ok: true, pedidos: encontrados };
 }
 
 /** Pedidos no Pix: busca pelos pagamentos da pré-venda e filtra por e-mail/CPF. */
 async function buscarMercadoPago(email, cpf) {
   const token = process.env.MP_ACCESS_TOKEN;
-  if (!token) return [];
+  if (!token) return { ok: false, pedidos: [] };
 
   const r = await fetch(
     `${MP_API}/v1/payments/search?external_reference=${encodeURIComponent(MP_REF)}&sort=date_created&criteria=desc&limit=50`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-  if (!r.ok) return [];
+  if (!r.ok) {
+    // Falha aqui esconderia pedidos Pix do cliente — precisa ser visível, não silenciosa.
+    console.error('[pedido] busca Mercado Pago falhou:', r.status);
+    return { ok: false, pedidos: [] };
+  }
   const data = await r.json().catch(() => null);
 
-  return (data?.results || [])
+  const pedidos = (data?.results || [])
     .filter((p) => {
       const mailOk = String(p.payer?.email || '').toLowerCase() === email;
       const cpfPedido = digitos(p.metadata?.cpf) || digitos(p.payer?.identification?.number);
@@ -150,6 +155,8 @@ async function buscarMercadoPago(email, cpf) {
         fatura_url: null,
       };
     });
+
+  return { ok: true, pedidos };
 }
 
 export default async function handler(req, res) {
@@ -180,12 +187,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    const vazio = { ok: false, pedidos: [] };
     const [cartao, pix] = await Promise.all([
-      buscarStripe(email, cpf).catch(() => []),
-      buscarMercadoPago(email, cpf).catch(() => []),
+      buscarStripe(email, cpf).catch(() => vazio),
+      buscarMercadoPago(email, cpf).catch(() => vazio),
     ]);
 
-    const pedidos = [...cartao, ...pix].sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
+    const pedidos = [...cartao.pedidos, ...pix.pedidos]
+      .sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
 
     return res.status(200).json({
       encontrados: pedidos.length,
@@ -193,6 +202,10 @@ export default async function handler(req, res) {
       etapas: ETAPAS,
       etapa_atual: etapaAtual(),
       entrega_prevista: '2026-11-20',
+      // Se um provedor não respondeu, o cliente precisa saber que a busca foi
+      // parcial — em vez de ver "nenhum pedido" e achar que a compra sumiu.
+      fontes: { cartao: cartao.ok, pix: pix.ok },
+      busca_parcial: !cartao.ok || !pix.ok,
     });
   } catch (e) {
     console.error('[pedido] erro:', e.message);

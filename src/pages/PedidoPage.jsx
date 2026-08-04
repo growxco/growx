@@ -204,6 +204,19 @@ export default function PedidoPage() {
           </p>
         )}
 
+        {estado === 'ok' && dados?.busca_parcial && (
+          <p className="mt-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: '#f6e3bd' }}>
+            Um dos meios de pagamento não respondeu agora, então esta consulta pode estar incompleta
+            {dados.fontes?.pix === false ? ' (pedidos no Pix)' : ''}
+            {dados.fontes?.cartao === false ? ' (pedidos no cartão)' : ''}.
+            Se você não encontrar seu pedido aqui,{' '}
+            <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
+              chama a gente no WhatsApp
+            </a>{' '}
+            que a gente confirma na hora.
+          </p>
+        )}
+
         {estado === 'ok' && dados?.encontrados === 0 && (
           <div className="mt-8 rounded-2xl border p-6" style={{ borderColor: LINE, background: SURFACE }}>
             <p className="text-base font-semibold text-white">Nenhum pedido encontrado com esses dados.</p>

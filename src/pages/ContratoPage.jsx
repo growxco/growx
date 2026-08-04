@@ -13,7 +13,7 @@ const CLAUSULAS = [
     n: '1',
     t: 'Partes',
     p: [
-      'CONTRATADA: Grow-X Co. Tecnologias LTDA, com sede na Avenida Sete de Setembro, 4923, sala 1203, Curitiba/PR, CEP 80250-205, inscrita no CNPJ informado na nota fiscal e no comprovante de pagamento.',
+      'CONTRATADA: GROW-X CO. TECNOLOGIAS LTDA, sociedade empresária limitada inscrita no CNPJ sob o nº 59.183.820/0001-09, com sede na Avenida Sete de Setembro, 4923, sala 1203, andar 12, Ed. Sun Tower Business, bairro Água Verde, Curitiba/PR, CEP 80.250-205, e-mail growx@growx.com.br, telefone (41) 99549-4343.',
       'CONTRATANTE: a pessoa física ou jurídica identificada no ato do pagamento, pelos dados informados no checkout (nome, e-mail, CPF/CNPJ, telefone e endereço de entrega).',
     ],
   },
@@ -171,7 +171,7 @@ export default function ContratoPage() {
         </div>
 
         <p className="mt-10 text-xs" style={{ color: 'rgba(159,179,166,0.6)' }}>
-          Grow-X Co. Tecnologias LTDA · Curitiba/PR · © 2026
+          GROW-X CO. TECNOLOGIAS LTDA · CNPJ 59.183.820/0001-09 · Curitiba/PR · © 2026
         </p>
       </div>
     </div>
