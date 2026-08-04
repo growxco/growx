@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { SEO } from '@/components/visual';
+import { OFERTA } from '@/lib/oferta';
 
 const BG = '#080b09';
 const LINE = 'rgba(255,255,255,0.09)';
 const GREEN = '#4ade80';
 const MUTED = '#9fb3a6';
 
-export const CONTRATO_VERSAO = 'v1-2026-08-04';
+/** Fonte única: a mesma constante usada pela cobrança em api/checkout.js. */
+export const CONTRATO_VERSAO = OFERTA.contratoVersao;
 
 const CLAUSULAS = [
   {
@@ -39,9 +41,11 @@ const CLAUSULAS = [
     n: '4',
     t: 'Prazo e forma de entrega',
     p: [
-      'As entregas iniciam-se em 20 de novembro de 2026, data do lançamento oficial do produto na ExpoCannabis Brasil 2026.',
-      'A entrega ocorre por envio ao endereço informado no checkout ou, por opção do CONTRATANTE, por retirada presencial durante o evento.',
-      'Havendo atraso superior a 30 (trinta) dias corridos contados de 20/11/2026 por causa imputável à CONTRATADA, o CONTRATANTE poderá, a seu exclusivo critério, exigir o cumprimento do contrato, aceitar produto equivalente ou rescindir o contrato com restituição integral e imediata dos valores pagos, monetariamente atualizados.',
+      `A pré-venda é limitada a ${OFERTA.loteTotal} (cem) unidades e encerra-se em ${OFERTA.encerramentoBR} ou quando esgotado o lote, o que ocorrer primeiro.`,
+      `As entregas iniciam-se em ${OFERTA.entregaBR}, data do lançamento oficial do produto na ${OFERTA.evento}. Para contratações feitas a partir de ${OFERTA.entregaBR}, o prazo de entrega é de até 30 (trinta) dias corridos contados da confirmação do pagamento.`,
+      'A entrega ocorre por envio ao endereço informado pelo CONTRATANTE ou, por opção dele, por retirada presencial durante o evento.',
+      `Havendo atraso superior a 30 (trinta) dias corridos contados do prazo aplicável ao pedido — ${OFERTA.entregaBR} para as contratações feitas até essa data, ou o prazo de 30 dias do parágrafo anterior para as posteriores — por causa imputável à CONTRATADA, o CONTRATANTE poderá, a seu exclusivo critério, exigir o cumprimento do contrato, aceitar produto equivalente ou rescindir o contrato com restituição integral e imediata dos valores pagos, monetariamente atualizados.`,
+      'A CONTRATADA informará por e-mail qualquer alteração relevante do cronograma, com a nova previsão, tão logo dela tenha conhecimento.',
     ],
   },
   {
@@ -83,8 +87,9 @@ const CLAUSULAS = [
     t: 'Dados pessoais (LGPD)',
     p: [
       'Os dados pessoais informados são tratados para execução deste contrato, faturamento, entrega, suporte e cumprimento de obrigações legais, com fundamento no art. 7º, incisos II e V, da Lei nº 13.709/2018 (LGPD).',
-      'Os dados de pagamento são tratados diretamente pelos processadores Stripe e Mercado Pago, na condição de operadores. O CPF é utilizado para emissão de nota fiscal e para autenticar o CONTRATANTE na área de acompanhamento do pedido.',
-      'O CONTRATANTE pode exercer os direitos previstos no art. 18 da LGPD pelos canais da cláusula 10. Política completa em growx.com.br/privacidade.',
+      'Os dados de pagamento são tratados diretamente pelos processadores Stripe Inc. e Mercado Pago, na condição de operadores. O CPF ou CNPJ é utilizado para emissão de nota fiscal e para autenticar o CONTRATANTE na área de acompanhamento do pedido.',
+      'A CONTRATADA não mantém banco de dados próprio de pedidos: nome, documento, contato, endereço de entrega e o registro do aceite deste contrato ficam armazenados junto ao pedido nos sistemas da Stripe e do Mercado Pago, que podem realizar transferência internacional de dados com as salvaguardas do art. 33 da LGPD. Esses dados são mantidos pelo prazo exigido pela legislação fiscal e de defesa do consumidor.',
+      'O CONTRATANTE pode exercer os direitos do art. 18 da LGPD — inclusive acesso, correção e eliminação — pelos canais da cláusula 10. A eliminação observa a retenção mínima legal aplicável a documentos fiscais e ao registro do aceite contratual, que a CONTRATADA é obrigada a preservar. Política completa em growx.com.br/privacidade.',
     ],
   },
   {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
 import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
+import { OFERTA } from '@/lib/oferta';
 
 import logoGrowX from '../assets/logo-growx-oficial.png';
 import fotoHero from '../assets/modulo-hero.webp';
@@ -12,7 +13,7 @@ import fotoContexto from '../assets/modulo-contexto.webp';
 import telaGxp from '../assets/gxp-site.webp';
 
 const WHATSAPP = 'https://wa.me/5541995494343?text=Quero%20garantir%20meu%20M%C3%B3dulo%20Grow-X%20na%20pr%C3%A9-venda';
-const ENTREGA = new Date('2026-11-20T09:00:00-03:00');
+const ENTREGA = new Date(`${OFERTA.entregaISO}T09:00:00-03:00`);
 
 /* Paleta da landing — dark premium, mais fechada que o resto do site */
 const BG = '#080b09';
@@ -118,7 +119,9 @@ function useCheckout() {
         return;
       }
       track('checkout_error', { method: metodo, code: data?.error || r.status, page: '/prevenda' });
-      setErro('Não conseguimos abrir o checkout agora. Tenta de novo — ou fecha direto no WhatsApp.');
+      setErro(data?.error === 'lote_esgotado'
+        ? `As ${data.total} unidades da pré-venda acabaram. Fala com a gente pra entrar na lista do próximo lote.`
+        : 'Não conseguimos abrir o checkout agora. Tenta de novo — ou fecha direto no WhatsApp.');
     } catch {
       setErro('Falha de conexão. Tenta de novo — ou fecha direto no WhatsApp.');
     }
@@ -326,18 +329,47 @@ export default function PreVendaPage() {
   const { loading, erro, pagar } = useCheckout();
   const dias = useDiasRestantes();
   const eyebrow = useMemo(() => 'font-mono text-[0.7rem] uppercase tracking-[0.18em]', []);
-  const [form, setForm] = useState({ nome: '', email: '', cpf: '', aceite: false });
+  const [form, setForm] = useState({
+    nome: '', email: '', cpf: '', aceite: false,
+    telefone: '', cep: '', endereco: '', cidadeUf: '',
+  });
   const [erroCampo, setErroCampo] = useState({});
   const [avisoForm, setAvisoForm] = useState(null);
+  const [precisaEntrega, setPrecisaEntrega] = useState(false);
 
   const campo = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  /** CEP preenche cidade/UF sozinho — menos campo pro comprador digitar. */
+  const buscarCep = async (valor) => {
+    const c = valor.replace(/\D/g, '');
+    setForm((f) => ({ ...f, cep: c.replace(/^(\d{5})(\d)/, '$1-$2') }));
+    if (c.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${c}/json/`);
+      const d = await r.json();
+      if (d?.erro) return;
+      setForm((f) => ({
+        ...f,
+        cidadeUf: [d.localidade, d.uf].filter(Boolean).join('/'),
+        endereco: f.endereco || [d.logradouro, d.bairro].filter(Boolean).join(', '),
+      }));
+    } catch { /* CEP manual segue valendo */ }
+  };
+
   /** Identificação e aceite são exigidos antes de sair da nossa página. */
   const pagarComDados = (metodo) => {
+    // No Pix o Mercado Pago não coleta endereço; sem ele não há entrega.
+    const ehPix = metodo === 'pix';
+    if (ehPix) setPrecisaEntrega(true);
+
     const falhas = {
       nome: !nomeCompleto(form.nome),
       email: !emailValido(form.email),
       cpf: !documentoValido(form.cpf),
+      telefone: ehPix && form.telefone.replace(/\D/g, '').length < 10,
+      cep: ehPix && form.cep.replace(/\D/g, '').length !== 8,
+      endereco: ehPix && form.endereco.trim().length < 6,
+      cidadeUf: ehPix && !form.cidadeUf.trim(),
       aceite: !form.aceite,
     };
     setErroCampo(falhas);
@@ -346,8 +378,12 @@ export default function PreVendaPage() {
     if (primeiraFalha) {
       setAvisoForm({
         nome: 'Informe seu nome completo (nome e sobrenome).',
-        email: 'Confere o e-mail — é nele que chega o comprovante.',
+        email: 'Confere o e-mail — é nele que chega a confirmação do pedido.',
         cpf: 'Documento inválido. Confere o CPF — ou informe o CNPJ, se a compra for pela empresa.',
+        telefone: 'Informe um WhatsApp com DDD pra combinarmos a entrega.',
+        cep: 'Informe um CEP válido (8 dígitos).',
+        endereco: 'Informe o endereço com número.',
+        cidadeUf: 'Informe cidade e estado.',
         aceite: 'Marque o aceite do contrato pra seguir pro pagamento.',
       }[primeiraFalha]);
       track('checkout_dados_invalidos', { campo: primeiraFalha, method: metodo, page: '/prevenda' });
@@ -355,10 +391,23 @@ export default function PreVendaPage() {
     }
 
     setAvisoForm(null);
-    pagar(metodo, { nome: form.nome, email: form.email, cpf: form.cpf, aceite: true });
+    pagar(metodo, {
+      nome: form.nome, email: form.email, cpf: form.cpf, aceite: true,
+      telefone: form.telefone, cep: form.cep, endereco: form.endereco, cidadeUf: form.cidadeUf,
+    });
   };
 
+  const [lote, setLote] = useState(null);
+
   useEffect(() => { track('view_prevenda', { page: '/prevenda' }); }, []);
+
+  // Escassez real, contada na Stripe e no Mercado Pago — nunca um número inventado.
+  useEffect(() => {
+    fetch('/api/lote')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.confiavel) setLote(d); })
+      .catch(() => {});
+  }, []);
 
   return (
     <div style={{ background: BG }} className="min-h-screen text-white">
@@ -385,7 +434,9 @@ export default function PreVendaPage() {
           <div className="flex flex-wrap items-center gap-3">
             <Pill tone="green">
               <span className="inline-block size-1.5 rounded-full" style={{ background: GREEN }} />
-              Pré-venda aberta · lote de lançamento
+              {lote
+                ? (lote.esgotado ? 'Lote esgotado' : `${lote.restantes} de ${lote.total} unidades disponíveis`)
+                : `Pré-venda aberta · lote de ${OFERTA.loteTotal}`}
             </Pill>
             {dias > 0 && <Pill>Faltam {dias} dias pra entrega</Pill>}
           </div>
@@ -619,6 +670,41 @@ export default function PreVendaPage() {
                 />
               </div>
             </div>
+
+            {precisaEntrega && (
+              <div className="mt-4 space-y-3">
+                <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: GREEN }}>
+                  Entrega — o Pix não coleta endereço, então precisamos aqui
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="tel" value={form.telefone} onChange={campo('telefone')}
+                    placeholder="WhatsApp com DDD" aria-label="WhatsApp com DDD" autoComplete="tel"
+                    className="w-full rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                    style={{ borderColor: erroCampo.telefone ? 'rgba(245,181,68,0.6)' : LINE }}
+                  />
+                  <input
+                    type="text" inputMode="numeric" value={form.cep}
+                    onChange={(e) => buscarCep(e.target.value)}
+                    placeholder="CEP" aria-label="CEP" autoComplete="postal-code"
+                    className="w-full rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                    style={{ borderColor: erroCampo.cep ? 'rgba(245,181,68,0.6)' : LINE }}
+                  />
+                </div>
+                <input
+                  type="text" value={form.endereco} onChange={campo('endereco')}
+                  placeholder="Endereço com número e complemento" aria-label="Endereço" autoComplete="street-address"
+                  className="w-full rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                  style={{ borderColor: erroCampo.endereco ? 'rgba(245,181,68,0.6)' : LINE }}
+                />
+                <input
+                  type="text" value={form.cidadeUf} onChange={campo('cidadeUf')}
+                  placeholder="Cidade/UF" aria-label="Cidade e estado"
+                  className="w-full rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                  style={{ borderColor: erroCampo.cidadeUf ? 'rgba(245,181,68,0.6)' : LINE }}
+                />
+              </div>
+            )}
 
             <label
               htmlFor="aceite-contrato"

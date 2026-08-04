@@ -16,6 +16,8 @@
  */
 import { rateLimit, clientIp } from './_lib/ai.js';
 import { documentoValido, tipoDocumento, digitos, emailValido } from './_lib/cpf.js';
+import { estadoDoLote } from './_lib/lote.js';
+import { OFERTA } from '../src/lib/oferta.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -23,13 +25,13 @@ const SITE = 'https://www.growx.com.br';
 const STRIPE_API = 'https://api.stripe.com/v1';
 const MP_API = 'https://api.mercadopago.com';
 
-export const CONTRACT_VERSION = 'v1-2026-08-04';
+export const CONTRACT_VERSION = OFERTA.contratoVersao;
 const CONTRACT_URL = `${SITE}/prevenda/contrato`;
-const ENTREGA = '20/11/2026';
+const ENTREGA = OFERTA.entregaBR;
 
 const OFFER = {
   cartao: {
-    amount: 300000, // R$ 3.000,00 em até 12x
+    amount: OFERTA.cartaoCentavos,
     title: 'Módulo Grow-X — Pré-venda',
     description:
       'Central de automação indoor: 6 tomadas inteligentes, fotoperíodo com nascer e pôr do sol, ' +
@@ -37,7 +39,7 @@ const OFFER = {
       `Entrega a partir de ${ENTREGA}. Reembolso integral até o envio · 1 ano de garantia.`,
   },
   pix: {
-    amount: 280000, // R$ 2.800,00 à vista
+    amount: OFERTA.pixCentavos,
     title: 'Módulo Grow-X — Pré-venda (Pix)',
     description:
       'Central de automação indoor: 6 tomadas inteligentes, fotoperíodo com nascer e pôr do sol, ' +
@@ -188,6 +190,8 @@ async function createMpPreference(comprador) {
         surname: resto.join(' ') || primeiro,
         email: comprador.email,
         identification: { type: tipoDocumento(comprador.cpf) || 'CPF', number: comprador.cpf },
+        ...(comprador.telefone ? { phone: { number: digitos(comprador.telefone) } } : {}),
+        ...(comprador.cep ? { address: { zip_code: comprador.cep, street_name: comprador.endereco } } : {}),
       },
       payment_methods: {
         excluded_payment_types: [
@@ -215,6 +219,11 @@ async function createMpPreference(comprador) {
         // Mercado Pago do comprador. Sem gravar aqui o e-mail que ele digitou,
         // a área do cliente nunca casaria o pedido dele.
         email: comprador.email,
+        // Endereço e telefone: o MP não coleta, e sem eles não há entrega.
+        cep: comprador.cep,
+        endereco: comprador.endereco,
+        cidade_uf: comprador.cidadeUf,
+        telefone: comprador.telefone,
         aceite_contrato: 'true',
         aceite_em: comprador.aceiteEm,
       },
@@ -314,7 +323,44 @@ export default async function handler(req, res) {
   if (!documentoValido(cpf)) return res.status(400).json({ error: 'documento_invalido' });
   if (body?.aceite !== true) return res.status(400).json({ error: 'aceite_obrigatorio' });
 
-  const comprador = { nome, email, cpf, aceiteEm: new Date().toISOString() };
+  // No cartão a Stripe coleta o endereço; no Pix o Mercado Pago não coleta nada,
+  // então pedimos na nossa página — sem isso não há como entregar em 20/11.
+  const cep = digitos(body?.cep);
+  const endereco = String(body?.endereco || '').trim().slice(0, 200);
+  const cidadeUf = String(body?.cidadeUf || '').trim().slice(0, 120);
+  const telefone = String(body?.telefone || '').trim().slice(0, 40);
+
+  if (method === 'pix') {
+    if (cep.length !== 8) return res.status(400).json({ error: 'cep_invalido' });
+    if (endereco.length < 6) return res.status(400).json({ error: 'endereco_incompleto' });
+    if (!cidadeUf) return res.status(400).json({ error: 'cidade_incompleta' });
+    if (digitos(telefone).length < 10) return res.status(400).json({ error: 'telefone_invalido' });
+  }
+
+  const comprador = {
+    nome, email, cpf, cep, endereco, cidadeUf, telefone,
+    aceiteEm: new Date().toISOString(),
+  };
+
+  // Teto do lote: vender além da capacidade viraria descumprimento de contrato
+  // em massa em 20/11. Se a contagem não for confiável (provedor fora), não
+  // bloqueamos — recusar dinheiro por contagem incompleta seria pior.
+  try {
+    const lote = await estadoDoLote();
+    if (lote.esgotado) {
+      return res.status(409).json({
+        error: 'lote_esgotado',
+        vendidas: lote.vendidas,
+        total: lote.total,
+        hint: `As ${lote.total} unidades da pré-venda foram vendidas.`,
+      });
+    }
+    if (!lote.confiavel) {
+      console.warn('[checkout] contagem do lote incompleta — venda liberada sem teto');
+    }
+  } catch (e) {
+    console.warn('[checkout] falha ao contar o lote:', e.message);
+  }
 
   try {
     if (method === 'cartao' || method === 'prevenda') {

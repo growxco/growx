@@ -20,7 +20,11 @@ const SECTIONS = [
   },
   {
     title: '5. Com quem compartilhamos',
-    body: `Apenas com operadores estritamente necessários: HubSpot/Brevo (CRM), Google Analytics 4 (analytics), Vercel (hosting + analytics), Microsoft Clarity (heatmap), Meta/LinkedIn (apenas se você consentir cookies de marketing). Nunca vendemos seus dados.`,
+    body: `Apenas com operadores estritamente necessários: HubSpot/Brevo (CRM), Google Analytics 4 (analytics), Vercel (hosting + analytics), Microsoft Clarity (heatmap), Resend (e-mail transacional de pedidos), Stripe e Mercado Pago (processamento de pagamento), Meta/LinkedIn (apenas se você consentir cookies de marketing). Nunca vendemos seus dados.`,
+  },
+  {
+    title: '5.1. Compras na pré-venda do Módulo Grow-X',
+    body: `Ao comprar em /prevenda coletamos nome, e-mail, CPF ou CNPJ, telefone e endereço de entrega, além do registro do aceite do contrato de pré-venda (data e versão). Finalidades: executar o contrato, emitir nota fiscal, entregar o produto e autenticar você na área de acompanhamento do pedido — bases legais dos incisos II e V do art. 7 da LGPD. A Grow-X não mantém banco de dados próprio de pedidos: esses dados ficam armazenados junto ao pedido nos sistemas da Stripe Inc. e do Mercado Pago, na condição de operadores, o que pode envolver transferência internacional de dados com as salvaguardas do art. 33 da LGPD. Dados de cartão são tratados exclusivamente por eles — a Grow-X não os recebe nem armazena. Retenção: pelo prazo exigido pela legislação fiscal e de defesa do consumidor. Pedidos de eliminação (art. 18, V) são atendidos ressalvada a retenção mínima obrigatória de documentos fiscais e do registro do aceite contratual.`,
   },
   {
     title: '6. Por quanto tempo guardamos',

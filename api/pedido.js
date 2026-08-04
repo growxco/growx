@@ -9,6 +9,7 @@
  */
 import { rateLimit, clientIp } from './_lib/ai.js';
 import { documentoValido, mascaraCpf, digitos } from './_lib/cpf.js';
+import { OFERTA } from '../src/lib/oferta.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -25,12 +26,23 @@ export const ETAPAS = [
   { id: 'entrega', titulo: 'Entrega', desde: '2026-11-20', detalhe: 'Envio ao endereço cadastrado ou retirada na ExpoCannabis Brasil.' },
 ];
 
+/**
+ * A etapa real do lote é informada pelo time via env `LOTE_ETAPA` (um dos ids
+ * de ETAPAS). Sem isso a régua seria só um calendário: se a produção atrasar,
+ * ela anunciaria "Expedição" sem nada ter sido expedido — mentindo sozinha.
+ * O fallback por data existe só para não quebrar caso a env não esteja setada,
+ * e nesse caso a resposta marca `etapa_estimada: true`.
+ */
 export function etapaAtual(agora = Date.now()) {
+  const informada = String(process.env.LOTE_ETAPA || '').trim();
+  if (ETAPAS.some((e) => e.id === informada)) {
+    return { id: informada, estimada: false };
+  }
   let atual = ETAPAS[0].id;
   for (const e of ETAPAS) {
     if (agora >= Date.parse(`${e.desde}T00:00:00-03:00`)) atual = e.id;
   }
-  return atual;
+  return { id: atual, estimada: true };
 }
 
 /** Status dos provedores em português — nunca vaza rótulo cru pra tela. */
@@ -197,8 +209,9 @@ export default async function handler(req, res) {
       encontrados: pedidos.length,
       pedidos,
       etapas: ETAPAS,
-      etapa_atual: etapaAtual(),
-      entrega_prevista: '2026-11-20',
+      etapa_atual: etapaAtual().id,
+      etapa_estimada: etapaAtual().estimada,
+      entrega_prevista: OFERTA.entregaISO,
       // Se um provedor não respondeu, o cliente precisa saber que a busca foi
       // parcial — em vez de ver "nenhum pedido" e achar que a compra sumiu.
       fontes: { cartao: cartao.ok, pix: pix.ok },

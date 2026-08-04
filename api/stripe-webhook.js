@@ -11,6 +11,7 @@
  * UAPx dispararia um aviso de "venda do Módulo Grow-X" aqui.
  */
 import { notifySale } from './_lib/notify.js';
+import { enviarConfirmacaoPedido } from './_lib/email.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -85,6 +86,20 @@ export default async function handler(req, res) {
   // Só a pré-venda do Módulo é nossa — o resto é de outro produto da conta.
   if (s.metadata?.source !== FONTE) {
     return res.status(200).json({ ok: true, ignored: 'outro_produto' });
+  }
+
+  // Confirmação ao COMPRADOR — é o único e-mail que a Grow-X manda pra ele.
+  if (s.payment_status === 'paid') {
+    const end = s.shipping_details?.address || s.customer_details?.address;
+    await enviarConfirmacaoPedido({
+      email: s.customer_details?.email || s.customer_email,
+      nome: s.customer_details?.name || s.metadata?.nome,
+      referencia: s.id,
+      valorCentavos: s.amount_total,
+      forma: 'Cartão (até 12x)',
+      cpf: s.metadata?.cpf,
+      endereco: end ? [end.line1, end.line2, end.city, end.state, end.postal_code].filter(Boolean).join(', ') : null,
+    });
   }
 
   const avisou = await notifySale({

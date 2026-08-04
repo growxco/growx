@@ -11,6 +11,7 @@
  * abandonado, e o MP reenvia a mesma notificação várias vezes.
  */
 import { notifySale } from './_lib/notify.js';
+import { enviarConfirmacaoPedido } from './_lib/email.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -63,6 +64,22 @@ export default async function handler(req, res) {
 
   const rotulo = AVISA[pmt.status];
   if (!rotulo) return res.status(200).json({ ok: true, ignored: pmt.status });
+
+  // Confirmação ao COMPRADOR. No Pix isso é essencial: se ele fechou a aba e
+  // pagou depois, nunca chegou na página de sucesso e este e-mail é a única
+  // coisa que a Grow-X entrega a ele — inclusive o código do pedido.
+  if (pmt.status === 'approved') {
+    const m = pmt.metadata || {};
+    await enviarConfirmacaoPedido({
+      email: m.email || pmt.payer?.email,
+      nome: m.nome || [pmt.payer?.first_name, pmt.payer?.last_name].filter(Boolean).join(' '),
+      referencia: `mp_${pmt.id}`,
+      valorCentavos: Math.round((pmt.transaction_amount || 0) * 100),
+      forma: 'Pix',
+      cpf: m.cpf || pmt.payer?.identification?.number,
+      endereco: [m.endereco, m.cidade_uf, m.cep].filter(Boolean).join(', ') || null,
+    });
+  }
 
   const avisou = await notifySale({
     provider: 'mercadopago',

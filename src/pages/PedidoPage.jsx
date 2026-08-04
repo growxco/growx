@@ -241,8 +241,9 @@ export default function PedidoPage() {
               <div className="rounded-2xl border p-6" style={{ borderColor: LINE, background: SURFACE }}>
                 <h2 className="text-base font-bold text-white">Status de produção e envio</h2>
                 <p className="mt-1 text-xs" style={{ color: MUTED }}>
-                  O lote de lançamento é produzido em conjunto e embarca a partir de 20/11/2026.
-                  As datas abaixo são previsões do cronograma do lote.
+                  {dados.etapa_estimada
+                    ? 'O lote é produzido em conjunto. As etapas abaixo seguem o cronograma previsto — ainda não confirmadas pelo time de produção.'
+                    : 'O lote é produzido em conjunto. A etapa marcada como atual foi confirmada pelo time de produção.'}
                 </p>
                 <Etapas etapas={dados.etapas} atual={dados.etapa_atual} />
               </div>
