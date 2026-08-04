@@ -52,16 +52,22 @@ function ScrollToTopAndTrack() {
   return null;
 }
 
-export default function App() {
+/** Rotas que rodam como landing page própria (nav, rodapé e CTA próprios). */
+const BARE_ROUTES = [/^\/prevenda/, /^\/modulo$/];
+
+function Shell() {
+  const { pathname } = useLocation();
+  const bare = BARE_ROUTES.some((r) => r.test(pathname));
+
   return (
-    <Router>
+    <>
       <ScrollToTopAndTrack />
       <SkipLink />
       <ScrollProgress />
       <div className="relative min-h-screen bg-background text-foreground">
-        <Header />
-        <main id="main" className="pt-16 lg:pt-[72px]">
-          <Breadcrumbs />
+        {!bare && <Header />}
+        <main id="main" className={bare ? '' : 'pt-16 lg:pt-[72px]'}>
+          {!bare && <Breadcrumbs />}
           <Suspense fallback={<PageLoader />}>
             <PageTransition>
               <Routes>
@@ -105,14 +111,22 @@ export default function App() {
             </PageTransition>
           </Suspense>
         </main>
-        <Footer />
+        {!bare && <Footer />}
         <CookieBanner />
-        <WhatsAppFloat />
-        <StickyCTAMobile />
-        <SoundLab />
+        {!bare && <WhatsAppFloat />}
+        {!bare && <StickyCTAMobile />}
+        {!bare && <SoundLab />}
         <Analytics />
         <SpeedInsights />
       </div>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <Shell />
     </Router>
   );
 }
