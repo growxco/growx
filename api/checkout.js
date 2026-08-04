@@ -96,6 +96,13 @@ function stripeParams(on, comprador) {
   p.set('line_items[0][price_data][product_data][description]', o.description);
 
   p.set('payment_intent_data[description]', `${o.title} · contrato ${CONTRACT_VERSION} · ${CONTRACT_URL}`);
+  // A cobrança (charge) NÃO herda o metadata da sessão. Sem isto, um reembolso
+  // ou chargeback do Módulo chegaria ao webhook sem marca de produto e seria
+  // descartado como "de outro produto" — dinheiro saindo sem ninguém saber.
+  p.set('payment_intent_data[metadata][source]', 'growx.com.br/prevenda');
+  p.set('payment_intent_data[metadata][sku]', 'prevenda_cartao');
+  p.set('payment_intent_data[metadata][cpf]', comprador.cpf);
+  p.set('payment_intent_data[metadata][nome]', comprador.nome);
   p.set('metadata[sku]', 'prevenda_cartao');
   p.set('metadata[source]', 'growx.com.br/prevenda');
   p.set('metadata[contract_version]', CONTRACT_VERSION);

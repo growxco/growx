@@ -11,16 +11,23 @@ const STRIPE_API = 'https://api.stripe.com/v1';
 const MP_API = 'https://api.mercadopago.com';
 const FONTE = 'growx.com.br/prevenda';
 const MP_REF = 'gx-modulo-prevenda';
+/** Nenhuma venda da pré-venda existe antes disto — recorta a varredura. */
+const INICIO_PREVENDA = '2026-08-01';
 
 /** Sessões de checkout pagas da pré-venda. */
 async function contarStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key || !key.startsWith('sk_')) return { ok: false, total: 0 };
 
+  // A conta Stripe é compartilhada com outros produtos da Grow-X (uapx,
+  // psicologx, gxp). Sem recortar pela janela da pré-venda, a contagem teria
+  // que varrer as sessões de todos eles e acabaria estourando o tempo da função.
+  const desde = Math.floor(Date.parse(`${INICIO_PREVENDA}T00:00:00-03:00`) / 1000);
+
   let total = 0;
   let startingAfter = null;
   for (let pagina = 0; pagina < 20; pagina++) {
-    const url = `${STRIPE_API}/checkout/sessions?limit=100`
+    const url = `${STRIPE_API}/checkout/sessions?limit=100&created[gte]=${desde}`
       + (startingAfter ? `&starting_after=${startingAfter}` : '');
     const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` } });
     if (!r.ok) return { ok: false, total: 0 };
