@@ -1,17 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, MessageCircle } from 'lucide-react';
-import { SEO, Container, GlassCard, Reveal, StatusDot } from '@/components/visual';
+import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
 
+const BG = '#080b09';
+const SURFACE = 'rgba(255,255,255,0.035)';
+const LINE = 'rgba(255,255,255,0.09)';
+const GREEN = '#4ade80';
+const MUTED = '#9fb3a6';
 const WHATSAPP = 'https://wa.me/5541995494343?text=Acabei%20de%20garantir%20meu%20M%C3%B3dulo%20Grow-X%20na%20pr%C3%A9-venda';
 
 export default function PreVendaSucessoPage() {
   const [params] = useSearchParams();
-  // Stripe: ?session_id=cs_...  ·  Mercado Pago: ?payment_id=...&status=approved (ou collection_id)
   const sessionId = params.get('session_id') || '';
   const mpPaymentId = params.get('payment_id') || params.get('collection_id') || '';
   const [info, setInfo] = useState(null);
+  const [copiado, setCopiado] = useState(false);
+
+  const referencia = sessionId || mpPaymentId;
 
   useEffect(() => {
     const ref = sessionId
@@ -20,7 +26,7 @@ export default function PreVendaSucessoPage() {
         ? `payment_id=${encodeURIComponent(mpPaymentId)}`
         : null;
     if (!ref) return;
-    const dedupeKey = `gx-purchase-${sessionId || mpPaymentId}`;
+    const dedupeKey = `gx-purchase-${referencia}`;
     fetch(`/api/checkout?${ref}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -37,55 +43,109 @@ export default function PreVendaSucessoPage() {
         }
       })
       .catch(() => {});
-  }, [sessionId, mpPaymentId]);
+  }, [sessionId, mpPaymentId, referencia]);
 
-  const paid = info?.payment_status === 'paid';
-  const pending = info && !paid; // Pix aguardando compensação, por exemplo
+  const pago = info?.payment_status === 'paid';
+  const pendente = info && !pago;
+
+  const copiar = () => {
+    navigator.clipboard?.writeText(referencia).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2500);
+    }).catch(() => {});
+  };
 
   return (
-    <>
-      <SEO title="Pedido confirmado — Pré-venda Módulo Grow-X" path="/prevenda/sucesso" noIndex />
-      <section className="relative isolate overflow-hidden pt-20 pb-24 lg:pt-28">
-        <Container narrow>
-          <Reveal className="text-center">
-            <CheckCircle2 className="mx-auto size-14 text-emerald-glow" />
-            <h1 className="mt-6 text-display-xl text-foreground">
-              {paid ? 'Você está dentro.' : pending ? 'Quase lá — pagamento em processamento.' : 'Recebemos seu pedido.'}
-            </h1>
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-              {paid
-                ? 'Sua unidade do Módulo Grow-X está garantida no preço de pré-venda — com 3 meses de GXP Premium inclusos. O recibo chega no seu email e nosso time te chama no WhatsApp pra confirmar a entrega.'
-                : pending
-                  ? 'Seu pagamento está sendo confirmado (Pix pode levar alguns instantes). Assim que compensar, você recebe o recibo por email — sua posição já está registrada.'
-                  : 'Se o pagamento foi concluído, o recibo chega no seu email em instantes. Qualquer coisa, chama a gente no WhatsApp.'}
+    <div style={{ background: BG }} className="min-h-screen text-white">
+      <SEO title="Pedido confirmado — pré-venda Módulo Grow-X" path="/prevenda/sucesso" noIndex />
+
+      <div className="mx-auto w-full max-w-2xl px-5 py-20 sm:px-8 sm:py-24">
+        <div className="text-center">
+          <span
+            className="mx-auto flex size-14 items-center justify-center rounded-full text-2xl font-bold"
+            style={{ background: 'rgba(74,222,128,0.14)', color: GREEN }}
+          >
+            ✓
+          </span>
+          <h1 className="mt-7 text-display-lg font-extrabold text-white">
+            {pago ? 'Você está dentro.' : pendente ? 'Quase lá.' : 'Recebemos seu pedido.'}
+          </h1>
+          <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed" style={{ color: MUTED }}>
+            {pago
+              ? 'Sua unidade do Módulo Grow-X está reservada no lote de lançamento, com 3 meses de GXP Premium inclusos. O comprovante chega no seu e-mail.'
+              : pendente
+                ? 'Seu pagamento está sendo confirmado — o Pix pode levar alguns instantes. Assim que compensar, a reserva aparece na área do cliente.'
+                : 'Se o pagamento foi concluído, o comprovante chega no seu e-mail em instantes.'}
+          </p>
+        </div>
+
+        {referencia && (
+          <div className="mt-9 rounded-2xl border p-5" style={{ borderColor: LINE, background: SURFACE }}>
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
+              Código do pedido — guarde
             </p>
-          </Reveal>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <code className="min-w-0 flex-1 break-all font-mono text-xs text-white/85">{referencia}</code>
+              <button
+                type="button" onClick={copiar}
+                className="shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/5"
+                style={{ borderColor: LINE }}
+              >
+                {copiado ? 'Copiado ✓' : 'Copiar'}
+              </button>
+            </div>
+            {info?.contract_version && (
+              <p className="mt-3 text-xs" style={{ color: MUTED }}>
+                Contrato <strong className="text-white">{info.contract_version}</strong>
+                {info.contract_accepted ? ' · aceite registrado' : ''} ·{' '}
+                <Link to="/prevenda/contrato" className="underline underline-offset-2" style={{ color: GREEN }}>ver contrato</Link>
+              </p>
+            )}
+          </div>
+        )}
 
-          <Reveal delay={0.1} className="mt-10">
-            <GlassCard variant="surface" className="p-6 sm:p-8">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Próximos passos</h2>
-              <ol className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
-                <li><strong className="text-foreground">1.</strong> Recibo e confirmação do pagamento chegam no seu email.</li>
-                <li><strong className="text-foreground">2.</strong> Nosso time chama você no WhatsApp pra confirmar dados de entrega.</li>
-                <li><strong className="text-foreground">3.</strong> Em outubro, o GXP lança — seus 3 meses de Premium ativam automaticamente.</li>
-                <li><strong className="text-foreground">4.</strong> A partir de 20/11: módulo entregue, ou retirada em mãos na ExpoCannabis Brasil.</li>
-              </ol>
-            </GlassCard>
-          </Reveal>
+        <div className="mt-6 rounded-2xl border p-6" style={{ borderColor: LINE, background: SURFACE }}>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-white">Próximos passos</h2>
+          <ol className="mt-4 space-y-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+            <li><strong className="text-white">1.</strong> O comprovante de pagamento chega no seu e-mail.</li>
+            <li><strong className="text-white">2.</strong> Nosso time chama você no WhatsApp pra confirmar os dados de entrega.</li>
+            <li><strong className="text-white">3.</strong> Em outubro o GXP lança e seus 3 meses de Premium são ativados.</li>
+            <li><strong className="text-white">4.</strong> A partir de 20/11: entrega no seu endereço ou retirada na ExpoCannabis Brasil.</li>
+          </ol>
+        </div>
 
-          <Reveal delay={0.18} className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="btn-primary">
-              <MessageCircle className="size-4" />
-              Falar com o time agora
-            </a>
-            <Link to="/" className="btn-ghost">
-              Voltar ao site
-              <ArrowRight className="size-4" />
-            </Link>
-            <StatusDot label="Pré-venda · ExpoCannabis 2026" className="ml-1 hidden sm:inline-flex" />
-          </Reveal>
-        </Container>
-      </section>
-    </>
+        <div className="mt-6 rounded-2xl border p-6" style={{ borderColor: 'rgba(74,222,128,0.26)', background: 'rgba(74,222,128,0.06)' }}>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-white">Acompanhe quando quiser</h2>
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+            Consulte o status do pedido a qualquer momento com o e-mail e o CPF da compra. Pode cancelar
+            com reembolso integral até o envio.
+          </p>
+          <Link
+            to="/prevenda/pedido"
+            className="mt-5 inline-flex rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110"
+            style={{ background: GREEN, color: '#05130a' }}
+          >
+            Abrir área do cliente
+          </Link>
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={WHATSAPP} target="_blank" rel="noreferrer noopener"
+            className="rounded-xl border px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/5"
+            style={{ borderColor: LINE }}
+          >
+            Falar com o time
+          </a>
+          <Link
+            to="/"
+            className="rounded-xl border px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/5"
+            style={{ borderColor: LINE }}
+          >
+            Voltar ao site
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
+import { cpfValido, emailValido, formataCpf, nomeCompleto } from '@/lib/cpf';
 
 import logoGrowX from '../assets/logo-growx-oficial.png';
 import fotoHero from '../assets/modulo-hero.webp';
@@ -38,7 +39,7 @@ const RECURSOS = [
 
 const PASSOS = [
   ['PASSO 1', 'Você reserva hoje', 'R$ 2.800 no Pix ou 12x de R$ 250 no cartão. Pagamento seguro processado por Stripe e Mercado Pago.'],
-  ['PASSO 2', 'Recebe tudo por escrito', 'Contrato de pré-venda no seu e-mail e cadastro na área do cliente: pedido vinculado ao seu CPF, com status de produção e envio.'],
+  ['PASSO 2', 'Recebe tudo por escrito', 'Aceite do contrato registrado junto ao pedido, comprovante no seu e-mail e área do cliente vinculada ao seu CPF, com status de produção e envio.'],
   ['PASSO 3', 'Módulo na sua porta', 'Entregas a partir de 20/11/2026, junto do lançamento oficial na ExpoCannabis Brasil 2026.'],
 ];
 
@@ -52,7 +53,7 @@ const INCLUSO = [
 const FAQ = [
   ['Quando eu recebo o módulo?', 'As entregas começam em 20/11/2026, data do lançamento oficial na ExpoCannabis Brasil 2026. Você acompanha o status do seu pedido na área do cliente.'],
   ['E se eu me arrepender?', 'Reembolso integral a qualquer momento até o envio do produto — basta pedir. Depois da entrega, você segue coberto por 1 ano de garantia.'],
-  ['Como sei que meu pedido tá garantido?', 'Logo após o pagamento você recebe o contrato de pré-venda por e-mail e um cadastro na área do cliente, com o pedido vinculado ao seu CPF. Nada fica no fiado.'],
+  ['Como sei que meu pedido tá garantido?', 'O aceite do contrato de pré-venda fica registrado junto ao pedido, com data e versão, e o comprovante de pagamento chega no seu e-mail. A qualquer momento você consulta o pedido em growx.com.br/prevenda/pedido com o e-mail e o CPF da compra. Nada fica no fiado.'],
   ['Quais as formas de pagamento?', 'Pix (R$ 2.800) ou cartão em até 12x de R$ 250 (R$ 3.000), processados por Stripe e Mercado Pago.'],
   ['Preciso entender de eletrônica e automação?', 'Não. Você pluga os equipamentos nas tomadas, conecta o módulo no app GXP e escolhe a rotina. A configuração é guiada.'],
   ['E depois dos 3 meses de Premium?', 'O módulo e o app continuam funcionando normalmente. O Premium é opcional — você decide se quer os recursos avançados.'],
@@ -88,7 +89,7 @@ function useCheckout() {
   const [loading, setLoading] = useState(null);
   const [erro, setErro] = useState(null);
 
-  const pagar = async (metodo) => {
+  const pagar = async (metodo, comprador) => {
     if (loading) return;
     setLoading(metodo);
     setErro(null);
@@ -97,7 +98,7 @@ function useCheckout() {
       const r = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method: metodo }),
+        body: JSON.stringify({ method: metodo, ...comprador }),
       });
       const data = await r.json().catch(() => null);
       if (r.ok && data?.url) {
@@ -170,7 +171,7 @@ function BotoesPagamento({ loading, pagar, full = false }) {
   );
 }
 
-function Nav({ loading, pagar }) {
+function Nav() {
   const [solid, setSolid] = useState(false);
   useEffect(() => {
     const onScroll = () => setSolid(window.scrollY > 24);
@@ -192,21 +193,19 @@ function Nav({ loading, pagar }) {
             <a key={href} href={href} className="text-sm text-white/70 transition hover:text-white">{label}</a>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => pagar('pix')}
-          disabled={!!loading}
-          className="rounded-full px-5 py-2.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
+        <a
+          href="#reservar"
+          className="rounded-full px-5 py-2.5 text-sm font-bold transition hover:brightness-110"
           style={{ background: GREEN, color: '#05130a' }}
         >
           Reservar — R$ 2.800
-        </button>
+        </a>
       </div>
     </nav>
   );
 }
 
-function BarraFixa({ loading, pagar }) {
+function BarraFixa() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > 760);
@@ -227,15 +226,13 @@ function BarraFixa({ loading, pagar }) {
             <span style={{ color: GREEN }}>R$ 2.800</span> no Pix <span className="hidden sm:inline" style={{ color: MUTED }}>· ou 12x de R$ 250</span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => pagar('pix')}
-          disabled={!!loading}
-          className="shrink-0 rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
+        <a
+          href="#reservar"
+          className="shrink-0 rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110"
           style={{ background: GREEN, color: '#05130a' }}
         >
-          {loading ? 'Abrindo…' : 'Garantir a minha'}
-        </button>
+          Garantir a minha
+        </a>
       </div>
     </div>
   );
@@ -317,6 +314,37 @@ export default function PreVendaPage() {
   const { loading, erro, pagar } = useCheckout();
   const dias = useDiasRestantes();
   const eyebrow = useMemo(() => 'font-mono text-[0.7rem] uppercase tracking-[0.18em]', []);
+  const [form, setForm] = useState({ nome: '', email: '', cpf: '', aceite: false });
+  const [erroCampo, setErroCampo] = useState({});
+  const [avisoForm, setAvisoForm] = useState(null);
+
+  const campo = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  /** Identificação e aceite são exigidos antes de sair da nossa página. */
+  const pagarComDados = (metodo) => {
+    const falhas = {
+      nome: !nomeCompleto(form.nome),
+      email: !emailValido(form.email),
+      cpf: !cpfValido(form.cpf),
+      aceite: !form.aceite,
+    };
+    setErroCampo(falhas);
+
+    const primeiraFalha = Object.entries(falhas).find(([, ruim]) => ruim)?.[0];
+    if (primeiraFalha) {
+      setAvisoForm({
+        nome: 'Informe seu nome completo (nome e sobrenome).',
+        email: 'Confere o e-mail — é nele que chega o comprovante.',
+        cpf: 'Esse CPF não é válido. Digita de novo.',
+        aceite: 'Marque o aceite do contrato pra seguir pro pagamento.',
+      }[primeiraFalha]);
+      track('checkout_dados_invalidos', { campo: primeiraFalha, method: metodo, page: '/prevenda' });
+      return;
+    }
+
+    setAvisoForm(null);
+    pagar(metodo, { nome: form.nome, email: form.email, cpf: form.cpf, aceite: true });
+  };
 
   useEffect(() => { track('view_prevenda', { page: '/prevenda' }); }, []);
 
@@ -329,7 +357,7 @@ export default function PreVendaPage() {
         jsonLd={PRODUCT_LD}
       />
 
-      <Nav loading={loading} pagar={pagar} />
+      <Nav />
 
       {/* ---------- HERO ---------- */}
       <header id="topo" className="relative isolate overflow-hidden">
@@ -369,15 +397,13 @@ export default function PreVendaPage() {
           </div>
 
           <div className="mt-9 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => pagar('pix')}
-              disabled={!!loading}
-              className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110 disabled:opacity-60"
+            <a
+              href="#reservar"
+              className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
               style={{ background: GREEN, color: '#05130a' }}
             >
-              {loading === 'pix' ? 'Abrindo…' : 'Garantir minha unidade'}
-            </button>
+              Garantir minha unidade
+            </a>
             <a
               href={WHATSAPP} target="_blank" rel="noreferrer noopener"
               onClick={() => track('click_whatsapp', { page: '/prevenda', intent: 'hero' })}
@@ -387,7 +413,6 @@ export default function PreVendaPage() {
               Chamar no WhatsApp
             </a>
           </div>
-          <Erro erro={erro} />
 
           <div className="mt-9 flex flex-wrap gap-x-7 gap-y-2 text-sm" style={{ color: MUTED }}>
             {['Reembolso integral até o envio', '1 ano de garantia', 'Entrega a partir de 20/11/2026'].map((t) => (
@@ -556,13 +581,64 @@ export default function PreVendaPage() {
               ))}
             </div>
 
-            <div className="mt-9">
-              <BotoesPagamento loading={loading} pagar={pagar} full />
+            <div className="mt-9 space-y-3">
+              <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
+                Seus dados — vão no contrato e na nota fiscal
+              </p>
+              <input
+                type="text" value={form.nome} onChange={campo('nome')}
+                placeholder="Nome completo" aria-label="Nome completo" autoComplete="name"
+                className="w-full rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                style={{ borderColor: erroCampo.nome ? 'rgba(245,181,68,0.6)' : LINE }}
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="email" value={form.email} onChange={campo('email')}
+                  placeholder="Seu melhor e-mail" aria-label="E-mail" autoComplete="email"
+                  className="w-full rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                  style={{ borderColor: erroCampo.email ? 'rgba(245,181,68,0.6)' : LINE }}
+                />
+                <input
+                  type="text" inputMode="numeric" value={form.cpf}
+                  onChange={(e) => setForm((f) => ({ ...f, cpf: formataCpf(e.target.value) }))}
+                  placeholder="CPF" aria-label="CPF"
+                  className="w-full rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                  style={{ borderColor: erroCampo.cpf ? 'rgba(245,181,68,0.6)' : LINE }}
+                />
+              </div>
+            </div>
+
+            <label
+              htmlFor="aceite-contrato"
+              className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition"
+              style={{ borderColor: erroCampo.aceite ? 'rgba(245,181,68,0.6)' : LINE, background: erroCampo.aceite ? 'rgba(245,181,68,0.07)' : 'transparent' }}
+            >
+              <input
+                id="aceite-contrato" type="checkbox" checked={form.aceite}
+                onChange={(e) => setForm((f) => ({ ...f, aceite: e.target.checked }))}
+                className="mt-0.5 size-4 shrink-0 accent-[#4ade80]"
+              />
+              <span className="text-xs leading-relaxed text-white/85">
+                Li e aceito o{' '}
+                <Link to="/prevenda/contrato" target="_blank" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
+                  contrato de pré-venda
+                </Link>{' '}
+                — entrega a partir de 20/11/2026, reembolso integral até o envio e 1 ano de garantia.
+              </span>
+            </label>
+            {avisoForm && (
+              <p className="mt-2 text-xs font-semibold" style={{ color: '#f5b544' }}>{avisoForm}</p>
+            )}
+
+            <div className="mt-5">
+              <BotoesPagamento loading={loading} pagar={pagarComDados} full />
             </div>
             <Erro erro={erro} />
 
             <p className="mt-auto pt-5 text-xs leading-relaxed" style={{ color: MUTED }}>
-              Pagamento processado por Stripe e Mercado Pago. Pedido confirmado por e-mail com contrato de pré-venda.
+              Pagamento processado por Stripe e Mercado Pago. O aceite do contrato fica registrado junto ao
+              pedido e você acompanha tudo na{' '}
+              <Link to="/prevenda/pedido" className="underline underline-offset-2" style={{ color: GREEN }}>área do cliente</Link>.
             </p>
           </div>
 
@@ -624,15 +700,13 @@ export default function PreVendaPage() {
             R$ 2.800 agora ou R$ 5.500 depois do lançamento. A conta é sua.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => pagar('pix')}
-              disabled={!!loading}
-              className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110 disabled:opacity-60"
+            <a
+              href="#reservar"
+              className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
               style={{ background: GREEN, color: '#05130a' }}
             >
-              {loading === 'pix' ? 'Abrindo…' : 'Garantir minha unidade'}
-            </button>
+              Garantir minha unidade
+            </a>
             <a
               href={WHATSAPP} target="_blank" rel="noreferrer noopener"
               onClick={() => track('click_whatsapp', { page: '/prevenda', intent: 'cta-final' })}
@@ -642,7 +716,6 @@ export default function PreVendaPage() {
               Tirar dúvida no WhatsApp
             </a>
           </div>
-          <Erro erro={erro} />
         </div>
       </section>
 
@@ -653,7 +726,8 @@ export default function PreVendaPage() {
           <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-sm" style={{ color: MUTED }}>
             <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="transition hover:text-white">WhatsApp +55 41 99549-4343</a>
             <Link to="/" className="transition hover:text-white">growx.com.br</Link>
-            <Link to="/termos" className="transition hover:text-white">Termos</Link>
+            <Link to="/prevenda/contrato" className="transition hover:text-white">Contrato</Link>
+            <Link to="/prevenda/pedido" className="transition hover:text-white">Meu pedido</Link>
             <span>© 2026 Grow-X Co.</span>
           </div>
         </div>
@@ -668,7 +742,7 @@ export default function PreVendaPage() {
         </div>
       </footer>
 
-      <BarraFixa loading={loading} pagar={pagar} />
+      <BarraFixa />
     </div>
   );
 }

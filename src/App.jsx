@@ -33,6 +33,8 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const DemoPage = lazy(() => import('./pages/DemoPage'));
 const PreVendaPage = lazy(() => import('./pages/PreVendaPage'));
 const PreVendaSucessoPage = lazy(() => import('./pages/PreVendaSucessoPage'));
+const ContratoPage = lazy(() => import('./pages/ContratoPage'));
+const PedidoPage = lazy(() => import('./pages/PedidoPage'));
 const WaitlistAppPage = lazy(() => import('./pages/WaitlistAppPage'));
 const CasosPage = lazy(() => import('./pages/CasosPage'));
 const ParceirosPage = lazy(() => import('./pages/ParceirosPage'));
@@ -80,6 +82,8 @@ function Shell() {
 
                 <Route path="/prevenda" element={<PreVendaPage />} />
                 <Route path="/prevenda/sucesso" element={<PreVendaSucessoPage />} />
+                <Route path="/prevenda/contrato" element={<ContratoPage />} />
+                <Route path="/prevenda/pedido" element={<PedidoPage />} />
                 <Route path="/modulo" element={<PreVendaPage />} />
 
                 <Route path="/solucoes/supply-x" element={<SupplyXPage />} />
