@@ -5,8 +5,10 @@
  * All providers are no-ops when their ID env var isn't set.
  * IDs configured via Vite env (VITE_GA_ID, VITE_META_PIXEL_ID, VITE_LINKEDIN_PARTNER_ID, VITE_CLARITY_ID).
  *
- * Snippets injected by `installAnalytics()` on app boot. Idempotent.
+ * Snippets injected by `installAnalytics()` only after consent. Idempotent.
  */
+
+import { hasAnalyticsConsent } from './consent';
 
 const ENV = (import.meta.env || {});
 const isBrowser = typeof window !== 'undefined';
@@ -23,7 +25,7 @@ function injectScript(src, attrs = {}) {
 }
 
 export function installAnalytics() {
-  if (!isBrowser || installed) return;
+  if (!isBrowser || installed || !hasAnalyticsConsent()) return;
   installed = true;
 
   const ga = ENV.VITE_GA_ID;
@@ -37,7 +39,9 @@ export function installAnalytics() {
     window.dataLayer = window.dataLayer || [];
     window.gtag = function gtag() { window.dataLayer.push(arguments); };
     window.gtag('js', new Date());
-    window.gtag('config', ga, { anonymize_ip: true, send_page_view: true });
+    // Page views passam pela rota canônica abaixo; evita duplicar a primeira
+    // visualização entre o bootstrap do GA e o efeito do React Router.
+    window.gtag('config', ga, { anonymize_ip: true, send_page_view: false });
   }
 
   // Meta Pixel
@@ -90,7 +94,7 @@ export function installAnalytics() {
  * @param {object} params optional payload (value, currency, page, segment, ...)
  */
 export function track(name, params = {}) {
-  if (!isBrowser) return;
+  if (!isBrowser || !hasAnalyticsConsent()) return;
   const safeParams = { ...params, ts: Date.now() };
 
   if (ENV.DEV) {
@@ -115,7 +119,11 @@ export function track(name, params = {}) {
   } catch {}
 
   // LinkedIn — only meaningful on conversions configured server-side
-  try { window.lintrk?.('track', { conversion_id: safeParams.li_conversion_id }); } catch {}
+  try {
+    if (safeParams.li_conversion_id) {
+      window.lintrk?.('track', { conversion_id: safeParams.li_conversion_id });
+    }
+  } catch {}
 
   // Vercel Analytics (custom event)
   try { window.va?.('event', { name, data: safeParams }); } catch {}

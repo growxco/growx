@@ -148,7 +148,10 @@ export default function SoundLab() {
   if (!open) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[58] w-72 overflow-hidden rounded-2xl glass-strong shadow-elevated">
+    <div
+      className="fixed right-6 z-[58] w-72 overflow-hidden rounded-2xl glass-strong shadow-elevated"
+      style={{ bottom: 'calc(var(--growx-cookie-offset, 0px) + 1.5rem)' }}
+    >
       <div className="flex items-center gap-2 border-b border-foreground/10 px-4 py-3">
         <Beaker className="size-3.5 text-emerald-glow" />
         <span className="font-mono text-[11px] uppercase tracking-wider text-foreground">sound · lab</span>

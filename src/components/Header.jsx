@@ -11,6 +11,7 @@ import CommandPalette from './CommandPalette';
 import logoGrowX from '../assets/logo-growx-oficial.png';
 import { cn } from '@/lib/utils';
 import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
+import { OFERTA, brlCurto } from '@/lib/oferta';
 
 const NAV = [
   { name: 'Início', href: '/', type: 'link' },
@@ -30,7 +31,12 @@ const NAV = [
     type: 'mega',
     href: '/produtos',
     items: [
-      { name: 'Módulo Grow-X · Pré-venda', href: '/prevenda', icon: Cpu, desc: 'Lote Founder R$ 2.997 · ExpoCannabis 2026' },
+      {
+        name: 'Módulo Grow-X · Pré-venda',
+        href: '/prevenda',
+        icon: Cpu,
+        desc: `Pré-venda ${brlCurto(OFERTA.pixCentavos)} no Pix · até ${OFERTA.encerramentoBR.slice(0, 5)}`,
+      },
       { name: 'Estação Meteorológica', href: '/produtos/estacao-meteorologica', icon: CloudSun, desc: 'Sensores LoRa de alta precisão' },
       { name: 'Módulo Sem Fio', href: '/produtos/modulo-sem-fio', icon: Cpu, desc: 'Controle de até 4 estufas' },
       { name: 'Estufa Automatizada', href: '/produtos/estufa-automatizada', icon: Sprout, desc: 'Cultivo controlado completo' },

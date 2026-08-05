@@ -1,62 +1,99 @@
-import { useEffect, useState } from 'react';
-import { Cookie, X } from 'lucide-react';
-import { Container } from '@/components/visual';
+import { useEffect, useRef, useState } from 'react';
+import { Cookie } from 'lucide-react';
+import {
+  COOKIE_CONSENT,
+  getCookieConsent,
+  setCookieConsent,
+  subscribeCookieConsent,
+} from '@/lib/consent';
 
-const KEY = 'growx-cookie-consent';
+const OFFSET_VAR = '--growx-cookie-offset';
+
+function publishOffset(height) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.style.setProperty(OFFSET_VAR, `${Math.max(0, Math.ceil(height))}px`);
+}
 
 export default function CookieBanner() {
   const [show, setShow] = useState(false);
+  const bannerRef = useRef(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const choice = localStorage.getItem(KEY);
-    if (!choice) {
-      const id = setTimeout(() => setShow(true), 1200);
-      return () => clearTimeout(id);
-    }
+    const sync = (choice) => setShow(!choice);
+    sync(getCookieConsent());
+    return subscribeCookieConsent(sync);
   }, []);
 
-  const decide = (accept) => {
-    localStorage.setItem(KEY, accept ? 'accepted' : 'declined');
+  useEffect(() => {
+    if (!show || !bannerRef.current) {
+      publishOffset(0);
+      return undefined;
+    }
+
+    const banner = bannerRef.current;
+    const measure = () => publishOffset(banner.getBoundingClientRect().height + 8);
+    measure();
+
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(measure)
+      : null;
+    observer?.observe(banner);
+    window.addEventListener('resize', measure, { passive: true });
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      publishOffset(0);
+    };
+  }, [show]);
+
+  const decide = (choice) => {
+    setCookieConsent(choice);
     setShow(false);
   };
 
   if (!show) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[55] px-4 pb-4 sm:px-6 sm:pb-6">
-      <Container className="!px-0">
-        <div className="mx-auto max-w-3xl">
-          <div className="overflow-hidden rounded-2xl glass-strong shadow-elevated">
-            <div className="flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:gap-6">
-              <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald/15 text-emerald-glow ring-hairline">
-                <Cookie className="size-4" />
-              </span>
-              <div className="flex-1 text-sm leading-relaxed text-foreground/85">
-                Usamos cookies pra entender como você navega e melhorar a experiência.
-                Sem rastreio invasivo. <span className="text-muted-foreground">Conforme a LGPD · </span>
-                <a href="/cookies" className="text-emerald-glow hover:underline">detalhes</a>.
-              </div>
-              <div className="flex w-full shrink-0 gap-2 sm:w-auto">
-                <button onClick={() => decide(false)} className="btn-ghost flex-1 sm:flex-initial">
-                  Recusar
-                </button>
-                <button onClick={() => decide(true)} className="btn-primary flex-1 sm:flex-initial">
-                  Aceitar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShow(false)}
-                  aria-label="Fechar"
-                  className="inline-flex size-10 items-center justify-center rounded-lg border border-foreground/10 bg-foreground/5 text-foreground/70 hover:text-foreground"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            </div>
+    <div
+      ref={bannerRef}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] px-3 pt-3 sm:px-6"
+      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      role="region"
+      aria-label="Preferências de cookies"
+      aria-describedby="growx-cookie-description"
+    >
+      <div className="pointer-events-auto mx-auto max-w-4xl overflow-hidden rounded-2xl glass-strong shadow-elevated">
+        <div className="flex flex-col gap-2.5 p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+          <span className="hidden size-9 shrink-0 items-center justify-center rounded-xl bg-emerald/15 text-emerald-glow ring-hairline sm:inline-flex">
+            <Cookie className="size-4" aria-hidden="true" />
+          </span>
+
+          <p id="growx-cookie-description" className="flex-1 text-[0.72rem] leading-4 text-foreground/85 sm:text-sm sm:leading-relaxed">
+            Cookies opcionais de análise e marketing só são ativados com seu aceite.{' '}
+            <a href="/cookies" className="whitespace-nowrap font-semibold text-emerald-glow hover:underline">
+              Ver detalhes
+            </a>
+          </p>
+
+          <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={() => decide(COOKIE_CONSENT.DECLINED)}
+              className="btn-ghost min-h-11 flex-1 px-3 py-2 text-xs sm:flex-initial sm:px-4"
+            >
+              Apenas essenciais
+            </button>
+            <button
+              type="button"
+              onClick={() => decide(COOKIE_CONSENT.ACCEPTED)}
+              className="btn-primary min-h-11 flex-1 px-3 py-2 text-xs sm:flex-initial sm:px-4"
+            >
+              Aceitar opcionais
+            </button>
           </div>
         </div>
-      </Container>
+      </div>
     </div>
   );
 }

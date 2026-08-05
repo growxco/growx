@@ -45,7 +45,10 @@ export default function WhatsAppFloat() {
   if (!shown) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[52] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+    <div
+      className="fixed right-5 z-[52] flex flex-col items-end gap-3 sm:right-6"
+      style={{ bottom: 'calc(var(--growx-cookie-offset, 0px) + max(1.25rem, env(safe-area-inset-bottom)))' }}
+    >
       {open && (
         <div className="w-72 overflow-hidden rounded-2xl glass-strong shadow-elevated">
           <div className="flex items-center gap-2 border-b border-foreground/10 px-4 py-3">
