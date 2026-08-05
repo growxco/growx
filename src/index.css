@@ -185,6 +185,83 @@
   background: linear-gradient(140deg, oklch(0.480 0.165 145 / 50%), oklch(0.660 0.150 70 / 28%) 50%, transparent 100%);
 }
 
+/* ---------- PRÉ-VENDA — acompanha o tema global sem perder a identidade ---------- */
+.prevenda-shell {
+  --prevenda-bg: #080b09;
+  --prevenda-surface: rgba(255, 255, 255, 0.035);
+  --prevenda-surface-strong: #0d120f;
+  --prevenda-panel: #080b09;
+  --prevenda-line: rgba(255, 255, 255, 0.09);
+  --prevenda-text: #ffffff;
+  --prevenda-muted: #9fb3a6;
+  --prevenda-muted-soft: rgba(159, 179, 166, 0.65);
+  --prevenda-green: #4ade80;
+  --prevenda-warning: #f5b544;
+  --prevenda-warning-text: #f6e3bd;
+  --prevenda-cta-foreground: #05130a;
+  --prevenda-nav: rgba(8, 11, 9, 0.92);
+  --prevenda-hero-95: rgba(8, 11, 9, 0.95);
+  --prevenda-hero-82: rgba(8, 11, 9, 0.82);
+  --prevenda-hero-70: rgba(8, 11, 9, 0.70);
+  background: var(--prevenda-bg);
+  color: var(--prevenda-text);
+}
+
+.light .prevenda-shell {
+  --prevenda-bg: var(--background);
+  --prevenda-surface: rgba(255, 255, 255, 0.72);
+  --prevenda-surface-strong: var(--surface);
+  --prevenda-panel: var(--surface);
+  --prevenda-line: var(--border);
+  --prevenda-text: var(--foreground);
+  --prevenda-muted: var(--muted-foreground);
+  --prevenda-muted-soft: color-mix(in oklab, var(--muted-foreground) 72%, transparent);
+  --prevenda-green: var(--primary);
+  --prevenda-warning: #955600;
+  --prevenda-warning-text: #704000;
+  --prevenda-cta-foreground: var(--primary-foreground);
+  --prevenda-nav: color-mix(in oklab, var(--background) 92%, transparent);
+  --prevenda-hero-95: color-mix(in oklab, var(--background) 96%, transparent);
+  --prevenda-hero-82: color-mix(in oklab, var(--background) 84%, transparent);
+  --prevenda-hero-70: color-mix(in oklab, var(--background) 72%, transparent);
+}
+
+.light .prevenda-shell .text-white,
+.light .prevenda-shell .text-white\/85,
+.light .prevenda-shell .text-white\/75,
+.light .prevenda-shell .text-white\/70,
+.light .prevenda-shell .text-white\/65 {
+  color: var(--prevenda-text);
+}
+
+.light .prevenda-shell input::placeholder {
+  color: color-mix(in oklab, var(--prevenda-muted) 62%, transparent);
+}
+
+.light .prevenda-shell [class*="border-white"] {
+  border-color: var(--prevenda-line);
+}
+
+.prevenda-shell :is(a, button, input, summary):focus-visible {
+  outline: 2px solid var(--prevenda-green);
+  outline-offset: 3px;
+}
+
+.prevenda-shell [id] {
+  scroll-margin-top: 6rem;
+}
+
+.prevenda-theme-toggle {
+  border-color: var(--prevenda-line);
+  background: var(--prevenda-surface);
+  color: var(--prevenda-text);
+}
+
+.prevenda-theme-toggle:hover {
+  border-color: var(--prevenda-green);
+  color: var(--prevenda-green);
+}
+
 /* ============================================================
    BASE
    ============================================================ */

@@ -1,11 +1,15 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { OFERTA } from '@/lib/oferta';
+import PreVendaHeader from '@/components/prevenda/PreVendaHeader';
 
-const BG = '#080b09';
-const LINE = 'rgba(255,255,255,0.09)';
-const GREEN = '#4ade80';
-const MUTED = '#9fb3a6';
+const BG = 'var(--prevenda-bg)';
+const LINE = 'var(--prevenda-line)';
+const GREEN = 'var(--prevenda-green)';
+const MUTED = 'var(--prevenda-muted)';
+const CTA_TEXT = 'var(--prevenda-cta-foreground)';
 const PIX_ENABLED = import.meta.env.VITE_PREVENDA_PIX_ENABLED === 'true';
 
 /** Fonte única: a mesma constante usada pela cobrança em api/checkout.js. */
@@ -36,7 +40,7 @@ const CLAUSULAS = [
       'Compra e venda, em regime de pré-venda, de 1 (uma) unidade do Módulo Grow-X — central de automação para cultivo indoor com 6 tomadas inteligentes controláveis, controle de fotoperíodo e, quando utilizado driver DIM/PWM compatível, transições graduais, acionamento de irrigação por leitura de umidade de solo, entradas para sensores ambientais e integração com o aplicativo GXP.',
       'Acompanha o produto: 3 (três) meses de assinatura GXP Premium, ativados quando do lançamento do aplicativo, sem cobrança adicional e sem renovação automática.',
       'A pré-venda refere-se a produto em desenvolvimento e industrialização, ainda não disponível em estoque na data da contratação.',
-      'A cobrança permanecerá indisponível até que a CONTRATADA publique a ficha elétrica aplicável (incluindo tensão, corrente e carga máxima), dimensões, composição final do kit e as condições de custo e cobertura de frete ou retirada. Esses dados deverão estar disponíveis antes de qualquer aceite e pagamento.',
+      'Antes da abertura da cobrança, a CONTRATADA deverá publicar a ficha elétrica aplicável (incluindo tensão, corrente e carga máxima), dimensões, composição final do kit e as condições de custo e cobertura de frete ou retirada. Esses dados deverão estar disponíveis antes de qualquer aceite e pagamento.',
     ],
   },
   {
@@ -115,7 +119,7 @@ const CLAUSULAS = [
     n: '11',
     t: 'Disposições finais',
     p: [
-      'Após a aprovação e publicação das especificações e condições ainda pendentes, este instrumento será aceito eletronicamente no ato do pagamento; o aceite, a data e a versão do contrato ficarão registrados no processador de pagamento e no livro técnico pseudonimizado da CONTRATADA.',
+      'Este instrumento é aceito eletronicamente no ato do pagamento; o aceite, a data e a versão do contrato ficam registrados no processador de pagamento e no livro técnico pseudonimizado da CONTRATADA.',
       'A eventual invalidade de qualquer cláusula não prejudica as demais.',
       'Fica eleito o foro do domicílio do CONTRATANTE para dirimir controvérsias, na forma do art. 101, I, do Código de Defesa do Consumidor.',
     ],
@@ -123,17 +127,34 @@ const CLAUSULAS = [
 ];
 
 export default function ContratoPage() {
+  const [lote, setLote] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/lote')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => { if (active && data) setLote(data); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const cobrancaAberta = Boolean(lote?.confiavel && !lote?.esgotado)
+    && Date.now() < new Date(OFERTA.checkoutFechamentoISO).getTime();
+
   return (
-    <div style={{ background: BG }} className="min-h-screen text-white">
+    <div style={{ background: BG }} className="prevenda-shell min-h-screen text-white">
       <SEO
         title="Contrato de pré-venda — Módulo Grow-X"
         description={`Minuta da pré-venda do Módulo Grow-X: ${PIX_ENABLED ? 'R$ 2.800 no Pix ou R$ 3.000 no cartão em até 12x' : 'R$ 3.000 no cartão em até 12x de R$ 250'}, entrega a partir de 20/11/2026, reembolso integral até o envio e garantia de 12 meses.`}
         path="/prevenda/contrato"
       />
 
+      <PreVendaHeader />
+
       <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
-        <Link to="/prevenda" className="font-mono text-xs uppercase tracking-[0.16em]" style={{ color: GREEN }}>
-          ← voltar pra pré-venda
+        <Link to="/prevenda" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em]" style={{ color: GREEN }}>
+          <ArrowLeft aria-hidden="true" size={14} />
+          voltar pra pré-venda
         </Link>
 
         <h1 className="mt-8 text-display-lg font-extrabold text-white">Minuta do contrato de pré-venda</h1>
@@ -141,8 +162,19 @@ export default function ContratoPage() {
           Módulo Grow-X · versão <strong className="text-white">{CONTRATO_VERSAO}</strong> · atualizada em 5 de agosto de 2026
         </p>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
-          Cobrança pausada. Esta minuta só poderá virar oferta para aceite depois da publicação e aprovação da ficha técnica, composição do kit e condições de frete.
+          {cobrancaAberta
+            ? 'Cobrança aberta para o lote disponível. O aceite desta versão é registrado no pagamento.'
+            : 'Compra ainda não aberta. A ficha técnica, a composição do kit e as condições de frete precisam estar publicadas e aprovadas antes de qualquer cobrança.'}
         </p>
+
+        <a
+          href="/prevenda#reservar"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110"
+          style={{ background: GREEN, color: CTA_TEXT }}
+        >
+          <ShoppingCart aria-hidden="true" size={16} />
+          Voltar e comprar
+        </a>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           {[
@@ -172,7 +204,7 @@ export default function ContratoPage() {
           ))}
         </div>
 
-        <div className="mt-14 rounded-2xl border p-6" style={{ borderColor: LINE, background: 'rgba(255,255,255,0.035)' }}>
+        <div className="mt-14 rounded-2xl border p-6" style={{ borderColor: LINE, background: 'var(--prevenda-surface)' }}>
           <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
             Quando a cobrança for aberta, o aceite deste contrato será registrado no momento do pagamento, junto ao seu pedido, com data e versão.
             Para consultar o seu pedido e o aceite, acesse a{' '}
@@ -183,6 +215,15 @@ export default function ContratoPage() {
           </p>
         </div>
 
+        <a
+          href="/prevenda#reservar"
+          className="mt-8 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110"
+          style={{ background: GREEN, color: CTA_TEXT }}
+        >
+          <ShoppingCart aria-hidden="true" size={16} />
+          Voltar e comprar
+        </a>
+
         <div className="mt-8 flex flex-wrap gap-4 text-sm" style={{ color: MUTED }}>
           <Link to="/prevenda" className="underline underline-offset-2 transition hover:text-white">Pré-venda</Link>
           <Link to="/prevenda/pedido" className="underline underline-offset-2 transition hover:text-white">Meu pedido</Link>
@@ -190,7 +231,7 @@ export default function ContratoPage() {
           <Link to="/termos" className="underline underline-offset-2 transition hover:text-white">Termos do site</Link>
         </div>
 
-        <p className="mt-10 text-xs" style={{ color: 'rgba(159,179,166,0.6)' }}>
+        <p className="mt-10 text-xs" style={{ color: 'var(--prevenda-muted-soft)' }}>
           GROW-X CO. TECNOLOGIAS LTDA · CNPJ 59.183.820/0001-09 · Curitiba/PR · © 2026
         </p>
       </div>

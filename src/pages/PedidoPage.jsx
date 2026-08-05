@@ -4,13 +4,16 @@ import { ArrowLeft, Check } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
 import { documentoValido, emailValido, formataDocumento } from '@/lib/cpf';
+import PreVendaHeader from '@/components/prevenda/PreVendaHeader';
 
-const BG = '#080b09';
-const SURFACE = 'rgba(255,255,255,0.035)';
-const LINE = 'rgba(255,255,255,0.09)';
-const GREEN = '#4ade80';
-const MUTED = '#9fb3a6';
+const BG = 'var(--prevenda-bg)';
+const SURFACE = 'var(--prevenda-surface)';
+const LINE = 'var(--prevenda-line)';
+const GREEN = 'var(--prevenda-green)';
+const MUTED = 'var(--prevenda-muted)';
+const CTA_TEXT = 'var(--prevenda-cta-foreground)';
 const WHATSAPP = 'https://wa.me/5541995494343?text=Preciso%20de%20ajuda%20com%20meu%20pedido%20da%20pr%C3%A9-venda%20do%20M%C3%B3dulo%20Grow-X';
+const CANCELAMENTO_WHATSAPP = 'https://wa.me/5541995494343?text=Quero%20solicitar%20o%20cancelamento%20do%20meu%20pedido%20da%20pr%C3%A9-venda%20do%20M%C3%B3dulo%20Grow-X';
 
 const brl = (centavos) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dataBr = (iso) => {
@@ -31,7 +34,7 @@ function Etapas({ etapas, atual }) {
               <span
                 className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold"
                 style={feito
-                  ? { background: GREEN, color: '#05130a' }
+                  ? { background: GREEN, color: CTA_TEXT }
                   : { border: `1px solid ${LINE}`, color: MUTED }}
               >
                 {feito ? <Check aria-hidden="true" size={12} strokeWidth={3} /> : i + 1}
@@ -41,7 +44,7 @@ function Etapas({ etapas, atual }) {
               )}
             </div>
             <div className="pb-2">
-              <p className="text-sm font-semibold" style={{ color: feito ? '#fff' : MUTED }}>
+              <p className="text-sm font-semibold" style={{ color: feito ? 'var(--prevenda-text)' : MUTED }}>
                 {e.titulo}
                 {i === idx && (
                   <span className="ml-2 rounded-full px-2 py-0.5 font-mono text-[0.6rem] uppercase" style={{ background: 'rgba(74,222,128,0.14)', color: GREEN }}>
@@ -50,7 +53,7 @@ function Etapas({ etapas, atual }) {
                 )}
               </p>
               <p className="mt-1 text-xs leading-relaxed" style={{ color: MUTED }}>{e.detalhe}</p>
-              <p className="mt-1 font-mono text-[0.65rem]" style={{ color: 'rgba(159,179,166,0.6)' }}>
+              <p className="mt-1 font-mono text-[0.65rem]" style={{ color: 'var(--prevenda-muted-soft)' }}>
                 previsto para {dataBr(`${e.desde}T12:00:00-03:00`)}
               </p>
             </div>
@@ -70,7 +73,7 @@ function CardPedido({ p }) {
           className="rounded-full px-3 py-1 font-mono text-[0.65rem] font-bold uppercase tracking-wide"
           style={pago
             ? { background: 'rgba(74,222,128,0.16)', color: GREEN }
-            : { background: 'rgba(245,181,68,0.12)', color: '#f5b544' }}
+            : { background: 'rgba(245,181,68,0.12)', color: 'var(--prevenda-warning)' }}
         >
           {pago ? 'Pagamento confirmado' : `Pagamento ${p.status}`}
         </span>
@@ -83,7 +86,7 @@ function CardPedido({ p }) {
       <dl className="mt-5 space-y-2 text-sm">
         {[
           ['Titular', p.nome],
-          ['CPF', p.cpf_mascarado],
+          ['CPF/CNPJ', p.cpf_mascarado],
           ['Código da reserva', p.codigo_reserva],
           ['Referência', p.referencia],
           ['Contrato', p.contrato_versao ? `${p.contrato_versao}${p.contrato_aceito ? ' · aceito' : ''}` : null],
@@ -96,13 +99,13 @@ function CardPedido({ p }) {
       </dl>
 
       {!p.cpf_verificado && (
-        <p className="mt-4 text-xs leading-relaxed" style={{ color: '#f5b544' }}>
+        <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--prevenda-warning)' }}>
           Este pedido foi feito antes da coleta de CPF no checkout, então não deu pra conferir o CPF
           automaticamente. Chama a gente no WhatsApp pra vincular.
         </p>
       )}
       {p.status_confiavel === false && (
-        <p className="mt-4 text-xs leading-relaxed" style={{ color: '#f5b544' }}>
+        <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--prevenda-warning)' }}>
           O status financeiro está temporariamente indisponível. O pedido foi localizado,
           mas a confirmação precisa ser refeita antes de qualquer decisão sobre produção ou envio.
         </p>
@@ -206,13 +209,15 @@ export default function PedidoPage() {
   };
 
   return (
-    <div style={{ background: BG }} className="min-h-screen text-white">
+    <div style={{ background: BG }} className="prevenda-shell min-h-screen text-white">
       <SEO
         title="Meu pedido — pré-venda Módulo Grow-X"
         description="Acompanhe o pedido da pré-venda do Módulo Grow-X com um código seguro enviado ao e-mail da compra."
         path="/prevenda/pedido"
         noIndex
       />
+
+      <PreVendaHeader />
 
       <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
         <Link to="/prevenda" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em]" style={{ color: GREEN }}>
@@ -226,26 +231,32 @@ export default function PedidoPage() {
         </p>
 
         {estado !== 'ok' && (etapaAcesso === 'dados' ? (
-          <form onSubmit={solicitarCodigo} className="mt-10 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <form onSubmit={solicitarCodigo} className="mt-10 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                type="email" value={email} onChange={(ev) => setEmail(ev.target.value)}
-                placeholder="E-mail da compra" required aria-label="E-mail da compra" autoComplete="email"
-                className="rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
-                style={{ borderColor: LINE }}
-              />
-              <input
-                type="text" inputMode="numeric" value={cpf}
-                onChange={(ev) => setCpf(formataDocumento(ev.target.value))}
-                placeholder="CPF ou CNPJ" required aria-label="CPF ou CNPJ" autoComplete="off"
-                className="rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
-                style={{ borderColor: LINE }}
-              />
+              <label className="text-sm font-semibold text-white">
+                E-mail da compra
+                <input
+                  type="email" value={email} onChange={(ev) => setEmail(ev.target.value)}
+                  placeholder="voce@exemplo.com" required autoComplete="email"
+                  className="mt-2 w-full rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                  style={{ borderColor: LINE }}
+                />
+              </label>
+              <label className="text-sm font-semibold text-white">
+                CPF ou CNPJ
+                <input
+                  type="text" inputMode="numeric" value={cpf}
+                  onChange={(ev) => setCpf(formataDocumento(ev.target.value))}
+                  placeholder="Somente números" required autoComplete="off"
+                  className="mt-2 w-full rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                  style={{ borderColor: LINE }}
+                />
+              </label>
             </div>
             <button
               type="submit" disabled={estado === 'enviando'}
               className="rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
-              style={{ background: GREEN, color: '#05130a' }}
+              style={{ background: GREEN, color: CTA_TEXT }}
             >
               {estado === 'enviando' ? 'Enviando…' : 'Enviar código'}
             </button>
@@ -269,7 +280,7 @@ export default function PedidoPage() {
               <button
                 type="submit" disabled={estado === 'verificando' || codigo.length !== 6}
                 className="rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
-                style={{ background: GREEN, color: '#05130a' }}
+                style={{ background: GREEN, color: CTA_TEXT }}
               >
                 {estado === 'verificando' ? 'Verificando…' : 'Acessar pedido'}
               </button>
@@ -281,7 +292,7 @@ export default function PedidoPage() {
         ))}
 
         {erro && (
-          <p className="mt-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: '#f6e3bd' }}>
+          <p role="alert" aria-live="assertive" className="mt-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: 'var(--prevenda-warning-text)' }}>
             {erro}{' '}
             <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
               Chamar no WhatsApp
@@ -290,7 +301,7 @@ export default function PedidoPage() {
         )}
 
         {estado === 'ok' && dados?.busca_parcial && (
-          <p className="mt-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: '#f6e3bd' }}>
+          <p className="mt-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: 'var(--prevenda-warning-text)' }}>
             {dados.fontes?.ledger === false
               ? 'O status financeiro técnico não respondeu agora, então nenhum estado de pagamento foi presumido'
               : 'Um dos meios de pagamento não respondeu agora, então esta consulta pode estar incompleta'}
@@ -315,7 +326,7 @@ export default function PedidoPage() {
               <button type="button" onClick={alterarDados} className="rounded-xl border px-5 py-3 text-sm font-semibold text-white" style={{ borderColor: LINE }}>
                 Consultar outros dados
               </button>
-              <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="rounded-xl px-5 py-3 text-sm font-bold" style={{ background: GREEN, color: '#05130a' }}>
+              <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="rounded-xl px-5 py-3 text-sm font-bold" style={{ background: GREEN, color: CTA_TEXT }}>
                 Falar com o time
               </a>
               <Link to="/prevenda" className="rounded-xl border px-5 py-3 text-sm font-semibold text-white" style={{ borderColor: LINE }}>
@@ -349,7 +360,7 @@ export default function PedidoPage() {
             ) : (
               <div className="rounded-2xl border p-6" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.07)' }}>
                 <h2 className="text-base font-bold text-white">Produção e envio não confirmados</h2>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: '#f6e3bd' }}>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--prevenda-warning-text)' }}>
                   Encontramos seu pedido, mas o estado financeiro atual não autoriza confirmar produção
                   ou envio. Se o pagamento acabou de ser feito, a conciliação pode levar alguns minutos.{' '}
                   <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
@@ -372,7 +383,7 @@ export default function PedidoPage() {
                 </Link>.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="rounded-xl border px-5 py-3 text-sm font-semibold text-white" style={{ borderColor: LINE }}>
+                <a href={CANCELAMENTO_WHATSAPP} target="_blank" rel="noreferrer noopener" className="rounded-xl border px-5 py-3 text-sm font-semibold text-white" style={{ borderColor: LINE }}>
                   Pedir cancelamento
                 </a>
                 <a href="mailto:growx@growx.com.br?subject=Pedido%20de%20cancelamento%20-%20pr%C3%A9-venda%20M%C3%B3dulo" className="rounded-xl border px-5 py-3 text-sm font-semibold text-white" style={{ borderColor: LINE }}>
@@ -383,7 +394,7 @@ export default function PedidoPage() {
           </div>
         )}
 
-        <p className="mt-12 text-xs leading-relaxed" style={{ color: 'rgba(159,179,166,0.6)' }}>
+        <p className="mt-12 text-xs leading-relaxed" style={{ color: 'var(--prevenda-muted-soft)' }}>
           Só consultamos Stripe ou Mercado Pago depois que o código enviado ao e-mail é validado. O status
           financeiro é confirmado no ledger técnico pseudonimizado da pré-venda, e a Grow-X não armazena
           dados de cartão. O CPF/CNPJ autentica a consulta e apoia a emissão fiscal — veja a{' '}

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Plus } from 'lucide-react';
+import { Check, Plus, ShoppingCart } from 'lucide-react';
 import { SEO } from '@/components/visual';
+import ThemeToggle from '@/components/visual/ThemeToggle';
 import { track } from '@/lib/analytics';
 import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
 import { OFERTA, brlCurto, parcelaCurta } from '@/lib/oferta';
@@ -32,12 +33,13 @@ const ECONOMIA = brlCurto(
   OFERTA.publicoCentavos - (PIX_ENABLED ? OFERTA.pixCentavos : OFERTA.cartaoCentavos),
 );
 
-/* Paleta da landing — dark premium, mais fechada que o resto do site */
-const BG = '#080b09';
-const SURFACE = 'rgba(255,255,255,0.035)';
-const LINE = 'rgba(255,255,255,0.09)';
-const GREEN = '#4ade80';
-const MUTED = '#9fb3a6';
+/* Tokens próprios preservam a landing premium nos dois temas do site. */
+const BG = 'var(--prevenda-bg)';
+const SURFACE = 'var(--prevenda-surface)';
+const LINE = 'var(--prevenda-line)';
+const GREEN = 'var(--prevenda-green)';
+const MUTED = 'var(--prevenda-muted)';
+const CTA_TEXT = 'var(--prevenda-cta-foreground)';
 const INPUT_CLASS = 'mt-2 w-full rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus-visible:border-[#4ade80] focus-visible:ring-2 focus-visible:ring-[#4ade80]/30';
 
 const NAV = [
@@ -204,7 +206,7 @@ function Pill({ children, tone = 'line' }) {
   const styles = {
     green: { background: 'rgba(74,222,128,0.10)', borderColor: 'rgba(74,222,128,0.30)', color: GREEN },
     line: { background: 'transparent', borderColor: LINE, color: MUTED },
-    amber: { background: 'rgba(245,181,68,0.08)', borderColor: 'rgba(245,181,68,0.32)', color: '#f5b544' },
+    amber: { background: 'rgba(245,181,68,0.08)', borderColor: 'rgba(245,181,68,0.32)', color: 'var(--prevenda-warning)' },
   }[tone];
   return (
     <span
@@ -219,7 +221,7 @@ function Pill({ children, tone = 'line' }) {
 function Erro({ erro }) {
   if (!erro) return null;
   return (
-    <p role="alert" aria-live="assertive" className="mt-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: '#f6e3bd' }}>
+    <p role="alert" aria-live="assertive" className="mt-4 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: 'var(--prevenda-warning-text)' }}>
       {erro}{' '}
       <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
         Chamar no WhatsApp
@@ -282,8 +284,8 @@ function EscolhaPagamento({ metodo, onChange, loading, disabled = false }) {
       <button
         type="submit"
         disabled={!!loading || disabled}
-        className="mt-4 inline-flex w-full items-center justify-center rounded-xl px-6 py-4 text-[0.95rem] font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080b09] disabled:cursor-not-allowed disabled:opacity-60"
-        style={{ background: GREEN, color: '#05130a' }}
+        className="mt-4 inline-flex w-full items-center justify-center rounded-xl px-6 py-4 text-[0.95rem] font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60"
+        style={{ background: GREEN, color: CTA_TEXT }}
       >
         {loading
           ? 'Abrindo checkout…'
@@ -295,7 +297,7 @@ function EscolhaPagamento({ metodo, onChange, loading, disabled = false }) {
   );
 }
 
-function Nav({ reservaPausada = false }) {
+function Nav() {
   const [solid, setSolid] = useState(false);
   useEffect(() => {
     const onScroll = () => setSolid(window.scrollY > 24);
@@ -306,7 +308,7 @@ function Nav({ reservaPausada = false }) {
   return (
     <nav
       className="fixed inset-x-0 top-0 z-50 transition-colors duration-300"
-      style={solid ? { background: 'rgba(8,11,9,0.88)', backdropFilter: 'blur(14px)', borderBottom: `1px solid ${LINE}` } : { background: 'transparent' }}
+      style={solid ? { background: 'var(--prevenda-nav)', backdropFilter: 'blur(14px)', borderBottom: `1px solid ${LINE}` } : { background: 'transparent' }}
     >
       <div className="mx-auto flex h-[72px] w-full max-w-6xl items-center justify-between px-5 sm:px-8">
         <Link to="/" className="flex items-center gap-2" aria-label="Grow-X — início">
@@ -317,20 +319,31 @@ function Nav({ reservaPausada = false }) {
             <a key={href} href={href} className="text-sm text-white/70 transition hover:text-white">{label}</a>
           ))}
         </div>
-        <a
-          href="#reservar"
-          onClick={() => track('click_cta_prevenda', { placement: 'nav', page: '/prevenda' })}
-          className="rounded-full px-5 py-2.5 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
-          style={{ background: GREEN, color: '#05130a' }}
-        >
-          {reservaPausada ? 'Ver status do lote' : 'Comprar'}
-        </a>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/prevenda/pedido"
+            className="hidden rounded-lg px-3 py-2 text-sm font-semibold sm:inline-flex"
+            style={{ color: MUTED }}
+          >
+            Meu pedido
+          </Link>
+          <ThemeToggle className="prevenda-theme-toggle size-10 shrink-0" />
+          <a
+            href="#reservar"
+            onClick={() => track('click_cta_prevenda', { placement: 'nav', page: '/prevenda' })}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] sm:px-5"
+            style={{ background: GREEN, color: CTA_TEXT }}
+          >
+            <ShoppingCart aria-hidden="true" size={16} />
+            Comprar<span className="hidden sm:inline"> módulo</span>
+          </a>
+        </div>
       </div>
     </nav>
   );
 }
 
-function BarraFixa({ reservaPausada = false }) {
+function BarraFixa() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > 760);
@@ -344,7 +357,7 @@ function BarraFixa({ reservaPausada = false }) {
       className="fixed inset-x-0 bottom-0 z-50 px-4 py-3"
       style={{
         bottom: 'var(--growx-cookie-offset, 0px)',
-        background: 'rgba(8,11,9,0.94)',
+        background: 'var(--prevenda-nav)',
         backdropFilter: 'blur(14px)',
         borderTop: `1px solid ${LINE}`,
         paddingBottom: 'max(.75rem, env(safe-area-inset-bottom))',
@@ -365,9 +378,9 @@ function BarraFixa({ reservaPausada = false }) {
           href="#reservar"
           onClick={() => track('click_cta_prevenda', { placement: 'sticky', page: '/prevenda' })}
           className="shrink-0 rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
-          style={{ background: GREEN, color: '#05130a' }}
+          style={{ background: GREEN, color: CTA_TEXT }}
         >
-          {reservaPausada ? 'Ver status' : 'Comprar'}
+          Comprar módulo
         </a>
       </div>
     </div>
@@ -439,6 +452,15 @@ function ListaEspera() {
       <div className="rounded-2xl border p-6" style={{ borderColor: 'rgba(74,222,128,0.30)', background: 'rgba(74,222,128,0.07)' }}>
         <p className="text-lg font-bold text-white">Interesse cadastrado.</p>
         <p className="mt-1 text-sm" style={{ color: MUTED }}>Te chamamos antes do preço subir.</p>
+        <a
+          href="#reservar"
+          onClick={() => track('click_cta_prevenda', { placement: 'interest-success', page: '/prevenda' })}
+          className="mt-4 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold"
+          style={{ background: GREEN, color: CTA_TEXT }}
+        >
+          <ShoppingCart aria-hidden="true" size={16} />
+          Voltar à compra
+        </a>
       </div>
     );
   }
@@ -493,12 +515,14 @@ function ListaEspera() {
       <button
         type="submit" disabled={estado === 'enviando'}
         className="mt-7 rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] disabled:opacity-60"
-        style={{ background: GREEN, color: '#05130a' }}
+        style={{ background: GREEN, color: CTA_TEXT }}
       >
         {estado === 'enviando' ? 'Enviando…' : 'Enviar interesse'}
       </button>
-      <p id="lista-erro" role={aviso ? 'alert' : undefined} aria-live="assertive" className="min-h-5 text-sm sm:col-span-2" style={{ color: '#f5b544' }}>
-        {aviso}
+      <p id="lista-erro" role={aviso ? 'alert' : undefined} aria-live="assertive" className="min-h-5 text-sm sm:col-span-2" style={{ color: 'var(--prevenda-warning)' }}>
+        {aviso}{aviso && (
+          <>{' '}<a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>Falar no WhatsApp</a></>
+        )}
       </p>
       <p className="text-xs leading-relaxed sm:col-span-2" style={{ color: MUTED }}>
         Ao enviar, você autoriza a Grow-X a entrar em contato sobre o Módulo Grow-X. Veja a{' '}
@@ -651,7 +675,7 @@ export default function PreVendaPage() {
   const loteEmAtencao = encerrada || (!loteCarregando && (lote?.esgotado || lote?.confiavel === false));
 
   return (
-    <div style={{ background: BG }} className="min-h-screen text-white">
+    <div style={{ background: BG }} className="prevenda-shell min-h-screen text-white">
       <SEO
         title={seoTitle}
         description={seoDescription}
@@ -661,16 +685,16 @@ export default function PreVendaPage() {
         jsonLd={productLd}
       />
 
-      <Nav reservaPausada={reservaPausada} />
+      <Nav />
 
       {/* ---------- HERO ---------- */}
       <header id="topo" className="relative isolate overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <img src={fotoHero} alt="" aria-hidden className="h-full w-full object-cover object-[70%_center]" fetchPriority="high" />
-          <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${BG} 0%, ${BG}f2 34%, ${BG}b3 56%, transparent 88%)` }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, var(--prevenda-bg) 0%, var(--prevenda-hero-95) 34%, var(--prevenda-hero-70) 56%, transparent 88%)' }} />
           {/* no mobile o texto passa por cima da foto — reforça o contraste */}
-          <div className="absolute inset-0 lg:hidden" style={{ background: `linear-gradient(180deg, ${BG}e6 0%, ${BG}cc 55%, ${BG} 100%)` }} />
-          <div className="absolute inset-x-0 bottom-0 h-48" style={{ background: `linear-gradient(180deg, transparent, ${BG})` }} />
+          <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(180deg, var(--prevenda-hero-95) 0%, var(--prevenda-hero-82) 55%, var(--prevenda-bg) 100%)' }} />
+          <div className="absolute inset-x-0 bottom-0 h-48" style={{ background: 'linear-gradient(180deg, transparent, var(--prevenda-bg))' }} />
         </div>
 
         <div className="mx-auto w-full max-w-6xl px-5 pb-20 pt-32 sm:px-8 sm:pb-28 sm:pt-44">
@@ -704,18 +728,19 @@ export default function PreVendaPage() {
             <a
               href="#reservar"
               onClick={() => track('click_cta_prevenda', { placement: 'hero', page: '/prevenda' })}
-              className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
-              style={{ background: GREEN, color: '#05130a' }}
+              className="inline-flex items-center gap-2 rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
+              style={{ background: GREEN, color: CTA_TEXT }}
             >
-              {reservaPausada ? 'Ver status da reserva' : 'Comprar'}
+              <ShoppingCart aria-hidden="true" size={18} />
+              Comprar módulo
             </a>
             <a
-              href="#lista"
-              onClick={() => track('click_cta_prevenda', { placement: 'hero-interesse', page: '/prevenda' })}
+              href="#como"
+              onClick={() => track('click_cta_prevenda', { placement: 'hero-como-funciona', page: '/prevenda' })}
               className="rounded-xl border px-7 py-4 text-[0.95rem] font-semibold text-white transition hover:bg-white/5"
               style={{ borderColor: LINE }}
             >
-              Tenho interesse
+              Ver como funciona
             </a>
             <button
               type="button"
@@ -735,6 +760,15 @@ export default function PreVendaPage() {
             </button>
           </div>
 
+          <a
+            href="#lista"
+            onClick={() => track('click_cta_prevenda', { placement: 'hero-interesse', page: '/prevenda' })}
+            className="mt-4 inline-flex text-sm font-semibold underline underline-offset-4"
+            style={{ color: MUTED }}
+          >
+            Ainda não quer comprar? Receba o aviso do lançamento
+          </a>
+
           <div className="mt-9 flex flex-wrap gap-x-7 gap-y-2 text-sm" style={{ color: MUTED }}>
             {['Reembolso integral até o envio', 'Garantia de 12 meses conforme o contrato', `Entrega a partir de ${OFERTA.entregaBR}`].map((t) => (
               <span key={t} className="inline-flex items-center gap-2">
@@ -751,6 +785,37 @@ export default function PreVendaPage() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <span className={eyebrow} style={{ color: GREEN }}>Lançamento oficial → ExpoCannabis Brasil 2026</span>
           <span className="text-sm" style={{ color: MUTED }}>Pré-venda até {OFERTA.encerramentoBR}; preço público previsto de {PRECO_PUBLICO} após o lançamento.</span>
+        </div>
+      </section>
+
+      {/* ---------- ATALHO DE COMPRA ---------- */}
+      <section aria-label="Resumo da oferta" style={{ borderBottom: `1px solid ${LINE}` }}>
+        <div className="mx-auto grid w-full max-w-6xl gap-5 px-5 py-7 sm:px-8 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <p className={eyebrow} style={{ color: GREEN }}>Lote de lançamento · {OFERTA.loteTotal} unidades</p>
+            <p className="mt-2 text-xl font-extrabold text-white">
+              {PRECO_PRINCIPAL} <span className="text-sm font-semibold" style={{ color: MUTED }}>{ROTULO_PRECO}</span>
+            </p>
+            <p className="mt-1 text-sm" style={{ color: MUTED }}>Reembolso integral até o envio · garantia de 12 meses conforme o contrato.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href="#reservar"
+              onClick={() => track('click_cta_prevenda', { placement: 'offer-rail', page: '/prevenda' })}
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110"
+              style={{ background: GREEN, color: CTA_TEXT }}
+            >
+              <ShoppingCart aria-hidden="true" size={17} />
+              Comprar módulo
+            </a>
+            <Link
+              to="/prevenda/pedido"
+              className="rounded-xl border px-5 py-3.5 text-sm font-semibold"
+              style={{ borderColor: LINE, color: MUTED }}
+            >
+              Já comprei
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -849,7 +914,14 @@ export default function PreVendaPage() {
 
       <ControllerShowcase
         eyebrowClass={eyebrow}
-        colors={{ green: GREEN, muted: MUTED, line: LINE, surface: SURFACE }}
+        colors={{
+          green: GREEN,
+          muted: MUTED,
+          line: LINE,
+          surface: SURFACE,
+          panel: 'var(--prevenda-panel)',
+          card: 'var(--prevenda-surface-strong)',
+        }}
         onOpen={(item) => {
           track('image_open', { image: item.id || item.title, page: '/prevenda' });
           setLightbox(item);
@@ -881,7 +953,7 @@ export default function PreVendaPage() {
             <dl className="grid gap-3 sm:grid-cols-2">
               {ESPECIFICACOES.map(([term, value], index) => (
                 <div key={term} className="rounded-2xl border p-5" style={{ borderColor: index === ESPECIFICACOES.length - 1 ? 'rgba(245,181,68,.34)' : LINE, background: BG }}>
-                  <dt className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: index === ESPECIFICACOES.length - 1 ? '#f5b544' : GREEN }}>{term}</dt>
+                  <dt className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: index === ESPECIFICACOES.length - 1 ? 'var(--prevenda-warning)' : GREEN }}>{term}</dt>
                   <dd className="mt-2 text-sm leading-relaxed text-white/85">{value}</dd>
                 </div>
               ))}
@@ -961,6 +1033,11 @@ export default function PreVendaPage() {
               <p className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.16em]" style={{ color: GREEN }}>Pré-venda · até {OFERTA.encerramentoBR}</p>
               {dias > 0 && <Pill tone="green">Faltam {dias} dias para fechar</Pill>}
             </div>
+            {reservaPausada && (
+              <div className="mt-3">
+                <Pill tone="amber">Compra ainda não aberta</Pill>
+              </div>
+            )}
 
             <div className="mt-6 flex flex-wrap items-baseline gap-3">
               <span className="text-5xl font-extrabold text-white sm:text-6xl">
@@ -992,7 +1069,7 @@ export default function PreVendaPage() {
                        : 'Reservas temporariamente pausadas por segurança.'
                    )}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed" style={{ color: '#f6e3bd' }}>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--prevenda-warning-text)' }}>
                   {loteCarregando
                     ? 'A compra é liberada somente depois que o servidor confirma uma vaga real.'
                     : lote?.confiavel === false && !encerrada
@@ -1003,8 +1080,13 @@ export default function PreVendaPage() {
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   {!loteCarregando && (
-                    <a href="#lista" className="rounded-xl px-5 py-3 text-sm font-bold" style={{ background: GREEN, color: '#05130a' }}>
-                      Tenho interesse
+                    <a
+                      href="#lista"
+                      onClick={() => track('click_cta_prevenda', { placement: 'purchase-gated-interest', page: '/prevenda' })}
+                      className="rounded-xl px-5 py-3 text-sm font-bold"
+                      style={{ background: GREEN, color: CTA_TEXT }}
+                    >
+                      Quero ser avisado quando abrir
                     </a>
                   )}
                   <a
@@ -1101,9 +1183,8 @@ export default function PreVendaPage() {
                   </span>
                 </label>
 
-                <label
-                  htmlFor="aceite-contrato"
-                  className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition"
+                <div
+                  className="mt-3 flex items-start gap-3 rounded-xl border p-4 transition"
                   style={{ borderColor: erroCampo.aceite ? 'rgba(245,181,68,0.6)' : LINE, background: erroCampo.aceite ? 'rgba(245,181,68,0.07)' : 'transparent' }}
                 >
                   <input
@@ -1117,7 +1198,7 @@ export default function PreVendaPage() {
                     className="mt-0.5 size-4 shrink-0 accent-[#4ade80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
                   />
                   <span className="text-xs leading-relaxed text-white/85">
-                    Li e aceito o{' '}
+                    <label htmlFor="aceite-contrato" className="cursor-pointer">Li e aceito o</label>{' '}
                     <Link
                       to="/prevenda/contrato" target="_blank"
                       onClick={() => track('contract_open', { page: '/prevenda', version: OFERTA.contratoVersao })}
@@ -1127,9 +1208,9 @@ export default function PreVendaPage() {
                     </Link>{' '}
                     — entrega a partir de {OFERTA.entregaBR}, reembolso integral até o envio e garantia de 12 meses conforme o contrato.
                   </span>
-                </label>
+                </div>
 
-                <p id="reserva-erro" role="alert" aria-live="assertive" className="mt-3 min-h-4 text-xs font-semibold" style={{ color: '#f5b544' }}>
+                <p id="reserva-erro" role="alert" aria-live="assertive" className="mt-3 min-h-4 text-xs font-semibold" style={{ color: 'var(--prevenda-warning)' }}>
                   {avisoForm || ''}
                 </p>
                 <div
@@ -1252,18 +1333,19 @@ export default function PreVendaPage() {
             <a
               href="#reservar"
               onClick={() => track('click_cta_prevenda', { placement: 'final', page: '/prevenda' })}
-              className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
-              style={{ background: GREEN, color: '#05130a' }}
+              className="inline-flex items-center gap-2 rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
+              style={{ background: GREEN, color: CTA_TEXT }}
             >
-              {reservaPausada ? 'Ver status da reserva' : 'Comprar'}
+              <ShoppingCart aria-hidden="true" size={18} />
+              Comprar módulo
             </a>
             <a
               href="#lista"
               onClick={() => track('click_cta_prevenda', { placement: 'final-interesse', page: '/prevenda' })}
-              className="rounded-xl border px-7 py-4 text-[0.95rem] font-semibold text-white transition hover:bg-white/5"
-              style={{ borderColor: LINE }}
+              className="px-3 py-4 text-sm font-semibold underline underline-offset-4"
+              style={{ color: MUTED }}
             >
-              Tenho interesse
+              Só quero receber o aviso
             </a>
           </div>
         </div>
@@ -1282,7 +1364,7 @@ export default function PreVendaPage() {
           </div>
         </div>
         <div className="mx-auto w-full max-w-6xl px-5 pb-12 sm:px-8">
-          <p className="text-xs leading-relaxed" style={{ color: 'rgba(159,179,166,0.65)' }}>
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--prevenda-muted-soft)' }}>
             A Grow-X Co. desenvolve e vende tecnologia de automação e monitoramento para cultivo indoor de plantas
             de alto valor. Não comercializamos cannabis, sementes, derivados nem fazemos promessa terapêutica.
             O uso do equipamento é de responsabilidade do cliente, conforme a legislação aplicável ao seu projeto.
@@ -1292,7 +1374,7 @@ export default function PreVendaPage() {
         </div>
       </footer>
 
-      <BarraFixa reservaPausada={reservaPausada} />
+      <BarraFixa />
       <ImageLightbox item={lightbox} onClose={closeLightbox} />
     </div>
   );
