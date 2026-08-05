@@ -196,7 +196,7 @@ test('lease por reserva bloqueia concorrência e é liberada após o ciclo', asy
   const client = new OutboxMemoryDynamo();
   const args = {
     provider: 'stripe',
-    reservationKey: '123e4567-e89b-42d3-a456-426614174000',
+    reservationKey: 'reservation-test-lease-001',
     tableName: 'growx-prevenda-test',
     client,
     now: new Date('2026-08-05T12:00:00.000Z'),
