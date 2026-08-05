@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Check, Plus } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
 import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
-import { OFERTA, brlCurto, economiaCentavos, parcelaCurta } from '@/lib/oferta';
+import { OFERTA, brlCurto, parcelaCurta } from '@/lib/oferta';
 import ControllerShowcase from '@/components/prevenda/ControllerShowcase';
 import ImageLightbox from '@/components/prevenda/ImageLightbox';
+import TurnstileWidget from '@/components/prevenda/TurnstileWidget';
 
 import logoGrowX from '../assets/logo-growx-oficial.png';
 import fotoHero from '../assets/modulo-hero.webp';
@@ -17,9 +19,18 @@ const WHATSAPP = 'https://wa.me/5541995494343?text=Quero%20garantir%20meu%20M%C3
 const ENCERRAMENTO = new Date(OFERTA.checkoutFechamentoISO);
 const PRECO_PIX = brlCurto(OFERTA.pixCentavos);
 const PRECO_CARTAO = brlCurto(OFERTA.cartaoCentavos);
+const PIX_ENABLED = import.meta.env.VITE_PREVENDA_PIX_ENABLED === 'true';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 const PRECO_PUBLICO = brlCurto(OFERTA.publicoCentavos);
 const PARCELA = parcelaCurta();
-const ECONOMIA = brlCurto(economiaCentavos);
+const PRECO_PRINCIPAL = PIX_ENABLED ? PRECO_PIX : PRECO_CARTAO;
+const ROTULO_PRECO = PIX_ENABLED ? 'no Pix' : `no cartão · ${PARCELA}`;
+const RESUMO_PAGAMENTO = PIX_ENABLED
+  ? `${PRECO_PIX} no Pix ou ${PARCELA} no cartão (${PRECO_CARTAO})`
+  : `${PRECO_CARTAO} no cartão ou até ${PARCELA}`;
+const ECONOMIA = brlCurto(
+  OFERTA.publicoCentavos - (PIX_ENABLED ? OFERTA.pixCentavos : OFERTA.cartaoCentavos),
+);
 
 /* Paleta da landing — dark premium, mais fechada que o resto do site */
 const BG = '#080b09';
@@ -47,9 +58,9 @@ const RECURSOS = [
 ];
 
 const PASSOS = [
-  ['PASSO 1', 'Você reserva hoje', `${PRECO_PIX} no Pix ou ${PARCELA} no cartão (${PRECO_CARTAO}). Pagamento processado por Stripe e Mercado Pago.`],
-  ['PASSO 2', 'Recebe tudo por escrito', 'Aceite do contrato registrado junto ao pedido, comprovante no seu e-mail e área do cliente vinculada ao seu CPF, com status de produção e envio.'],
-  ['PASSO 3', 'Acompanha o lote', `Produção, montagem, QA e expedição aparecem na área do cliente. Entregas a partir de ${OFERTA.entregaBR}, por envio ou retirada no evento.`],
+  ['PASSO 1', 'Você escolhe e compra', `${RESUMO_PAGAMENTO}. ${PIX_ENABLED ? 'Cartão processado pela Stripe e Pix processado pelo Mercado Pago.' : 'Pagamento processado pela Stripe. O Pix só será oferecido depois da homologação do fluxo exclusivo.'}`],
+  ['PASSO 2', 'Recebe a confirmação e o código da reserva', 'O aceite do contrato fica registrado junto ao pedido. Depois da confirmação do pagamento, você recebe o comprovante e a referência da reserva por e-mail.'],
+  ['PASSO 3', 'Consulta a área de status', `Produção, montagem, QA e expedição aparecem na área do cliente. Para entrar, informe e-mail e CPF/CNPJ e confirme o código de uso único enviado por e-mail. Entregas a partir de ${OFERTA.entregaBR}.`],
 ];
 
 const MARCOS = [
@@ -72,15 +83,17 @@ const ESPECIFICACOES = [
 const INCLUSO = [
   'Módulo Grow-X com 6 tomadas e entradas para sensores',
   '3 meses de GXP Premium inclusos',
-  'Contrato de pré-venda + área do cliente com CPF',
+  'Contrato de pré-venda + área do cliente com código por e-mail e CPF/CNPJ',
   'Reembolso integral até o envio · garantia de 12 meses conforme o contrato',
 ];
 
 const FAQ = [
   ['Quando eu recebo o módulo?', `As entregas começam em ${OFERTA.entregaBR}, data do lançamento oficial na ${OFERTA.evento}. Você acompanha a etapa confirmada do lote na área do cliente.`],
   ['E se eu me arrepender?', 'Você pode cancelar a qualquer momento até o envio. O reembolso integral é processado pelo mesmo meio em até 10 dias úteis da solicitação, além do prazo da instituição financeira. Depois da entrega, vale a garantia total de 12 meses.'],
-  ['Como sei que meu pedido tá garantido?', 'O aceite do contrato de pré-venda fica registrado junto ao pedido, com data e versão, e o comprovante de pagamento chega no seu e-mail. A qualquer momento você consulta o pedido em growx.com.br/prevenda/pedido com o e-mail e o CPF da compra. Nada fica no fiado.'],
-  ['Quais as formas de pagamento?', `Pix (${PRECO_PIX}) ou cartão em até ${PARCELA} (${PRECO_CARTAO}), processados por Stripe e Mercado Pago.`],
+  ['Como sei que meu pedido tá garantido?', 'Depois da aprovação do pagamento, a confirmação, o comprovante e a referência da reserva chegam no seu e-mail. Para consultar o andamento em growx.com.br/prevenda/pedido, informe o e-mail e o CPF/CNPJ da compra e confirme o código de uso único enviado por e-mail.'],
+  ['Quais as formas de pagamento?', PIX_ENABLED
+    ? `Pix (${PRECO_PIX}) ou cartão em até ${PARCELA} (${PRECO_CARTAO}), processados por Stripe e Mercado Pago.`
+    : `Cartão por ${PRECO_CARTAO}, em até ${PARCELA}, processado pela Stripe. O Pix só ficará disponível depois da homologação do fluxo exclusivo.`],
   ['Como funciona o frete?', 'O contrato permite envio ao endereço cadastrado ou retirada presencial na ExpoCannabis. Como custo e cobertura de frete não estão definidos nesta página, confirme as condições do seu CEP com o time antes de comprar.'],
   ['Preciso entender de eletrônica e automação?', 'A configuração prevista é guiada e termina com as saídas desligadas. A instalação elétrica, a tensão e a carga de cada equipamento precisam respeitar o manual final.'],
   ['O que está pronto e o que é protótipo?', 'As capturas identificadas como GXP hoje são do sistema real. As telas do controlador vêm do protótipo UX/UI baseado no firmware v0.6.0; irrigação por agenda, push e atualização OTA aparecem no PDF como recursos futuros.'],
@@ -98,7 +111,7 @@ const PRODUCT_LD = {
   manufacturer: { '@type': 'Organization', name: 'Grow-X Co.' },
   image: 'https://www.growx.com.br/og-prevenda-v2.jpg',
   offers: [
-    { '@type': 'Offer', name: 'Pré-venda · Pix', price: (OFERTA.pixCentavos / 100).toFixed(2), priceCurrency: 'BRL', availability: 'https://schema.org/PreOrder', priceValidUntil: OFERTA.encerramentoISO, url: 'https://www.growx.com.br/prevenda', seller: { '@type': 'Organization', name: 'Grow-X Co.' } },
+    ...(PIX_ENABLED ? [{ '@type': 'Offer', name: 'Pré-venda · Pix', price: (OFERTA.pixCentavos / 100).toFixed(2), priceCurrency: 'BRL', availability: 'https://schema.org/PreOrder', priceValidUntil: OFERTA.encerramentoISO, url: 'https://www.growx.com.br/prevenda', seller: { '@type': 'Organization', name: 'Grow-X Co.' } }] : []),
     { '@type': 'Offer', name: 'Pré-venda · cartão em até 12x', price: (OFERTA.cartaoCentavos / 100).toFixed(2), priceCurrency: 'BRL', availability: 'https://schema.org/PreOrder', priceValidUntil: OFERTA.encerramentoISO, url: 'https://www.growx.com.br/prevenda', seller: { '@type': 'Organization', name: 'Grow-X Co.' } },
   ],
   additionalProperty: [
@@ -168,6 +181,10 @@ function useCheckout() {
         comprador_ja_reservado: 'Já existe uma reserva ativa ou paga para este CPF/CNPJ. Consulte a área do cliente ou fale com o atendimento.',
         muitas_reservas: 'O limite de reservas deste acesso foi atingido. Aguarde a janela atual terminar ou fale com o atendimento.',
         vendas_pausadas: 'A cobrança está pausada até a publicação da ficha elétrica, composição do kit e condições de frete.',
+        pix_em_homologacao: 'O Pix permanece indisponível até o fluxo exclusivo ser homologado. Use cartão quando a pré-venda abrir.',
+        verificacao_seguranca_invalida: 'A verificação de segurança expirou ou já foi usada. Conclua novamente e tente outra vez.',
+        verificacao_seguranca_indisponivel: 'A verificação de segurança está indisponível. Nenhuma reserva será aberta agora.',
+        reconciliacao_financeira_pendente: 'Reservas pausadas enquanto confirmamos o estado financeiro do lote anterior. Nenhuma cobrança será aberta agora.',
         provider_indisponivel: 'O provedor de pagamento não respondeu com segurança. Nenhuma nova vaga será aberta até a reconciliação.',
       };
       if (data?.error === 'reserva_expirada') delete requestIds.current[metodo];
@@ -211,30 +228,70 @@ function Erro({ erro }) {
   );
 }
 
-function BotoesPagamento({ loading, full = false, disabled = false }) {
+function EscolhaPagamento({ metodo, onChange, loading, disabled = false }) {
+  const opcoes = [
+    ...(PIX_ENABLED ? [{
+      id: 'pix',
+      titulo: 'Pix',
+      preco: PRECO_PIX,
+      detalhe: 'à vista · Mercado Pago',
+    }] : []),
+    {
+      id: 'cartao',
+      titulo: 'Cartão',
+      preco: PRECO_CARTAO,
+      detalhe: `até ${PARCELA} · Stripe`,
+    },
+  ];
+
   return (
-    <div className={`flex flex-wrap gap-3 ${full ? 'sm:flex-nowrap' : ''}`}>
+    <fieldset className="mt-5">
+      <legend className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
+        Escolha a forma de pagamento
+      </legend>
+      <div className={`mt-3 grid gap-3 ${PIX_ENABLED ? 'sm:grid-cols-2' : ''}`}>
+        {opcoes.map((opcao) => {
+          const selecionada = metodo === opcao.id;
+          return (
+            <label
+              key={opcao.id}
+              className="flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition hover:bg-white/[0.04]"
+              style={{
+                borderColor: selecionada ? 'rgba(74,222,128,0.65)' : LINE,
+                background: selecionada ? 'rgba(74,222,128,0.08)' : 'transparent',
+              }}
+            >
+              <input
+                type="radio"
+                name="forma-pagamento"
+                value={opcao.id}
+                checked={selecionada}
+                onChange={() => onChange(opcao.id)}
+                disabled={!!loading}
+                className="mt-1 size-4 shrink-0 accent-[#4ade80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-white">{opcao.titulo}</span>
+                <span className="mt-1 block text-xl font-extrabold text-white">{opcao.preco}</span>
+                <span className="mt-1 block text-xs" style={{ color: MUTED }}>{opcao.detalhe}</span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
       <button
         type="submit"
-        name="metodo"
-        value="pix"
         disabled={!!loading || disabled}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-[0.95rem] font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080b09] disabled:cursor-not-allowed disabled:opacity-60 ${full ? 'w-full sm:flex-1' : ''}`}
+        className="mt-4 inline-flex w-full items-center justify-center rounded-xl px-6 py-4 text-[0.95rem] font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080b09] disabled:cursor-not-allowed disabled:opacity-60"
         style={{ background: GREEN, color: '#05130a' }}
       >
-        {loading === 'pix' ? 'Abrindo…' : `Pagar no Pix — ${PRECO_PIX}`}
+        {loading
+          ? 'Abrindo checkout…'
+          : metodo === 'pix'
+            ? `Comprar no Pix — ${PRECO_PIX}`
+            : `Comprar no cartão — ${PRECO_CARTAO}`}
       </button>
-      <button
-        type="submit"
-        name="metodo"
-        value="cartao"
-        disabled={!!loading || disabled}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-4 text-[0.95rem] font-semibold text-white transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080b09] disabled:cursor-not-allowed disabled:opacity-60 ${full ? 'w-full sm:flex-1' : ''}`}
-        style={{ borderColor: LINE }}
-      >
-        {loading === 'cartao' ? 'Abrindo…' : `Cartão — ${PARCELA}`}
-      </button>
-    </div>
+    </fieldset>
   );
 }
 
@@ -266,7 +323,7 @@ function Nav({ reservaPausada = false }) {
           className="rounded-full px-5 py-2.5 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
           style={{ background: GREEN, color: '#05130a' }}
         >
-          {reservaPausada ? 'Ver status do lote' : `Reservar — ${PRECO_PIX}`}
+          {reservaPausada ? 'Ver status do lote' : 'Comprar'}
         </a>
       </div>
     </nav>
@@ -297,7 +354,11 @@ function BarraFixa({ reservaPausada = false }) {
         <div className="min-w-0">
           <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em] whitespace-nowrap" style={{ color: MUTED }}>Entrega {OFERTA.entregaBR.slice(0, 5)}</p>
           <p className="text-sm font-bold text-white">
-            <span style={{ color: GREEN }}>{PRECO_PIX}</span> no Pix <span className="hidden sm:inline" style={{ color: MUTED }}>· ou {PARCELA}</span>
+            <span style={{ color: GREEN }}>{PRECO_PRINCIPAL}</span>{' '}
+            <span style={{ color: MUTED }}>{PIX_ENABLED ? 'no Pix' : 'no cartão'}</span>
+            <span className="hidden sm:inline" style={{ color: MUTED }}>
+              {PIX_ENABLED ? ` · ou ${PARCELA}` : ` · ${PARCELA}`}
+            </span>
           </p>
         </div>
         <a
@@ -306,7 +367,7 @@ function BarraFixa({ reservaPausada = false }) {
           className="shrink-0 rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
           style={{ background: GREEN, color: '#05130a' }}
         >
-          {reservaPausada ? 'Ver status' : 'Garantir a minha'}
+          {reservaPausada ? 'Ver status' : 'Comprar'}
         </a>
       </div>
     </div>
@@ -315,23 +376,49 @@ function BarraFixa({ reservaPausada = false }) {
 
 function ListaEspera() {
   const [nome, setNome] = useState('');
-  const [contato, setContato] = useState('');
+  const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [erros, setErros] = useState({});
+  const [aviso, setAviso] = useState('');
   const [estado, setEstado] = useState('idle'); // idle | enviando | ok | erro
+  const refs = useRef({});
 
   const enviar = async (e) => {
     e.preventDefault();
-    if (!nome.trim() || !contato.trim() || estado === 'enviando') return;
+    if (estado === 'enviando') return;
+
+    const digitos = whatsapp.replace(/\D/g, '');
+    const telefoneNacional = digitos.startsWith('55') && digitos.length > 11 ? digitos.slice(2) : digitos;
+    const falhas = {
+      nome: !nomeCompleto(nome),
+      email: !emailValido(email),
+      whatsapp: !/^\d{10,11}$/.test(telefoneNacional),
+    };
+    const primeiraFalha = Object.entries(falhas).find(([, invalido]) => invalido)?.[0];
+
+    setErros(falhas);
+    if (primeiraFalha) {
+      setAviso({
+        nome: 'Informe seu nome completo (nome e sobrenome).',
+        email: 'Informe um e-mail válido.',
+        whatsapp: 'Informe um WhatsApp válido, com DDD.',
+      }[primeiraFalha]);
+      setEstado('idle');
+      requestAnimationFrame(() => refs.current[primeiraFalha]?.focus());
+      return;
+    }
+
+    setAviso('');
     setEstado('enviando');
-    const ehEmail = contato.includes('@');
     try {
       const r = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: nome.trim(),
-          email: ehEmail ? contato.trim() : 'sem-email@growx.com.br',
-          phone: ehEmail ? '' : contato.trim(),
-          message: `Lista de espera da pré-venda do Módulo. Contato informado: ${contato.trim()}`,
+          email: email.trim().toLowerCase(),
+          phone: `+55${telefoneNacional}`,
+          message: 'Interesse na lista da pré-venda do Módulo Grow-X.',
           _form: 'prevenda-lista',
           _segment: 'cultivo',
           _source: 'prevenda',
@@ -343,42 +430,82 @@ function ListaEspera() {
       setEstado('ok');
     } catch {
       setEstado('erro');
+      setAviso('Não conseguimos registrar agora. Tente de novo ou fale com o time no WhatsApp.');
     }
   };
 
   if (estado === 'ok') {
     return (
       <div className="rounded-2xl border p-6" style={{ borderColor: 'rgba(74,222,128,0.30)', background: 'rgba(74,222,128,0.07)' }}>
-        <p className="text-lg font-bold text-white">Fechou! 🤙 Você tá na lista.</p>
+        <p className="text-lg font-bold text-white">Interesse cadastrado.</p>
         <p className="mt-1 text-sm" style={{ color: MUTED }}>Te chamamos antes do preço subir.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={enviar} className="flex flex-col gap-3 sm:flex-row">
-      <input
-        type="text" value={nome} onChange={(e) => setNome(e.target.value)}
-        placeholder="Seu nome" required aria-label="Seu nome"
-        className="min-w-0 flex-1 rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
-        style={{ borderColor: LINE }}
-      />
-      <input
-        type="text" value={contato} onChange={(e) => setContato(e.target.value)}
-        placeholder="WhatsApp ou e-mail" required aria-label="WhatsApp ou e-mail"
-        className="min-w-0 flex-1 rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
-        style={{ borderColor: LINE }}
-      />
+    <form onSubmit={enviar} noValidate className="grid gap-3 sm:grid-cols-2">
+      <label className="text-sm font-semibold text-white" htmlFor="lista-nome">
+        Nome completo
+        <input
+          ref={(node) => { refs.current.nome = node; }}
+          id="lista-nome" type="text" value={nome}
+          onChange={(e) => {
+            setNome(e.target.value);
+            setErros((current) => ({ ...current, nome: false }));
+          }}
+          placeholder="Nome e sobrenome" autoComplete="name" required
+          aria-invalid={erros.nome || undefined} aria-describedby="lista-erro"
+          className={INPUT_CLASS}
+          style={{ borderColor: erros.nome ? 'rgba(245,181,68,0.6)' : LINE }}
+        />
+      </label>
+      <label className="text-sm font-semibold text-white" htmlFor="lista-email">
+        E-mail
+        <input
+          ref={(node) => { refs.current.email = node; }}
+          id="lista-email" type="email" value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setErros((current) => ({ ...current, email: false }));
+          }}
+          placeholder="voce@exemplo.com" autoComplete="email" required
+          aria-invalid={erros.email || undefined} aria-describedby="lista-erro"
+          className={INPUT_CLASS}
+          style={{ borderColor: erros.email ? 'rgba(245,181,68,0.6)' : LINE }}
+        />
+      </label>
+      <label className="text-sm font-semibold text-white" htmlFor="lista-whatsapp">
+        WhatsApp com DDD
+        <input
+          ref={(node) => { refs.current.whatsapp = node; }}
+          id="lista-whatsapp" type="tel" inputMode="tel" value={whatsapp}
+          onChange={(e) => {
+            setWhatsapp(e.target.value);
+            setErros((current) => ({ ...current, whatsapp: false }));
+          }}
+          placeholder="(41) 99999-9999" autoComplete="tel" required
+          aria-invalid={erros.whatsapp || undefined} aria-describedby="lista-erro"
+          className={INPUT_CLASS}
+          style={{ borderColor: erros.whatsapp ? 'rgba(245,181,68,0.6)' : LINE }}
+        />
+      </label>
       <button
         type="submit" disabled={estado === 'enviando'}
-        className="shrink-0 rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
+        className="mt-7 rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] disabled:opacity-60"
         style={{ background: GREEN, color: '#05130a' }}
       >
-        {estado === 'enviando' ? 'Enviando…' : 'Quero ser avisado'}
+        {estado === 'enviando' ? 'Enviando…' : 'Enviar interesse'}
       </button>
-      {estado === 'erro' && (
-        <p className="text-sm sm:absolute sm:mt-16" style={{ color: '#f5b544' }}>Não rolou agora. Tenta de novo ou chama no WhatsApp.</p>
-      )}
+      <p id="lista-erro" role={aviso ? 'alert' : undefined} aria-live="assertive" className="min-h-5 text-sm sm:col-span-2" style={{ color: '#f5b544' }}>
+        {aviso}
+      </p>
+      <p className="text-xs leading-relaxed sm:col-span-2" style={{ color: MUTED }}>
+        Ao enviar, você autoriza a Grow-X a entrar em contato sobre o Módulo Grow-X. Veja a{' '}
+        <Link to="/privacidade" className="underline underline-offset-2" style={{ color: GREEN }}>
+          Política de Privacidade
+        </Link>.
+      </p>
     </form>
   );
 }
@@ -391,17 +518,28 @@ export default function PreVendaPage() {
   const eyebrow = useMemo(() => 'font-mono text-[0.7rem] uppercase tracking-[0.18em]', []);
   const fieldRefs = useRef({});
   const formStarted = useRef(false);
-  const cepRequest = useRef(0);
   const [form, setForm] = useState({
     nome: '', email: '', cpf: '', aceite: false, ciencia: false,
-    telefone: '', cep: '', endereco: '', cidadeUf: '',
   });
   const [erroCampo, setErroCampo] = useState({});
   const [avisoForm, setAvisoForm] = useState(null);
-  const [precisaEntrega, setPrecisaEntrega] = useState(false);
-  const [cepStatus, setCepStatus] = useState('idle');
+  const [metodoPagamento, setMetodoPagamento] = useState(PIX_ENABLED ? 'pix' : 'cartao');
   const [lightbox, setLightbox] = useState(null);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+  const [turnstileUnavailable, setTurnstileUnavailable] = useState(false);
   const closeLightbox = useCallback(() => setLightbox(null), []);
+  const receberTurnstileToken = useCallback((token) => {
+    setTurnstileToken(token);
+    if (token) {
+      setTurnstileUnavailable(false);
+      setErroCampo((current) => ({ ...current, verificacao: false }));
+    }
+  }, []);
+  const marcarTurnstileIndisponivel = useCallback(() => {
+    setTurnstileUnavailable(true);
+    setTurnstileToken('');
+  }, []);
 
   const campo = (k) => (e) => {
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -414,54 +552,15 @@ export default function PreVendaPage() {
     track('form_start', { form: 'prevenda-reserva', page: '/prevenda' });
   };
 
-  /** CEP preenche cidade/UF sozinho — menos campo pro comprador digitar. */
-  const buscarCep = async (valor) => {
-    const c = valor.replace(/\D/g, '');
-    const requestNumber = ++cepRequest.current;
-    setForm((f) => ({ ...f, cep: c.replace(/^(\d{5})(\d)/, '$1-$2') }));
-    setErroCampo((current) => ({ ...current, cep: false }));
-    if (c.length !== 8) {
-      setCepStatus('idle');
-      return;
-    }
-    setCepStatus('loading');
-    try {
-      const r = await fetch(`https://viacep.com.br/ws/${c}/json/`);
-      if (!r.ok) throw new Error(`viacep_${r.status}`);
-      const d = await r.json();
-      if (requestNumber !== cepRequest.current) return;
-      if (d?.erro) {
-        setCepStatus('not-found');
-        return;
-      }
-      setForm((f) => ({
-        ...f,
-        cidadeUf: [d.localidade, d.uf].filter(Boolean).join('/'),
-        endereco: f.endereco || [d.logradouro, d.bairro].filter(Boolean).join(', '),
-      }));
-      setCepStatus('found');
-    } catch {
-      if (requestNumber !== cepRequest.current) return;
-      setCepStatus('unavailable');
-    }
-  };
-
   /** Identificação e aceite são exigidos antes de sair da nossa página. */
   const pagarComDados = (metodo) => {
-    // No Pix o Mercado Pago não coleta endereço; sem ele não há entrega.
-    const ehPix = metodo === 'pix';
-    if (ehPix) setPrecisaEntrega(true);
-
     const falhas = {
       nome: !nomeCompleto(form.nome),
       email: !emailValido(form.email),
       cpf: !documentoValido(form.cpf),
-      telefone: ehPix && form.telefone.replace(/\D/g, '').length < 10,
-      cep: ehPix && form.cep.replace(/\D/g, '').length !== 8,
-      endereco: ehPix && form.endereco.trim().length < 6,
-      cidadeUf: ehPix && !form.cidadeUf.trim(),
       ciencia: !form.ciencia,
       aceite: !form.aceite,
+      verificacao: !turnstileToken,
     };
     setErroCampo(falhas);
 
@@ -471,12 +570,11 @@ export default function PreVendaPage() {
         nome: 'Informe seu nome completo (nome e sobrenome).',
         email: 'Confere o e-mail — é nele que chega a confirmação do pedido.',
         cpf: 'Documento inválido. Confere o CPF — ou informe o CNPJ, se a compra for pela empresa.',
-        telefone: 'Informe um WhatsApp com DDD pra combinarmos a entrega.',
-        cep: 'Informe um CEP válido (8 dígitos).',
-        endereco: 'Informe o endereço com número.',
-        cidadeUf: 'Informe cidade e estado.',
         ciencia: 'Confirme que você leu quais especificações ainda serão formalizadas antes do envio.',
         aceite: 'Marque o aceite do contrato pra seguir pro pagamento.',
+        verificacao: turnstileUnavailable
+          ? 'A verificação de segurança está indisponível. Nenhuma reserva será aberta.'
+          : 'Conclua a verificação de segurança para continuar.',
       }[primeiraFalha]);
       track('checkout_dados_invalidos', { campo: primeiraFalha, method: metodo, page: '/prevenda' });
       requestAnimationFrame(() => requestAnimationFrame(() => fieldRefs.current[primeiraFalha]?.focus()));
@@ -484,10 +582,13 @@ export default function PreVendaPage() {
     }
 
     setAvisoForm(null);
+    const challengeToken = turnstileToken;
+    setTurnstileToken('');
+    setTurnstileResetKey((current) => current + 1);
     pagar(metodo, {
       nome: form.nome, email: form.email, cpf: form.cpf, aceite: true,
       cienciaEspecificacoes: form.ciencia,
-      telefone: form.telefone, cep: form.cep, endereco: form.endereco, cidadeUf: form.cidadeUf,
+      turnstileToken: challengeToken,
     });
   };
 
@@ -525,10 +626,14 @@ export default function PreVendaPage() {
   const aguardandoValidacao = lote?.motivo === 'validacao_produto';
   const seoTitle = aguardandoValidacao
     ? 'Módulo Grow-X — controlador, GXP e abertura da pré-venda'
-    : `Módulo Grow-X — Pré-venda: ${PRECO_PIX} no Pix ou ${PARCELA} · entrega ${OFERTA.entregaBR.slice(0, 5)}`;
+    : PIX_ENABLED
+      ? `Módulo Grow-X — Pré-venda: ${PRECO_PIX} no Pix ou ${PARCELA} · entrega ${OFERTA.entregaBR.slice(0, 5)}`
+      : `Módulo Grow-X — Pré-venda: ${PRECO_CARTAO} ou até ${PARCELA} no cartão · entrega ${OFERTA.entregaBR.slice(0, 5)}`;
   const seoDescription = aguardandoValidacao
     ? 'Conheça o conceito do Módulo Grow-X, o controlador baseado no protótipo v0.6.0 e telas reais do GXP. Pagamento após validação final de Hardware e frete.'
-    : `O cérebro do seu grow: 6 tomadas, fotoperíodo, rega por umidade do solo e controlador documentado. Pré-venda ${PRECO_PIX} no Pix; preço público previsto de ${PRECO_PUBLICO}. Com 3 meses de GXP Premium.`;
+    : PIX_ENABLED
+      ? `O cérebro do seu grow: 6 tomadas, fotoperíodo, rega por umidade do solo e controlador documentado. Pré-venda ${PRECO_PIX} no Pix; preço público previsto de ${PRECO_PUBLICO}. Com 3 meses de GXP Premium.`
+      : `O cérebro do seu grow: 6 tomadas, fotoperíodo, rega por umidade do solo e controlador documentado. Pré-venda no cartão por ${PRECO_CARTAO} ou até ${PARCELA}; preço público previsto de ${PRECO_PUBLICO}.`;
   const ocupadas = (Number(lote?.vendidas) || 0) + (Number(lote?.reservadas) || 0);
   const loteLabel = loteCarregando
     ? 'Verificando capacidade do lote'
@@ -587,9 +692,9 @@ export default function PreVendaPage() {
           </p>
 
           <div className="mt-9 flex flex-wrap items-baseline gap-x-4 gap-y-2">
-            <span className="text-5xl font-extrabold text-white sm:text-6xl">{PRECO_PIX}</span>
-            <span className="font-mono text-lg font-bold uppercase tracking-wide" style={{ color: GREEN }}>no Pix</span>
-            <span className="text-sm" style={{ color: MUTED }}>ou {PARCELA} no cartão</span>
+            <span className="text-5xl font-extrabold text-white sm:text-6xl">{PRECO_PRINCIPAL}</span>
+            <span className="font-mono text-lg font-bold uppercase tracking-wide" style={{ color: GREEN }}>{ROTULO_PRECO}</span>
+            {PIX_ENABLED && <span className="text-sm" style={{ color: MUTED }}>ou {PARCELA} no cartão</span>}
           </div>
           <div className="mt-4">
             <Pill tone="amber">preço público previsto: {PRECO_PUBLICO}</Pill>
@@ -602,15 +707,15 @@ export default function PreVendaPage() {
               className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
               style={{ background: GREEN, color: '#05130a' }}
             >
-              {reservaPausada ? 'Ver status da reserva' : 'Garantir minha unidade'}
+              {reservaPausada ? 'Ver status da reserva' : 'Comprar'}
             </a>
             <a
-              href={WHATSAPP} target="_blank" rel="noreferrer noopener"
-              onClick={() => track('click_whatsapp', { page: '/prevenda', intent: 'hero' })}
+              href="#lista"
+              onClick={() => track('click_cta_prevenda', { placement: 'hero-interesse', page: '/prevenda' })}
               className="rounded-xl border px-7 py-4 text-[0.95rem] font-semibold text-white transition hover:bg-white/5"
               style={{ borderColor: LINE }}
             >
-              Chamar no WhatsApp
+              Tenho interesse
             </a>
             <button
               type="button"
@@ -633,7 +738,8 @@ export default function PreVendaPage() {
           <div className="mt-9 flex flex-wrap gap-x-7 gap-y-2 text-sm" style={{ color: MUTED }}>
             {['Reembolso integral até o envio', 'Garantia de 12 meses conforme o contrato', `Entrega a partir de ${OFERTA.entregaBR}`].map((t) => (
               <span key={t} className="inline-flex items-center gap-2">
-                <span style={{ color: GREEN }}>✓</span>{t}
+                <Check aria-hidden="true" className="shrink-0" size={16} strokeWidth={2.5} style={{ color: GREEN }} />
+                {t}
               </span>
             ))}
           </div>
@@ -732,7 +838,7 @@ export default function PreVendaPage() {
                 'Defeitos de fabricação têm cobertura de 12 meses, conforme o contrato.',
               ].map((t) => (
                 <div key={t} className="flex gap-3">
-                  <span className="mt-0.5 shrink-0 font-bold" style={{ color: GREEN }}>✓</span>
+                  <Check aria-hidden="true" className="mt-0.5 shrink-0" size={16} strokeWidth={2.5} style={{ color: GREEN }} />
                   <p className="text-sm leading-relaxed" style={{ color: MUTED }}>{t}</p>
                 </div>
               ))}
@@ -791,7 +897,9 @@ export default function PreVendaPage() {
       <section id="como" style={{ borderTop: `1px solid ${LINE}`, background: SURFACE }}>
         <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
           <p className={eyebrow} style={{ color: GREEN }}>Pré-venda sem mistério</p>
-          <h2 className="mt-5 max-w-2xl text-display-lg font-extrabold text-white">Do Pix até a sua porta, tudo por escrito.</h2>
+          <h2 className="mt-5 max-w-2xl text-display-lg font-extrabold text-white">
+            {PIX_ENABLED ? 'Do Pix até a sua porta, tudo por escrito.' : 'Do cartão até a sua porta, tudo por escrito.'}
+          </h2>
 
           <div className="mt-12 grid gap-5 md:grid-cols-3">
             {PASSOS.map(([passo, titulo, texto]) => (
@@ -855,14 +963,18 @@ export default function PreVendaPage() {
             </div>
 
             <div className="mt-6 flex flex-wrap items-baseline gap-3">
-              <span className="text-5xl font-extrabold text-white sm:text-6xl">{PRECO_PIX}</span>
-              <span className="text-sm" style={{ color: MUTED }}>no Pix · ou {PARCELA} ({PRECO_CARTAO})</span>
+              <span className="text-5xl font-extrabold text-white sm:text-6xl">
+                {PIX_ENABLED ? PRECO_PIX : PRECO_CARTAO}
+              </span>
+              <span className="text-sm" style={{ color: MUTED }}>
+                {PIX_ENABLED ? `no Pix · ou ${PARCELA} (${PRECO_CARTAO})` : `no cartão · ${PARCELA}`}
+              </span>
             </div>
 
             <div className="mt-8 space-y-3.5">
               {INCLUSO.map((t) => (
                 <div key={t} className="flex gap-3">
-                  <span className="mt-0.5 shrink-0 font-bold" style={{ color: GREEN }}>✓</span>
+                  <Check aria-hidden="true" className="mt-0.5 shrink-0" size={16} strokeWidth={2.5} style={{ color: GREEN }} />
                   <p className="text-sm leading-relaxed text-white/85">{t}</p>
                 </div>
               ))}
@@ -892,7 +1004,7 @@ export default function PreVendaPage() {
                 <div className="mt-5 flex flex-wrap gap-3">
                   {!loteCarregando && (
                     <a href="#lista" className="rounded-xl px-5 py-3 text-sm font-bold" style={{ background: GREEN, color: '#05130a' }}>
-                      Entrar na lista
+                      Tenho interesse
                     </a>
                   )}
                   <a
@@ -912,8 +1024,7 @@ export default function PreVendaPage() {
                 onFocusCapture={registrarInicioForm}
                 onSubmit={(event) => {
                   event.preventDefault();
-                  const metodo = event.nativeEvent.submitter?.value;
-                  if (metodo === 'pix' || metodo === 'cartao') pagarComDados(metodo);
+                  pagarComDados(metodoPagamento);
                 }}
               >
                 <fieldset>
@@ -964,71 +1075,10 @@ export default function PreVendaPage() {
                 </fieldset>
 
                 <p className="mt-4 text-xs leading-relaxed" style={{ color: MUTED }}>
-                  No cartão, o endereço é coletado pela Stripe. No Pix, os campos de entrega aparecem antes da cobrança.
+                  {PIX_ENABLED
+                    ? 'O formulário de compra pede somente nome, e-mail e CPF/CNPJ. Os dados de entrega são confirmados depois do pagamento.'
+                    : 'O cartão é processado pela Stripe. Pix permanece indisponível até a homologação do fluxo exclusivo.'}
                 </p>
-
-                {precisaEntrega && (
-                  <fieldset className="mt-5 rounded-2xl border p-4 sm:p-5" style={{ borderColor: LINE }}>
-                    <legend className="px-2 font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: GREEN }}>
-                      Dados de entrega para o Pix
-                    </legend>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="block text-sm font-semibold text-white" htmlFor="reserva-telefone">
-                        WhatsApp com DDD
-                        <input
-                          ref={(node) => { fieldRefs.current.telefone = node; }}
-                          id="reserva-telefone" type="tel" value={form.telefone} onChange={campo('telefone')}
-                          placeholder="(41) 99999-9999" autoComplete="tel" required
-                          aria-invalid={erroCampo.telefone || undefined} aria-describedby="reserva-erro"
-                          className={INPUT_CLASS}
-                          style={{ borderColor: erroCampo.telefone ? 'rgba(245,181,68,0.6)' : LINE }}
-                        />
-                      </label>
-                      <label className="block text-sm font-semibold text-white" htmlFor="reserva-cep">
-                        CEP
-                        <input
-                          ref={(node) => { fieldRefs.current.cep = node; }}
-                          id="reserva-cep" type="text" inputMode="numeric" value={form.cep}
-                          onChange={(event) => buscarCep(event.target.value)}
-                          placeholder="00000-000" autoComplete="postal-code" required
-                          aria-invalid={erroCampo.cep || undefined} aria-describedby="reserva-cep-status reserva-erro"
-                          className={`${INPUT_CLASS} font-mono`}
-                          style={{ borderColor: erroCampo.cep ? 'rgba(245,181,68,0.6)' : LINE }}
-                        />
-                      </label>
-                    </div>
-                    <p id="reserva-cep-status" aria-live="polite" className="mt-2 text-xs" style={{ color: cepStatus === 'not-found' || cepStatus === 'unavailable' ? '#f5b544' : MUTED }}>
-                      {cepStatus === 'loading' && 'Consultando CEP…'}
-                      {cepStatus === 'found' && 'CEP localizado. Confirme o número e o complemento.'}
-                      {cepStatus === 'not-found' && 'CEP não encontrado. Confira os 8 dígitos.'}
-                      {cepStatus === 'unavailable' && 'Consulta indisponível; preencha o endereço manualmente.'}
-                    </p>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,.75fr)]">
-                      <label className="block text-sm font-semibold text-white" htmlFor="reserva-endereco">
-                        Endereço, número e complemento
-                        <input
-                          ref={(node) => { fieldRefs.current.endereco = node; }}
-                          id="reserva-endereco" type="text" value={form.endereco} onChange={campo('endereco')}
-                          placeholder="Rua, número e complemento" autoComplete="street-address" required
-                          aria-invalid={erroCampo.endereco || undefined} aria-describedby="reserva-erro"
-                          className={INPUT_CLASS}
-                          style={{ borderColor: erroCampo.endereco ? 'rgba(245,181,68,0.6)' : LINE }}
-                        />
-                      </label>
-                      <label className="block text-sm font-semibold text-white" htmlFor="reserva-cidade">
-                        Cidade/UF
-                        <input
-                          ref={(node) => { fieldRefs.current.cidadeUf = node; }}
-                          id="reserva-cidade" type="text" value={form.cidadeUf} onChange={campo('cidadeUf')}
-                          placeholder="Curitiba/PR" required
-                          aria-invalid={erroCampo.cidadeUf || undefined} aria-describedby="reserva-erro"
-                          className={INPUT_CLASS}
-                          style={{ borderColor: erroCampo.cidadeUf ? 'rgba(245,181,68,0.6)' : LINE }}
-                        />
-                      </label>
-                    </div>
-                  </fieldset>
-                )}
 
                 <label
                   htmlFor="ciencia-especificacoes"
@@ -1082,17 +1132,40 @@ export default function PreVendaPage() {
                 <p id="reserva-erro" role="alert" aria-live="assertive" className="mt-3 min-h-4 text-xs font-semibold" style={{ color: '#f5b544' }}>
                   {avisoForm || ''}
                 </p>
+                <div
+                  ref={(node) => { fieldRefs.current.verificacao = node; }}
+                  tabIndex={-1}
+                  aria-invalid={erroCampo.verificacao || undefined}
+                  className="outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
+                >
+                  <TurnstileWidget
+                    siteKey={TURNSTILE_SITE_KEY}
+                    resetKey={turnstileResetKey}
+                    onToken={receberTurnstileToken}
+                    onUnavailable={marcarTurnstileIndisponivel}
+                  />
+                </div>
                 <div className="mt-3">
-                  <BotoesPagamento loading={loading} full disabled={reservaPausada} />
+                  <EscolhaPagamento
+                    metodo={metodoPagamento}
+                    onChange={(metodo) => {
+                      if (metodo === 'pix' && !PIX_ENABLED) return;
+                      setMetodoPagamento(metodo);
+                      setAvisoForm(null);
+                    }}
+                    loading={loading}
+                    disabled={reservaPausada || !turnstileToken || turnstileUnavailable}
+                  />
                 </div>
                 <Erro erro={erro} />
               </form>
             )}
 
             <p className="mt-auto pt-5 text-xs leading-relaxed" style={{ color: MUTED }}>
-              Pagamento processado por Stripe e Mercado Pago. O aceite do contrato fica registrado junto ao
-              pedido e você acompanha tudo na{' '}
-              <Link to="/prevenda/pedido" className="underline underline-offset-2" style={{ color: GREEN }}>área do cliente</Link>.
+              Pagamento processado pela Stripe{PIX_ENABLED ? ' ou pelo Mercado Pago, conforme a sua escolha' : ''}. Depois da aprovação,
+              a confirmação e a referência da reserva ficam vinculadas ao pedido. Você acompanha o andamento na{' '}
+              <Link to="/prevenda/pedido" className="underline underline-offset-2" style={{ color: GREEN }}>área de status</Link>{' '}
+              com e-mail, CPF/CNPJ e o código de uso único enviado por e-mail.
             </p>
           </div>
 
@@ -1138,9 +1211,10 @@ export default function PreVendaPage() {
       <section id="lista" style={{ borderTop: `1px solid ${LINE}`, background: SURFACE }}>
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:items-center">
           <div>
+            <p className={eyebrow} style={{ color: GREEN }}>Cadastro de interesse</p>
             <h2 className="text-display-md font-extrabold text-white">Ainda não é a hora? Fica na lista.</h2>
             <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
-              Te avisamos quando o lote estiver acabando e no dia do lançamento na ExpoCannabis. Sem spam, prometido.
+              Te avisamos quando o lote estiver acabando e no dia do lançamento na ExpoCannabis. Somente comunicações sobre este lançamento.
             </p>
           </div>
           <ListaEspera />
@@ -1157,7 +1231,7 @@ export default function PreVendaPage() {
             <details key={q} className="group rounded-2xl border px-6 py-5" style={{ borderColor: LINE, background: SURFACE }}>
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[0.95rem] font-semibold text-white marker:hidden">
                 {q}
-                <span className="shrink-0 text-xl transition-transform group-open:rotate-45" style={{ color: GREEN }}>+</span>
+                <Plus aria-hidden="true" className="shrink-0 transition-transform group-open:rotate-45" size={20} style={{ color: GREEN }} />
               </summary>
               <p className="mt-4 text-sm leading-relaxed" style={{ color: MUTED }}>{a}</p>
             </details>
@@ -1170,7 +1244,9 @@ export default function PreVendaPage() {
         <div className="mx-auto w-full max-w-3xl px-5 py-20 text-center sm:px-8 sm:py-24">
           <h2 className="text-display-lg font-extrabold text-white">Regras claras. Estado visível. Menos gambiarra.</h2>
           <p className="mt-5 text-lg" style={{ color: MUTED }}>
-            {PRECO_PIX} no Pix durante a pré-venda; preço público previsto de {PRECO_PUBLICO} depois do lançamento.
+            {PIX_ENABLED
+              ? `${PRECO_PIX} no Pix durante a pré-venda; preço público previsto de ${PRECO_PUBLICO} depois do lançamento.`
+              : `${PRECO_CARTAO} no cartão ou até ${PARCELA}; preço público previsto de ${PRECO_PUBLICO} depois do lançamento.`}
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <a
@@ -1179,15 +1255,15 @@ export default function PreVendaPage() {
               className="rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
               style={{ background: GREEN, color: '#05130a' }}
             >
-              {reservaPausada ? 'Ver status da reserva' : 'Garantir minha unidade'}
+              {reservaPausada ? 'Ver status da reserva' : 'Comprar'}
             </a>
             <a
-              href={WHATSAPP} target="_blank" rel="noreferrer noopener"
-              onClick={() => track('click_whatsapp', { page: '/prevenda', intent: 'cta-final' })}
+              href="#lista"
+              onClick={() => track('click_cta_prevenda', { placement: 'final-interesse', page: '/prevenda' })}
               className="rounded-xl border px-7 py-4 text-[0.95rem] font-semibold text-white transition hover:bg-white/5"
               style={{ borderColor: LINE }}
             >
-              Tirar dúvida no WhatsApp
+              Tenho interesse
             </a>
           </div>
         </div>

@@ -6,9 +6,19 @@ const BG = '#080b09';
 const LINE = 'rgba(255,255,255,0.09)';
 const GREEN = '#4ade80';
 const MUTED = '#9fb3a6';
+const PIX_ENABLED = import.meta.env.VITE_PREVENDA_PIX_ENABLED === 'true';
 
 /** Fonte única: a mesma constante usada pela cobrança em api/checkout.js. */
 const CONTRATO_VERSAO = OFERTA.contratoVersao;
+const PRECO_E_PAGAMENTO = PIX_ENABLED
+  ? 'R$ 2.800,00 (dois mil e oitocentos reais) à vista via Pix; ou R$ 3.000,00 (três mil reais) no cartão de crédito, em até 12 (doze) parcelas de R$ 250,00, sujeitas às condições do emissor do cartão.'
+  : 'R$ 3.000,00 (três mil reais) no cartão de crédito, em até 12 (doze) parcelas de R$ 250,00, sujeitas às condições do emissor do cartão. O Pix não integra a oferta atual e somente poderá ser disponibilizado depois da homologação do fluxo exclusivo.';
+const PROCESSAMENTO_PAGAMENTO = PIX_ENABLED
+  ? 'Os pagamentos são processados pela Stripe (cartão) e pelo Mercado Pago (Pix). A CONTRATADA não coleta, não processa e não armazena dados de cartão de crédito.'
+  : 'O pagamento é processado pela Stripe (cartão). A CONTRATADA não coleta, não processa e não armazena dados de cartão de crédito. Caso o Pix seja homologado e passe a integrar a oferta, seu processamento será feito pelo Mercado Pago.';
+const DADOS_NO_PROCESSADOR = PIX_ENABLED
+  ? 'Nome, documento, contato, endereço de entrega e dados do pagamento ficam armazenados nos campos próprios da Stripe ou do Mercado Pago, que podem realizar transferência internacional de dados com as salvaguardas do art. 33 da LGPD.'
+  : 'Nome, documento, contato, endereço de entrega e dados do pagamento ficam armazenados nos campos próprios da Stripe, que pode realizar transferência internacional de dados com as salvaguardas do art. 33 da LGPD. Se o Pix for homologado e utilizado, esses dados também poderão ser tratados pelo Mercado Pago.';
 
 const CLAUSULAS = [
   {
@@ -33,8 +43,8 @@ const CLAUSULAS = [
     n: '3',
     t: 'Preço e forma de pagamento',
     p: [
-      'R$ 2.800,00 (dois mil e oitocentos reais) à vista via Pix; ou R$ 3.000,00 (três mil reais) no cartão de crédito, em até 12 (doze) parcelas de R$ 250,00, sujeitas às condições do emissor do cartão.',
-      'Os pagamentos são processados pela Stripe (cartão) e pelo Mercado Pago (Pix). A CONTRATADA não coleta, não processa e não armazena dados de cartão de crédito.',
+      PRECO_E_PAGAMENTO,
+      PROCESSAMENTO_PAGAMENTO,
       'O preço da pré-venda é válido enquanto durar o lote de lançamento. Após o lançamento, o preço público previsto é de R$ 5.500,00, sem efeito retroativo sobre pedidos já pagos.',
     ],
   },
@@ -88,8 +98,8 @@ const CLAUSULAS = [
     t: 'Dados pessoais (LGPD)',
     p: [
       'Os dados pessoais informados são tratados para execução deste contrato, faturamento, entrega, suporte e cumprimento de obrigações legais, com fundamento no art. 7º, incisos II e V, da Lei nº 13.709/2018 (LGPD).',
-      'Os dados de pagamento são tratados diretamente pelos processadores Stripe Inc. e Mercado Pago, na condição de operadores. O CPF ou CNPJ é utilizado para emissão de nota fiscal e para autenticar o CONTRATANTE na área de acompanhamento do pedido.',
-      'Nome, documento, contato, endereço de entrega e dados do pagamento ficam armazenados nos campos próprios da Stripe ou do Mercado Pago, que podem realizar transferência internacional de dados com as salvaguardas do art. 33 da LGPD. A CONTRATADA mantém, na Amazon Web Services, um livro técnico pseudonimizado com HMAC do documento e do IP, identificadores da reserva, slot e provedor, estados financeiro e de notificação, datas e versão contratual. Esse livro não contém nome, e-mail, documento em claro, telefone ou endereço.',
+      `${PROCESSAMENTO_PAGAMENTO} O CPF ou CNPJ é utilizado para emissão de nota fiscal e, junto ao código de uso único enviado por e-mail, para autenticar o CONTRATANTE na área de acompanhamento do pedido.`,
+      `${DADOS_NO_PROCESSADOR} A CONTRATADA mantém, na Amazon Web Services, um livro técnico pseudonimizado com HMAC do documento e do IP, identificadores da reserva, slot e provedor, estados financeiro e de notificação, datas e versão contratual. Esse livro não contém nome, e-mail, documento em claro, telefone ou endereço.`,
       'Os controles de risco são retidos por até 48 horas; guardas de reservas liberadas, por 30 dias; efeitos técnicos de webhook, por 400 dias; e guardas de pedidos pagos, reembolsados ou contestados, por até 5 anos, observadas as obrigações legais e o exercício regular de direitos. Slots do lote não expiram para preservar a capacidade e a trilha técnica, sem dados pessoais em claro.',
       'O CONTRATANTE pode exercer os direitos do art. 18 da LGPD — inclusive acesso, correção e eliminação — pelos canais da cláusula 10. A eliminação observa a retenção mínima legal aplicável a documentos fiscais e ao registro do aceite contratual, que a CONTRATADA é obrigada a preservar. Política completa em growx.com.br/privacidade.',
     ],
@@ -98,7 +108,7 @@ const CLAUSULAS = [
     n: '10',
     t: 'Atendimento',
     p: [
-      'WhatsApp +55 41 99549-4343 e e-mail growx@growx.com.br, em dias úteis. O acompanhamento do pedido está disponível em growx.com.br/prevenda/pedido, mediante e-mail e CPF informados na compra.',
+      'WhatsApp +55 41 99549-4343 e e-mail growx@growx.com.br, em dias úteis. O acompanhamento do pedido está disponível em growx.com.br/prevenda/pedido, mediante e-mail e CPF/CNPJ informados na compra e código de uso único enviado ao e-mail informado.',
     ],
   },
   {
@@ -117,7 +127,7 @@ export default function ContratoPage() {
     <div style={{ background: BG }} className="min-h-screen text-white">
       <SEO
         title="Contrato de pré-venda — Módulo Grow-X"
-        description="Minuta dos termos da pré-venda do Módulo Grow-X: preço, entrega a partir de 20/11/2026, direito de arrependimento, reembolso integral até o envio e garantia de 12 meses."
+        description={`Minuta da pré-venda do Módulo Grow-X: ${PIX_ENABLED ? 'R$ 2.800 no Pix ou R$ 3.000 no cartão em até 12x' : 'R$ 3.000 no cartão em até 12x de R$ 250'}, entrega a partir de 20/11/2026, reembolso integral até o envio e garantia de 12 meses.`}
         path="/prevenda/contrato"
       />
 
@@ -169,7 +179,7 @@ export default function ContratoPage() {
             <Link to="/prevenda/pedido" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
               área do cliente
             </Link>{' '}
-            com o e-mail e o CPF usados na compra.
+            com o e-mail e o CPF/CNPJ usados na compra e o código de uso único enviado por e-mail.
           </p>
         </div>
 

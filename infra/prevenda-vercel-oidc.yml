@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Role minima para a pre-venda assumir via Vercel OIDC, sem chaves persistentes.
+
+Parameters:
+  VercelOidcProviderArn:
+    Type: String
+    Default: arn:aws:iam::924665350190:oidc-provider/oidc.vercel.com/grow-xs-projects
+    AllowedPattern: '^arn:aws:iam::[0-9]{12}:oidc-provider/oidc\.vercel\.com/[A-Za-z0-9_-]+$'
+  InventoryTableArn:
+    Type: String
+    Default: arn:aws:dynamodb:sa-east-1:924665350190:table/growx-prevenda-reservas-prod
+    AllowedPattern: '^arn:aws:dynamodb:[a-z0-9-]+:[0-9]{12}:table/[A-Za-z0-9_.-]+$'
+  RoleName:
+    Type: String
+    Default: growx-prevenda-vercel-prod
+    AllowedPattern: '[A-Za-z0-9+=,.@_-]+'
+
+Resources:
+  PrevendaVercelRuntimeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: Acesso minimo da funcao Vercel production ao ledger da pre-venda.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ExactGrowxProductionDeployment
+            Effect: Allow
+            Principal:
+              Federated: !Ref VercelOidcProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                oidc.vercel.com/grow-xs-projects:aud: sts.amazonaws.com
+                oidc.vercel.com/grow-xs-projects:sub: owner:grow-xs-projects:project:growx:environment:production
+      Policies:
+        - PolicyName: growx-prevenda-dynamodb-runtime
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReservationAndDeliveryLedger
+                Effect: Allow
+                Action:
+                  - dynamodb:BatchGetItem
+                  - dynamodb:GetItem
+                  - dynamodb:TransactWriteItems
+                  - dynamodb:UpdateItem
+                Resource: !Ref InventoryTableArn
+              - Sid: WebhookOutboxDueIndex
+                Effect: Allow
+                Action:
+                  - dynamodb:Query
+                Resource: !Sub '${InventoryTableArn}/index/webhook-outbox-due'
+      Tags:
+        - Key: Application
+          Value: growx-prevenda
+        - Key: Environment
+          Value: production
+        - Key: Identity
+          Value: vercel-oidc
+
+Outputs:
+  RuntimeRoleArn:
+    Value: !GetAtt PrevendaVercelRuntimeRole.Arn
+  RequiredOidcAudience:
+    Value: sts.amazonaws.com
+  TrustedSubject:
+    Value: owner:grow-xs-projects:project:growx:environment:production

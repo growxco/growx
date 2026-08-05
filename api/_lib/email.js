@@ -63,7 +63,7 @@ function corpo({ nome, referencia, valorCentavos, forma, cpf, endereco }) {
       </p>
       <p style="margin:16px 0 0;color:#7d8f84;font-size:13px;line-height:1.6">
         Você pode cancelar com <strong>reembolso integral até o envio</strong>, sem justificativa.
-        Depois da entrega, <strong>1 ano de garantia</strong> de fábrica.
+        Depois da entrega, <strong>garantia de 12 meses</strong> conforme o contrato.
         <a href="${SITE}/prevenda/contrato" style="color:#1f9d55">Ver contrato (${esc(OFERTA.contratoVersao)})</a>.
       </p>
     </div>
@@ -86,13 +86,14 @@ export async function enviarConfirmacaoPedido(dados) {
     return false;
   }
   if (!dados?.email) {
-    console.error('[email] pedido sem e-mail do comprador:', dados?.referencia);
+    console.error('[email] pedido sem e-mail do comprador');
     return false;
   }
 
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
+      signal: AbortSignal.timeout(5_000),
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: DE,
@@ -103,13 +104,71 @@ export async function enviarConfirmacaoPedido(dados) {
       }),
     });
     if (!r.ok) {
-      const d = await r.text();
-      console.error('[email] Resend recusou:', r.status, d.slice(0, 200));
+      console.error('[email] Resend recusou confirmação:', r.status);
       return false;
     }
     return true;
-  } catch (e) {
-    console.error('[email] falha ao enviar:', e.message);
+  } catch {
+    console.error('[email] falha ao enviar confirmação');
+    return false;
+  }
+}
+
+export const emailPedidoConfigurado = () => {
+  const key = process.env.RESEND_API_KEY;
+  return typeof key === 'string' && key.length >= 16;
+};
+
+/**
+ * Envia o código de acesso à área do cliente. O código nunca aparece em log e
+ * a resposta pública de /api/pedido não varia conforme a entrega do Resend.
+ */
+export async function enviarCodigoAcessoPedido({ email, codigo, validadeMinutos = 10 } = {}) {
+  const key = process.env.RESEND_API_KEY;
+  if (!emailPedidoConfigurado() || !email || !/^\d{6}$/.test(String(codigo || ''))) {
+    console.error('[email] configuração de código de acesso indisponível');
+    return false;
+  }
+
+  const html = `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f4f7f5;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif">
+  <div style="max-width:520px;margin:0 auto;padding:32px 20px">
+    <div style="background:#080b09;border-radius:16px;padding:28px 26px">
+      <p style="margin:0;color:#4ade80;font-size:11px;letter-spacing:2px;font-weight:700">ÁREA DO CLIENTE</p>
+      <h1 style="margin:10px 0 0;color:#fff;font-size:25px;line-height:1.25">Seu código de acesso</h1>
+      <p style="margin:14px 0 0;color:#9fb3a6;font-size:15px;line-height:1.6">
+        Use o código abaixo para consultar seu pedido do Módulo Grow-X.
+      </p>
+      <p style="margin:24px 0 0;color:#fff;font-size:34px;font-weight:800;letter-spacing:8px;font-family:ui-monospace,monospace">${esc(codigo)}</p>
+      <p style="margin:16px 0 0;color:#9fb3a6;font-size:13px;line-height:1.6">
+        Ele expira em ${esc(validadeMinutos)} minutos e só pode ser usado uma vez. Se você não pediu este código, ignore este e-mail.
+      </p>
+    </div>
+    <p style="margin:18px 0 0;color:#8a9a91;font-size:12px;line-height:1.6;text-align:center">
+      A Grow-X nunca pede este código por WhatsApp ou telefone.<br>
+      Dúvidas: growx@growx.com.br
+    </p>
+  </div></body></html>`;
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      signal: AbortSignal.timeout(5_000),
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: DE,
+        to: [email],
+        reply_to: RESPONDE_PARA,
+        subject: 'Código de acesso — pedido Módulo Grow-X',
+        html,
+      }),
+    });
+    if (!response.ok) {
+      console.error('[email] Resend recusou código de acesso:', response.status);
+      return false;
+    }
+    return true;
+  } catch {
+    console.error('[email] falha ao enviar código de acesso');
     return false;
   }
 }
