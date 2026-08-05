@@ -644,6 +644,30 @@ export default function PreVendaPage() {
               ))}
             </div>
 
+            {/* Lote esgotado: não adianta deixar o comprador preencher tudo pra
+                descobrir só no clique. Vira captura pro próximo lote. */}
+            {lote?.esgotado ? (
+              <div className="mt-9 rounded-2xl border p-6" style={{ borderColor: 'rgba(245,181,68,0.35)', background: 'rgba(245,181,68,0.08)' }}>
+                <p className="text-lg font-bold text-white">As {lote.total} unidades da pré-venda acabaram.</p>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: '#f6e3bd' }}>
+                  Entre na lista do próximo lote — avisamos assim que abrir, antes de anunciar.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <a href="#lista" className="rounded-xl px-5 py-3 text-sm font-bold" style={{ background: GREEN, color: '#05130a' }}>
+                    Entrar na lista
+                  </a>
+                  <a
+                    href={WHATSAPP} target="_blank" rel="noreferrer noopener"
+                    onClick={() => track('click_whatsapp', { page: '/prevenda', intent: 'lote-esgotado' })}
+                    className="rounded-xl border px-5 py-3 text-sm font-semibold text-white"
+                    style={{ borderColor: LINE }}
+                  >
+                    Falar com o time
+                  </a>
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="mt-9 space-y-3">
               <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
                 Seus dados — vão no contrato e na nota fiscal
@@ -732,6 +756,8 @@ export default function PreVendaPage() {
               <BotoesPagamento loading={loading} pagar={pagarComDados} full />
             </div>
             <Erro erro={erro} />
+            </>
+            )}
 
             <p className="mt-auto pt-5 text-xs leading-relaxed" style={{ color: MUTED }}>
               Pagamento processado por Stripe e Mercado Pago. O aceite do contrato fica registrado junto ao
