@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Cookie, Check, X } from 'lucide-react';
 import { SEO, Container, Eyebrow, Reveal, GlassCard, Aurora, GridPattern } from '@/components/visual';
+import {
+  COOKIE_CONSENT,
+  getCookieConsent,
+  setCookieConsent,
+  subscribeCookieConsent,
+} from '@/lib/consent';
 
 const COOKIES = [
   {
@@ -18,6 +24,8 @@ const COOKIES = [
     items: [
       { name: '_ga / _ga_*', purpose: 'Análise de tráfego e funil.', vendor: 'Google Analytics 4', duration: '14 meses' },
       { name: '_clck / _clsk', purpose: 'Heatmap e session replay.', vendor: 'Microsoft Clarity', duration: '12 meses' },
+      { name: 'Web Analytics', purpose: 'Métricas agregadas de navegação.', vendor: 'Vercel', duration: 'Sem cookie próprio' },
+      { name: 'Speed Insights', purpose: 'Medição de desempenho das páginas.', vendor: 'Vercel', duration: 'Sem cookie próprio' },
     ],
   },
   {
@@ -25,20 +33,21 @@ const COOKIES = [
     required: false,
     items: [
       { name: '_fbp', purpose: 'Atribuição de campanhas Meta.', vendor: 'Meta Pixel', duration: '90 dias' },
-      { name: 'li_at / lidc', purpose: 'Atribuição de campanhas LinkedIn.', vendor: 'LinkedIn Insight', duration: '180 dias' },
+      { name: 'li_gc / lidc / _li_id', purpose: 'Preferência e atribuição de campanhas LinkedIn.', vendor: 'LinkedIn Insight', duration: 'Até 180 dias' },
     ],
   },
 ];
 
 export default function CookiesPage() {
-  const [choice, setChoice] = useState(null);
+  const [choice, setChoice] = useState(() => getCookieConsent());
+
   useEffect(() => {
-    if (typeof window !== 'undefined') setChoice(localStorage.getItem('growx-cookie-consent'));
+    setChoice(getCookieConsent());
+    return subscribeCookieConsent(setChoice);
   }, []);
 
   const decide = (v) => {
-    localStorage.setItem('growx-cookie-consent', v);
-    setChoice(v);
+    setCookieConsent(v);
   };
 
   return (
@@ -71,26 +80,50 @@ export default function CookiesPage() {
             <GlassCard variant="emerald" className="p-7 sm:p-9">
               <h2 className="font-display text-xl font-bold text-foreground sm:text-2xl">Sua preferência atual</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {choice === 'accepted' && 'Você aceitou todos os cookies. Pode mudar a qualquer momento.'}
-                {choice === 'declined' && 'Você recusou cookies não-essenciais. Apenas cookies de funcionamento são usados.'}
+                {choice === COOKIE_CONSENT.ACCEPTED && 'Você aceitou cookies opcionais de análise e marketing. Pode mudar a qualquer momento.'}
+                {choice === COOKIE_CONSENT.DECLINED && 'Você recusou cookies opcionais. Apenas recursos essenciais permanecem ativos.'}
                 {!choice && 'Ainda não escolhido. Decida abaixo (ou pelo banner que aparece na 1ª visita).'}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
-                  onClick={() => decide('accepted')}
-                  className={'btn-primary ' + (choice === 'accepted' ? 'opacity-90' : '')}
+                  type="button"
+                  onClick={() => decide(COOKIE_CONSENT.ACCEPTED)}
+                  aria-pressed={choice === COOKIE_CONSENT.ACCEPTED}
+                  className={'btn-primary ' + (choice === COOKIE_CONSENT.ACCEPTED ? 'opacity-90' : '')}
                 >
                   <Check className="size-4" />
-                  Aceitar todos
+                  Aceitar opcionais
                 </button>
                 <button
-                  onClick={() => decide('declined')}
-                  className={'btn-ghost ' + (choice === 'declined' ? 'opacity-90' : '')}
+                  type="button"
+                  onClick={() => decide(COOKIE_CONSENT.DECLINED)}
+                  aria-pressed={choice === COOKIE_CONSENT.DECLINED}
+                  className={'btn-ghost ' + (choice === COOKIE_CONSENT.DECLINED ? 'opacity-90' : '')}
                 >
                   <X className="size-4" />
                   Apenas essenciais
                 </button>
               </div>
+            </GlassCard>
+          </Reveal>
+        </Container>
+      </section>
+
+      <section className="section-y-tight pt-0">
+        <Container narrow>
+          <Reveal>
+            <GlassCard variant="surface" className="p-7 sm:p-9">
+              <h2 className="font-display text-xl font-bold text-foreground sm:text-2xl">Serviço funcional sem cookie opcional</h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                No formulário da pré-venda, após você informar os oito dígitos, o CEP é enviado ao ViaCEP para
+                preencher cidade e estado. Nome, CPF, e-mail e endereço não são enviados nessa consulta. Essa busca
+                só acontece durante o preenchimento e não ativa cookies de análise ou marketing.
+              </p>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Ao escolher “Apenas essenciais”, removemos em melhor esforço os identificadores opcionais acessíveis
+                no domínio da Grow-X e recarregamos a página para retirar os scripts já carregados. Cookies HttpOnly
+                ou gravados por domínios terceiros seguem o prazo do respectivo fornecedor.
+              </p>
             </GlassCard>
           </Reveal>
         </Container>

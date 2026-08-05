@@ -13,7 +13,10 @@ const cartao = brlCurto(OFERTA.cartaoCentavos);  // "R$ 3.000"
 const publico = brlCurto(OFERTA.publicoCentavos);// "R$ 5.500"
 
 const ALVOS = [
-  { arquivo: 'prevenda.html', precisa: [pix, publico, OFERTA.entregaBR.slice(0, 5)] },
+  {
+    arquivo: 'prevenda.html',
+    precisa: [pix, publico, OFERTA.encerramentoBR.slice(0, 5), OFERTA.entregaBR.slice(0, 5)],
+  },
 ];
 
 // Valores que já foram usados e não podem reaparecer soltos.
@@ -48,4 +51,4 @@ if (falhou) {
   console.error('\nAtualize os arquivos acima para os valores de src/lib/oferta.js.');
   process.exit(1);
 }
-console.log(`✓ oferta consistente: ${pix} Pix · ${cartao} cartão · ${publico} público · entrega ${OFERTA.entregaBR} · lote ${OFERTA.loteTotal}`);
+console.log(`✓ oferta consistente: ${pix} Pix · ${cartao} cartão · ${publico} público · encerra ${OFERTA.encerramentoBR} · entrega ${OFERTA.entregaBR} · lote ${OFERTA.loteTotal}`);

@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -9,7 +9,8 @@ import SkipLink from './components/SkipLink';
 import CookieBanner from './components/CookieBanner';
 import PageLoader from './components/PageLoader';
 import { SoundLab, ScrollProgress, PageTransition, WhatsAppFloat, StickyCTAMobile } from './components/visual';
-import { analytics } from './lib/analytics';
+import { analytics, installAnalytics } from './lib/analytics';
+import { COOKIE_CONSENT, getCookieConsent, subscribeCookieConsent } from './lib/consent';
 
 // Eager: Home (LCP)
 import HomePage from './pages/HomePage';
@@ -45,6 +46,50 @@ const PrivacidadePage = lazy(() => import('./pages/PrivacidadePage'));
 const TermosPage = lazy(() => import('./pages/TermosPage'));
 const CookiesPage = lazy(() => import('./pages/CookiesPage'));
 
+function useCookieConsentState() {
+  const [consent, setConsent] = useState(() => getCookieConsent());
+
+  useEffect(() => subscribeCookieConsent(setConsent), []);
+
+  return consent;
+}
+
+function AnalyticsGate({ consent }) {
+  const previousConsent = useRef(consent);
+
+  useEffect(() => {
+    if (
+      previousConsent.current === COOKIE_CONSENT.ACCEPTED
+      && consent !== COOKIE_CONSENT.ACCEPTED
+    ) {
+      // Scripts de terceiros já carregados não podem ser "descarregados" com
+      // segurança. O reload remove a sessão deles assim que o usuário revoga.
+      window.location.reload();
+      return;
+    }
+
+    if (consent === COOKIE_CONSENT.ACCEPTED) {
+      installAnalytics();
+
+      // O efeito de rota já cuidou de visitantes que chegaram consentidos. Se
+      // o aceite aconteceu agora, registra a página atual depois da instalação.
+      if (previousConsent.current !== COOKIE_CONSENT.ACCEPTED) {
+        analytics.pageView(window.location.pathname);
+      }
+    }
+    previousConsent.current = consent;
+  }, [consent]);
+
+  if (consent !== COOKIE_CONSENT.ACCEPTED) return null;
+
+  return (
+    <>
+      <Analytics />
+      <SpeedInsights />
+    </>
+  );
+}
+
 function ScrollToTopAndTrack() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -60,6 +105,7 @@ const BARE_ROUTES = [/^\/prevenda/, /^\/modulo$/];
 function Shell() {
   const { pathname } = useLocation();
   const bare = BARE_ROUTES.some((r) => r.test(pathname));
+  const consent = useCookieConsentState();
 
   return (
     <>
@@ -120,8 +166,7 @@ function Shell() {
         {!bare && <WhatsAppFloat />}
         {!bare && <StickyCTAMobile />}
         {!bare && <SoundLab />}
-        <Analytics />
-        <SpeedInsights />
+        <AnalyticsGate consent={consent} />
       </div>
     </>
   );

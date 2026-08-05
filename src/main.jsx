@@ -4,10 +4,13 @@ import { HelmetProvider } from 'react-helmet-async'
 import { ThemeProvider } from './components/visual/ThemeProvider'
 import { I18nProvider } from './i18n/I18nProvider'
 import { installAnalytics } from './lib/analytics'
+import { hasAnalyticsConsent } from './lib/consent'
 import './index.css'
 import App from './App.jsx'
 
-installAnalytics()
+// Visitantes que já consentiram não perdem o primeiro page view. Para uma
+// primeira visita, o gate em App.jsx instala os provedores após a decisão.
+if (hasAnalyticsConsent()) installAnalytics()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -4,11 +4,11 @@ import { SEO, Container, Eyebrow, Reveal, GlassCard, Aurora, GridPattern } from 
 const SECTIONS = [
   {
     title: '1. Quem somos',
-    body: `A Grow-X Co. é controladora dos dados pessoais coletados neste site (www.growx.com.br). Sediada em Av. Sete de Setembro 4923, sala 1203, Batel, Curitiba/PR. Encarregado de Dados (DPO): Julio Calcagnotto — privacidade@growx.com.br.`,
+    body: `A Grow-X Co. é controladora dos dados pessoais coletados neste site (www.growx.com.br). Sediada em Av. Sete de Setembro 4923, sala 1203, Água Verde, Curitiba/PR, CEP 80.250-205. Encarregado de Dados (DPO): Julio Calcagnotto — privacidade@growx.com.br.`,
   },
   {
     title: '2. Quais dados coletamos',
-    body: `(a) Dados de identificação fornecidos voluntariamente em formulários (nome, e-mail, telefone, empresa, cargo, segmento). (b) Dados de navegação (cookies analíticos, IP anonimizado, dispositivo, páginas visitadas) — apenas com seu consentimento. (c) UTMs de campanhas que trouxeram você até aqui.`,
+    body: `(a) Dados de identificação fornecidos voluntariamente em formulários (nome, e-mail, telefone, empresa, cargo e segmento). (b) Na pré-venda: nome, e-mail, CPF ou CNPJ, telefone, CEP, endereço de entrega e aceite contratual. (c) Dados de navegação (cookies analíticos, dispositivo e páginas visitadas) — apenas com seu consentimento. (d) Para segurança da pré-venda, o endereço IP é processado em memória e convertido em identificador pseudonimizado por HMAC antes de ser gravado. (e) UTMs de campanhas que trouxeram você até aqui.`,
   },
   {
     title: '3. Para que usamos',
@@ -20,15 +20,15 @@ const SECTIONS = [
   },
   {
     title: '5. Com quem compartilhamos',
-    body: `Apenas com operadores estritamente necessários: HubSpot/Brevo (CRM), Google Analytics 4 (analytics), Vercel (hosting + analytics), Microsoft Clarity (heatmap), Resend (e-mail transacional de pedidos), Stripe e Mercado Pago (processamento de pagamento), Meta/LinkedIn (apenas se você consentir cookies de marketing). Nunca vendemos seus dados.`,
+    body: `Apenas com operadores estritamente necessários: HubSpot/Brevo (CRM), Google Analytics 4 (analytics), Vercel (hosting + analytics), Microsoft Clarity (heatmap), Resend (e-mail transacional de pedidos), Stripe e Mercado Pago (processamento de pagamento), Amazon Web Services (livro técnico da pré-venda), ViaCEP (consulta de endereço usando somente o CEP) e Meta/LinkedIn (apenas se você consentir cookies de marketing). Nunca vendemos seus dados.`,
   },
   {
     title: '5.1. Compras na pré-venda do Módulo Grow-X',
-    body: `Ao comprar em /prevenda coletamos nome, e-mail, CPF ou CNPJ, telefone e endereço de entrega, além do registro do aceite do contrato de pré-venda (data e versão). Finalidades: executar o contrato, emitir nota fiscal, entregar o produto e autenticar você na área de acompanhamento do pedido — bases legais dos incisos II e V do art. 7 da LGPD. A Grow-X não mantém banco de dados próprio de pedidos: esses dados ficam armazenados junto ao pedido nos sistemas da Stripe Inc. e do Mercado Pago, na condição de operadores, o que pode envolver transferência internacional de dados com as salvaguardas do art. 33 da LGPD. Dados de cartão são tratados exclusivamente por eles — a Grow-X não os recebe nem armazena. Retenção: pelo prazo exigido pela legislação fiscal e de defesa do consumidor. Pedidos de eliminação (art. 18, V) são atendidos ressalvada a retenção mínima obrigatória de documentos fiscais e do registro do aceite contratual.`,
+    body: `Ao comprar em /prevenda, os dados completos do pedido ficam nos campos próprios da Stripe Inc. ou do Mercado Pago, na condição de operadores: nome, e-mail, CPF ou CNPJ, telefone, endereço, pagamento e versão do contrato. Isso pode envolver transferência internacional com as salvaguardas do art. 33 da LGPD. Dados de cartão são tratados exclusivamente pelo processador — a Grow-X não os recebe nem armazena. Em banco próprio na Amazon Web Services, a Grow-X mantém somente um livro técnico pseudonimizado: HMAC do documento e do IP, identificadores de reserva, slot e provedor, estado financeiro, datas, versão contratual e estado de entrega das notificações. Esse livro não contém nome, e-mail, documento em claro, telefone ou endereço. HMAC é pseudonimização, não anonimização, e sua chave fica separada. Finalidades: impedir venda acima do lote, fraude e duplicidade; reconciliar pagamentos; comprovar o aceite; e atender obrigações contratuais, fiscais e de defesa do consumidor.`,
   },
   {
     title: '6. Por quanto tempo guardamos',
-    body: `Leads não convertidos: 24 meses. Clientes ativos: durante a vigência do contrato + 5 anos para fins fiscais. Dados de navegação: 14 meses. Você pode pedir exclusão antes via privacidade@growx.com.br.`,
+    body: `Leads não convertidos: 24 meses. Dados de navegação consentidos: até 14 meses. Na pré-venda, controles pseudonimizados de risco expiram em até 48 horas; guardas de reservas liberadas, em 30 dias; efeitos técnicos de webhook, em 400 dias; e guardas de pedidos pagos, reembolsados ou contestados, em até 5 anos. Slots do lote não expiram porque preservam a capacidade e a trilha técnica, mas não contêm dados pessoais em claro. Os processadores conservam os dados completos do pedido pelos prazos contratuais e legais aplicáveis. Você pode pedir exclusão antes via privacidade@growx.com.br, ressalvadas retenções obrigatórias e a necessidade de exercício regular de direitos.`,
   },
   {
     title: '7. Seus direitos (LGPD Art. 18)',
@@ -48,7 +48,7 @@ const SECTIONS = [
   },
   {
     title: '11. Cannabis medicinal — observação especial',
-    body: `Dados de pacientes que cultivam por habeas corpus ou prescrição são tratados com sigilo médico-equivalente. O Grow-X App roda criptografia ponto-a-ponto para diários clínicos. Nunca compartilhamos com terceiros sem ordem judicial.`,
+    body: `Dados de saúde, quando tratados pelo GXP, são dados pessoais sensíveis e exigem base legal, finalidade específica e controles de acesso adequados. Este site e o formulário da pré-venda não solicitam diagnóstico, prescrição, habeas corpus, prontuário ou diário clínico.`,
   },
   {
     title: '12. Atualizações desta política',
@@ -75,7 +75,7 @@ export default function PrivacidadePage() {
             </h1>
             <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
               Como a Grow-X trata seus dados pessoais. Escrita em português direto, sem juridiquês desnecessário.
-              Em vigor desde 23/04/2026.
+              Atualizada em 05/08/2026.
             </p>
           </Reveal>
         </Container>
@@ -94,7 +94,7 @@ export default function PrivacidadePage() {
                 ))}
                 <div className="border-t border-foreground/[0.08] pt-6 text-xs text-muted-foreground">
                   <p>
-                    Versão 1.0 · Vigente desde 23/04/2026 · Para exercer seus direitos LGPD ou tirar dúvidas:
+                    Versão 1.1 · Vigente desde 05/08/2026 · Para exercer seus direitos LGPD ou tirar dúvidas:
                     {' '}<a href="mailto:privacidade@growx.com.br" className="text-emerald-glow hover:underline">privacidade@growx.com.br</a>.
                   </p>
                   <p className="mt-2">

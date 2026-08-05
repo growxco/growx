@@ -317,6 +317,16 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
 
+  // Fail closed: novas cobranças só podem ser abertas por uma decisão explícita
+  // de operação. O GET continua disponível para as sessões legadas concluírem
+  // o retorno de pagamento enquanto a oferta passa pela validação final.
+  if (process.env.PREVENDA_SALES_ENABLED !== 'true') {
+    return res.status(503).json({
+      error: 'vendas_pausadas',
+      hint: 'A pré-venda está em validação técnica e comercial.',
+    });
+  }
+
   let body;
   try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
   catch { return res.status(400).json({ error: 'invalid_json' }); }

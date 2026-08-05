@@ -41,7 +41,10 @@ export default function StickyCTAMobile() {
   const className = 'pointer-events-auto btn-primary mx-auto flex w-full max-w-md items-center justify-center gap-2';
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[51] p-3 sm:hidden">
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[51] p-3 sm:hidden"
+      style={{ bottom: 'var(--growx-cookie-offset, 0px)' }}
+    >
       {cfg.external ? (
         <a href={cfg.to} target="_blank" rel="noreferrer noopener" onClick={onClick} className={className}>
           {cfg.label}
