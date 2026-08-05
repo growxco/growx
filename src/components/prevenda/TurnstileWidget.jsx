@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTheme } from '@/components/visual/ThemeProvider';
 
 const SCRIPT_ID = 'cloudflare-turnstile-script';
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -37,6 +38,7 @@ function loadTurnstile() {
 }
 
 export default function TurnstileWidget({ siteKey, resetKey, onToken, onUnavailable }) {
+  const { theme } = useTheme();
   const container = useRef(null);
   const widgetId = useRef(null);
   const [status, setStatus] = useState('loading');
@@ -57,7 +59,7 @@ export default function TurnstileWidget({ siteKey, resetKey, onToken, onUnavaila
         widgetId.current = turnstile.render(container.current, {
           sitekey: siteKey,
           action: 'prevenda_checkout',
-          theme: 'dark',
+          theme,
           size: 'flexible',
           appearance: 'interaction-only',
           callback: (token) => {
@@ -90,14 +92,14 @@ export default function TurnstileWidget({ siteKey, resetKey, onToken, onUnavaila
       if (api && widgetId.current !== null) api.remove(widgetId.current);
       widgetId.current = null;
     };
-  }, [onToken, onUnavailable, resetKey, siteKey]);
+  }, [onToken, onUnavailable, resetKey, siteKey, theme]);
 
   return (
     <div className="mt-4" aria-live="polite">
       <div ref={container} className="min-h-0 w-full overflow-hidden rounded-lg" />
-      {status === 'loading' && <p className="text-xs text-white/55">Preparando a verificação de segurança…</p>}
-      {status === 'expired' && <p className="text-xs text-amber-300">A verificação expirou. Conclua novamente para continuar.</p>}
-      {status === 'unavailable' && <p role="alert" className="text-xs text-amber-300">A verificação de segurança está indisponível. Nenhuma reserva será aberta.</p>}
+      {status === 'loading' && <p className="text-xs" style={{ color: 'var(--prevenda-muted)' }}>Preparando a verificação de segurança…</p>}
+      {status === 'expired' && <p className="text-xs" style={{ color: 'var(--prevenda-warning)' }}>A verificação expirou. Conclua novamente para continuar.</p>}
+      {status === 'unavailable' && <p role="alert" className="text-xs" style={{ color: 'var(--prevenda-warning)' }}>A verificação de segurança está indisponível. Nenhuma reserva será aberta.</p>}
     </div>
   );
 }

@@ -58,7 +58,7 @@ export default function ControllerShowcase({ eyebrowClass, colors, onOpen }) {
   const [activeId, setActiveId] = useState('painel');
   const tabRefs = useRef([]);
   const active = TELAS.find((tela) => tela.id === activeId) || TELAS[0];
-  const { green, muted, line, surface } = colors;
+  const { green, muted, line, surface, panel, card } = colors;
 
   const moveTabFocus = (event, currentIndex) => {
     const keyTargets = {
@@ -115,7 +115,7 @@ export default function ControllerShowcase({ eyebrowClass, colors, onOpen }) {
             })}
           </div>
 
-          <div id="controlador-tela" role="tabpanel" aria-labelledby={`controlador-tab-${active.id}`} className="mt-6 grid gap-8 rounded-3xl border p-5 sm:p-8 lg:grid-cols-[minmax(0,.85fr)_minmax(340px,1fr)] lg:items-center" style={{ borderColor: line, background: '#080b09' }}>
+          <div id="controlador-tela" role="tabpanel" aria-labelledby={`controlador-tab-${active.id}`} className="mt-6 grid gap-8 rounded-3xl border p-5 sm:p-8 lg:grid-cols-[minmax(0,.85fr)_minmax(340px,1fr)] lg:items-center" style={{ borderColor: line, background: panel }}>
             <div>
               <p className={eyebrowClass} style={{ color: green }}>{active.label}</p>
               <h3 className="mt-4 text-3xl font-extrabold text-white">{active.title}</h3>
@@ -157,7 +157,7 @@ export default function ControllerShowcase({ eyebrowClass, colors, onOpen }) {
             { id: 'gxp-sala-controle', src: gxpSalaControle, title: 'Sala de controle ambiental', alt: 'Tela real do GXP mostrando a sala de controle ambiental' },
             { id: 'gxp-rastro', src: gxpRastro, title: 'Rastro de custódia', alt: 'Tela real do GXP mostrando o rastro de custódia' },
           ].map((image) => (
-            <figure key={image.title} className="overflow-hidden rounded-2xl border" style={{ borderColor: line, background: '#0d120f' }}>
+            <figure key={image.title} className="overflow-hidden rounded-2xl border" style={{ borderColor: line, background: card }}>
               <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: `1px solid ${line}` }}>
                 <span className="size-2.5 rounded-full bg-white/15" />
                 <span className="size-2.5 rounded-full bg-white/15" />
