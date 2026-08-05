@@ -99,6 +99,10 @@ function stripeParams(on, comprador) {
   // A cobrança (charge) NÃO herda o metadata da sessão. Sem isto, um reembolso
   // ou chargeback do Módulo chegaria ao webhook sem marca de produto e seria
   // descartado como "de outro produto" — dinheiro saindo sem ninguém saber.
+  // A conta atende vários produtos da Grow-X e o extrato do cartão mostra só o
+  // prefixo da conta ("GROW-X CO."). O sufixo identifica o produto na fatura
+  // ("GROW-X CO.* MODULO") e reduz contestação por não reconhecimento.
+  p.set('payment_intent_data[statement_descriptor_suffix]', 'MODULO');
   p.set('payment_intent_data[metadata][source]', 'growx.com.br/prevenda');
   p.set('payment_intent_data[metadata][sku]', 'prevenda_cartao');
   p.set('payment_intent_data[metadata][cpf]', comprador.cpf);
