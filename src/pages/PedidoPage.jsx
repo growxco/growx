@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowLeft, Check } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
-import { formataDocumento } from '@/lib/cpf';
+import { documentoValido, emailValido, formataDocumento } from '@/lib/cpf';
 
 const BG = '#080b09';
 const SURFACE = 'rgba(255,255,255,0.035)';
@@ -33,7 +34,7 @@ function Etapas({ etapas, atual }) {
                   ? { background: GREEN, color: '#05130a' }
                   : { border: `1px solid ${LINE}`, color: MUTED }}
               >
-                {feito ? '✓' : i + 1}
+                {feito ? <Check aria-hidden="true" size={12} strokeWidth={3} /> : i + 1}
               </span>
               {i < etapas.length - 1 && (
                 <span className="mt-1 w-px flex-1" style={{ background: i < idx ? GREEN : LINE }} />
@@ -83,6 +84,7 @@ function CardPedido({ p }) {
         {[
           ['Titular', p.nome],
           ['CPF', p.cpf_mascarado],
+          ['Código da reserva', p.codigo_reserva],
           ['Referência', p.referencia],
           ['Contrato', p.contrato_versao ? `${p.contrato_versao}${p.contrato_aceito ? ' · aceito' : ''}` : null],
         ].filter(([, v]) => v).map(([k, v]) => (
@@ -99,6 +101,12 @@ function CardPedido({ p }) {
           automaticamente. Chama a gente no WhatsApp pra vincular.
         </p>
       )}
+      {p.status_confiavel === false && (
+        <p className="mt-4 text-xs leading-relaxed" style={{ color: '#f5b544' }}>
+          O status financeiro está temporariamente indisponível. O pedido foi localizado,
+          mas a confirmação precisa ser refeita antes de qualquer decisão sobre produção ou envio.
+        </p>
+      )}
     </div>
   );
 }
@@ -106,34 +114,77 @@ function CardPedido({ p }) {
 export default function PedidoPage() {
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');
-  const [estado, setEstado] = useState('idle'); // idle | buscando | ok | erro
+  const [codigo, setCodigo] = useState('');
+  const [challengeId, setChallengeId] = useState(null);
+  const [etapaAcesso, setEtapaAcesso] = useState('dados'); // dados | codigo
+  const [estado, setEstado] = useState('idle'); // idle | enviando | verificando | ok | erro
   const [erro, setErro] = useState(null);
   const [dados, setDados] = useState(null);
+  const possuiPedidoAtivo = Boolean(dados?.pedidos?.some((p) => p.fulfillment_ativo));
 
-  const consultar = async (e) => {
+  const solicitarCodigo = async (e) => {
     e.preventDefault();
-    if (estado === 'buscando') return;
-    setEstado('buscando');
+    if (estado === 'enviando') return;
+    if (!emailValido(email) || !documentoValido(cpf)) {
+      setErro('Confira o formato do e-mail e do CPF/CNPJ usados na compra.');
+      setEstado('erro');
+      return;
+    }
+    setEstado('enviando');
     setErro(null);
     setDados(null);
-    track('consulta_pedido', { page: '/prevenda/pedido' });
+    track('solicitacao_codigo_pedido', { page: '/prevenda/pedido' });
 
     try {
       const r = await fetch('/api/pedido', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), cpf }),
+        body: JSON.stringify({ action: 'request_code', email: email.trim(), cpf }),
       });
       const data = await r.json().catch(() => null);
 
       if (!r.ok) {
-        const msgs = {
-          email_invalido: 'Confere o e-mail — parece incompleto.',
-          documento_invalido: 'Documento inválido. Confere o CPF (ou o CNPJ, se a compra foi pela empresa).',
-          rate_limited: 'Muitas consultas seguidas. Espera um minuto e tenta de novo.',
-          consulta_indisponivel: 'A consulta está indisponível agora. Tenta em instantes ou chama no WhatsApp.',
-        };
-        setErro(msgs[data?.error] || 'Não deu pra consultar agora. Tenta de novo ou chama no WhatsApp.');
+        setErro(data?.error === 'consulta_indisponivel'
+          ? 'O acesso está indisponível agora. Tenta em instantes ou chama no WhatsApp.'
+          : 'Não deu pra solicitar o código agora. Tenta de novo ou chama no WhatsApp.');
+        setEstado('erro');
+        return;
+      }
+      setChallengeId(data?.challenge_id || null);
+      setCodigo('');
+      setEtapaAcesso('codigo');
+      setEstado('idle');
+    } catch {
+      setErro('Falha de conexão. Tenta de novo ou chama no WhatsApp.');
+      setEstado('erro');
+    }
+  };
+
+  const verificarCodigo = async (e) => {
+    e.preventDefault();
+    if (estado === 'verificando' || !challengeId) return;
+    setEstado('verificando');
+    setErro(null);
+    setDados(null);
+    track('verificacao_codigo_pedido', { page: '/prevenda/pedido' });
+
+    try {
+      const r = await fetch('/api/pedido', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify_code',
+          challengeId,
+          code: codigo,
+          email: email.trim(),
+          cpf,
+        }),
+      });
+      const data = await r.json().catch(() => null);
+      if (!r.ok) {
+        setErro(data?.error === 'codigo_invalido'
+          ? 'Código inválido, expirado ou já utilizado. Confira o e-mail ou solicite outro código.'
+          : 'A consulta está indisponível agora. Tenta em instantes ou chama no WhatsApp.');
         setEstado('erro');
         return;
       }
@@ -145,49 +196,89 @@ export default function PedidoPage() {
     }
   };
 
+  const alterarDados = () => {
+    setEtapaAcesso('dados');
+    setChallengeId(null);
+    setCodigo('');
+    setDados(null);
+    setErro(null);
+    setEstado('idle');
+  };
+
   return (
     <div style={{ background: BG }} className="min-h-screen text-white">
       <SEO
         title="Meu pedido — pré-venda Módulo Grow-X"
-        description="Acompanhe o status do seu pedido da pré-venda do Módulo Grow-X com o e-mail e o CPF usados na compra."
+        description="Acompanhe o pedido da pré-venda do Módulo Grow-X com um código seguro enviado ao e-mail da compra."
         path="/prevenda/pedido"
         noIndex
       />
 
       <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
-        <Link to="/prevenda" className="font-mono text-xs uppercase tracking-[0.16em]" style={{ color: GREEN }}>
-          ← voltar pra pré-venda
+        <Link to="/prevenda" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em]" style={{ color: GREEN }}>
+          <ArrowLeft aria-hidden="true" size={14} />
+          voltar pra pré-venda
         </Link>
 
         <h1 className="mt-8 text-display-lg font-extrabold text-white">Área do cliente</h1>
         <p className="mt-4 text-lg" style={{ color: MUTED }}>
-          Consulte o seu pedido da pré-venda com o e-mail e o CPF usados na compra.
+          Informe os dados da compra. Antes de mostrar qualquer pedido, enviaremos um código de uso único ao e-mail informado.
         </p>
 
-        <form onSubmit={consultar} className="mt-10 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <input
-              type="email" value={email} onChange={(ev) => setEmail(ev.target.value)}
-              placeholder="E-mail da compra" required aria-label="E-mail da compra" autoComplete="email"
-              className="rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
-              style={{ borderColor: LINE }}
-            />
-            <input
-              type="text" inputMode="numeric" value={cpf}
-              onChange={(ev) => setCpf(formataDocumento(ev.target.value))}
-              placeholder="CPF ou CNPJ" required aria-label="CPF ou CNPJ"
-              className="rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
-              style={{ borderColor: LINE }}
-            />
-          </div>
-          <button
-            type="submit" disabled={estado === 'buscando'}
-            className="rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
-            style={{ background: GREEN, color: '#05130a' }}
-          >
-            {estado === 'buscando' ? 'Consultando…' : 'Consultar'}
-          </button>
-        </form>
+        {estado !== 'ok' && (etapaAcesso === 'dados' ? (
+          <form onSubmit={solicitarCodigo} className="mt-10 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                type="email" value={email} onChange={(ev) => setEmail(ev.target.value)}
+                placeholder="E-mail da compra" required aria-label="E-mail da compra" autoComplete="email"
+                className="rounded-xl border bg-transparent px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                style={{ borderColor: LINE }}
+              />
+              <input
+                type="text" inputMode="numeric" value={cpf}
+                onChange={(ev) => setCpf(formataDocumento(ev.target.value))}
+                placeholder="CPF ou CNPJ" required aria-label="CPF ou CNPJ" autoComplete="off"
+                className="rounded-xl border bg-transparent px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
+                style={{ borderColor: LINE }}
+              />
+            </div>
+            <button
+              type="submit" disabled={estado === 'enviando'}
+              className="rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
+              style={{ background: GREEN, color: '#05130a' }}
+            >
+              {estado === 'enviando' ? 'Enviando…' : 'Enviar código'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={verificarCodigo} className="mt-10 rounded-2xl border p-5 sm:p-6" style={{ borderColor: LINE, background: SURFACE }}>
+            <p className="text-sm font-semibold text-white">Confira seu e-mail</p>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
+              Se os dados informados forem válidos, você receberá um código de 6 dígitos. Ele expira em 10 minutos e funciona uma única vez.
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text" inputMode="numeric" value={codigo}
+                onChange={(ev) => setCodigo(ev.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000" required minLength={6} maxLength={6}
+                pattern="[0-9]{6}" aria-label="Código de acesso de 6 dígitos"
+                autoComplete="one-time-code" autoFocus
+                className="min-w-0 flex-1 rounded-xl border bg-transparent px-4 py-3.5 text-center font-mono text-xl tracking-[0.35em] text-white outline-none transition placeholder:text-white/25 focus:border-white/30"
+                style={{ borderColor: LINE }}
+              />
+              <button
+                type="submit" disabled={estado === 'verificando' || codigo.length !== 6}
+                className="rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60"
+                style={{ background: GREEN, color: '#05130a' }}
+              >
+                {estado === 'verificando' ? 'Verificando…' : 'Acessar pedido'}
+              </button>
+            </div>
+            <button type="button" onClick={alterarDados} className="mt-4 text-xs font-semibold underline underline-offset-4" style={{ color: MUTED }}>
+              Corrigir dados ou solicitar outro código
+            </button>
+          </form>
+        ))}
 
         {erro && (
           <p className="mt-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: '#f6e3bd' }}>
@@ -200,7 +291,9 @@ export default function PedidoPage() {
 
         {estado === 'ok' && dados?.busca_parcial && (
           <p className="mt-5 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.08)', color: '#f6e3bd' }}>
-            Um dos meios de pagamento não respondeu agora, então esta consulta pode estar incompleta
+            {dados.fontes?.ledger === false
+              ? 'O status financeiro técnico não respondeu agora, então nenhum estado de pagamento foi presumido'
+              : 'Um dos meios de pagamento não respondeu agora, então esta consulta pode estar incompleta'}
             {dados.fontes?.pix === false ? ' (pedidos no Pix)' : ''}
             {dados.fontes?.cartao === false ? ' (pedidos no cartão)' : ''}.
             Se você não encontrar seu pedido aqui,{' '}
@@ -219,6 +312,9 @@ export default function PedidoPage() {
               acabou de ser feito, pode levar alguns minutos até aparecer aqui.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
+              <button type="button" onClick={alterarDados} className="rounded-xl border px-5 py-3 text-sm font-semibold text-white" style={{ borderColor: LINE }}>
+                Consultar outros dados
+              </button>
               <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="rounded-xl px-5 py-3 text-sm font-bold" style={{ background: GREEN, color: '#05130a' }}>
                 Falar com o time
               </a>
@@ -231,13 +327,16 @@ export default function PedidoPage() {
 
         {estado === 'ok' && dados?.encontrados > 0 && (
           <div className="mt-10 space-y-8">
+            <button type="button" onClick={alterarDados} className="text-xs font-semibold underline underline-offset-4" style={{ color: MUTED }}>
+              Consultar outro pedido
+            </button>
             <div className="space-y-4">
               {dados.pedidos.map((p) => <CardPedido key={`${p.provedor}-${p.referencia}`} p={p} />)}
             </div>
 
             {/* A régua de produção só faz sentido pra quem tem pagamento confirmado.
                 Mostrar "Pedido confirmado ✓" pra pagamento recusado seria mentira. */}
-            {dados.pedidos.some((p) => p.status === 'pago') ? (
+            {possuiPedidoAtivo ? (
               <div className="rounded-2xl border p-6" style={{ borderColor: LINE, background: SURFACE }}>
                 <h2 className="text-base font-bold text-white">Status de produção e envio</h2>
                 <p className="mt-1 text-xs" style={{ color: MUTED }}>
@@ -249,10 +348,10 @@ export default function PedidoPage() {
               </div>
             ) : (
               <div className="rounded-2xl border p-6" style={{ borderColor: 'rgba(245,181,68,0.32)', background: 'rgba(245,181,68,0.07)' }}>
-                <h2 className="text-base font-bold text-white">Pagamento ainda não confirmado</h2>
+                <h2 className="text-base font-bold text-white">Produção e envio não confirmados</h2>
                 <p className="mt-3 text-sm leading-relaxed" style={{ color: '#f6e3bd' }}>
-                  Encontramos seu pedido, mas o pagamento não consta como aprovado. Se você pagou por
-                  Pix agora, pode levar alguns minutos. Se pagou e continua assim,{' '}
+                  Encontramos seu pedido, mas o estado financeiro atual não autoriza confirmar produção
+                  ou envio. Se o pagamento acabou de ser feito, a conciliação pode levar alguns minutos.{' '}
                   <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
                     chama a gente no WhatsApp
                   </a>{' '}
@@ -266,7 +365,7 @@ export default function PedidoPage() {
               <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
                 Você pode cancelar a qualquer momento <strong className="text-white">até o envio</strong>, com
                 reembolso integral e sem justificativa — é só pedir pelo WhatsApp ou por e-mail. Depois da
-                entrega, o produto tem <strong className="text-white">1 ano de garantia</strong> de fábrica.
+                entrega, o produto tem <strong className="text-white">garantia de 12 meses</strong> conforme o contrato.
                 Detalhes no{' '}
                 <Link to="/prevenda/contrato" className="underline underline-offset-2" style={{ color: GREEN }}>
                   contrato de pré-venda
@@ -285,8 +384,9 @@ export default function PedidoPage() {
         )}
 
         <p className="mt-12 text-xs leading-relaxed" style={{ color: 'rgba(159,179,166,0.6)' }}>
-          Consultamos o seu pedido direto na Stripe e no Mercado Pago. A Grow-X não armazena dados de cartão.
-          O CPF é usado só pra autenticar esta consulta e emitir a nota fiscal — veja a{' '}
+          Só consultamos Stripe ou Mercado Pago depois que o código enviado ao e-mail é validado. O status
+          financeiro é confirmado no ledger técnico pseudonimizado da pré-venda, e a Grow-X não armazena
+          dados de cartão. O CPF/CNPJ autentica a consulta e apoia a emissão fiscal — veja a{' '}
           <Link to="/privacidade" className="underline underline-offset-2">política de privacidade</Link>.
         </p>
       </div>

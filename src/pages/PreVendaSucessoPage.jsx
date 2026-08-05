@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { CircleCheck, Clock3 } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
+import { clearCheckoutReturn, readCheckoutReturn } from '@/lib/checkoutReturn';
+import { reservationCode } from '../../shared/reservation-code.js';
 
 const BG = '#080b09';
 const SURFACE = 'rgba(255,255,255,0.035)';
@@ -10,22 +13,49 @@ const GREEN = '#4ade80';
 const MUTED = '#9fb3a6';
 const WHATSAPP = 'https://wa.me/5541995494343?text=Acabei%20de%20garantir%20meu%20M%C3%B3dulo%20Grow-X%20na%20pr%C3%A9-venda';
 
+function safeMercadoPagoUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    const host = url.hostname.toLowerCase();
+    const mercadoPagoHost = host === 'mercadopago.com'
+      || host.endsWith('.mercadopago.com')
+      || host === 'mercadopago.com.br'
+      || host.endsWith('.mercadopago.com.br');
+    return url.protocol === 'https:' && mercadoPagoHost ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
 export default function PreVendaSucessoPage() {
   const [params] = useSearchParams();
-  const sessionId = params.get('session_id') || '';
-  const mpPaymentId = params.get('payment_id') || params.get('collection_id') || '';
+  // O estado técnico sai do history assim que o pagamento é confirmado, mas
+  // precisa continuar vivo nesta montagem para mostrar código e referência.
+  // Sem o snapshot local, o re-render pós-`setInfo` apagava justamente os
+  // dados que o comprador precisava guardar.
+  const [checkoutReturn] = useState(() => readCheckoutReturn());
+  const sessionId = checkoutReturn?.sessionId || params.get('session_id') || '';
+  const mpPaymentId = checkoutReturn?.paymentId
+    || params.get('payment_id') || params.get('collection_id') || '';
+  const mpOrderId = checkoutReturn?.orderId || params.get('order_id') || '';
+  const requestId = checkoutReturn?.requestId || params.get('request_id') || '';
+  const statusToken = checkoutReturn?.statusToken || params.get('status_token') || '';
   const [info, setInfo] = useState(null);
   const [copiado, setCopiado] = useState(false);
 
-  const referencia = sessionId || mpPaymentId;
+  const referencia = sessionId || mpOrderId || mpPaymentId;
+  const codigoReserva = reservationCode(requestId);
 
   useEffect(() => {
-    const ref = sessionId
+    const providerRef = sessionId
       ? `session_id=${encodeURIComponent(sessionId)}`
-      : mpPaymentId
+      : mpOrderId
+        ? `order_id=${encodeURIComponent(mpOrderId)}`
+        : mpPaymentId
         ? `payment_id=${encodeURIComponent(mpPaymentId)}`
         : null;
-    if (!ref) return;
+    if (!providerRef || !requestId || !statusToken) return;
+    const ref = `${providerRef}&request_id=${encodeURIComponent(requestId)}&status_token=${encodeURIComponent(statusToken)}`;
 
     // A referência do pedido some da URL: ela vaza pro GA4/Meta/Clarity como
     // page_location e é a chave que abre os dados do pedido.
@@ -47,6 +77,7 @@ export default function PreVendaSucessoPage() {
           setInfo(data);
           if (data.payment_status === 'paid') {
             parado = true;
+            clearCheckoutReturn();
             if (!sessionStorage.getItem(dedupeKey)) {
               sessionStorage.setItem(dedupeKey, '1');
               track('purchase', {
@@ -58,8 +89,8 @@ export default function PreVendaSucessoPage() {
             }
             return;
           }
-          // Pix compensa alguns segundos depois do redirect. Sem reconsultar, a
-          // tela ficaria travada em "Quase lá" e a venda nunca viraria conversão.
+          // Alguns pagamentos, especialmente Pix legado, confirmam depois do
+          // redirect. Sem reconsultar, a tela ficaria travada em "Quase lá".
           if (++tentativas < 40) setTimeout(consultar, 3000);
         })
         .catch(() => { if (!parado && ++tentativas < 40) setTimeout(consultar, 5000); });
@@ -67,15 +98,16 @@ export default function PreVendaSucessoPage() {
 
     consultar();
     return () => { parado = true; };
-  }, [sessionId, mpPaymentId, referencia]);
+  }, [sessionId, mpPaymentId, mpOrderId, requestId, statusToken, referencia]);
 
   const pago = info?.payment_status === 'paid';
   const pendente = info && !pago;
   // Sem referência ou sem resposta da consulta a gente NÃO afirma que deu certo.
   const indefinido = !referencia || !info;
+  const paymentUrl = safeMercadoPagoUrl(info?.payment_url || info?.ticket_url);
 
   const copiar = () => {
-    navigator.clipboard?.writeText(referencia).then(() => {
+    navigator.clipboard?.writeText(codigoReserva || referencia).then(() => {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2500);
     }).catch(() => {});
@@ -93,7 +125,7 @@ export default function PreVendaSucessoPage() {
               ? { background: 'rgba(74,222,128,0.14)', color: GREEN }
               : { background: 'rgba(245,181,68,0.12)', color: '#f5b544' }}
           >
-            {pago ? '✓' : '⏳'}
+            {pago ? <CircleCheck aria-hidden="true" size={28} /> : <Clock3 aria-hidden="true" size={28} />}
           </span>
           <h1 className="mt-7 text-display-lg font-extrabold text-white">
             {pago ? 'Você está dentro.' : pendente ? 'Quase lá.' : 'Vamos confirmar seu pagamento.'}
@@ -102,7 +134,9 @@ export default function PreVendaSucessoPage() {
             {pago
               ? 'Sua unidade do Módulo Grow-X está reservada no lote de lançamento, com 3 meses de GXP Premium inclusos. O comprovante chega no seu e-mail.'
               : pendente
-                ? 'Seu pagamento está sendo confirmado — o Pix pode levar alguns instantes. Assim que compensar, a reserva aparece na área do cliente.'
+                ? (mpPaymentId || mpOrderId)
+                  ? 'Seu Pix está sendo confirmado e pode levar alguns instantes. Assim que compensar, a reserva aparece na área do cliente.'
+                  : 'Seu pagamento no cartão está sendo confirmado. Assim que o provedor concluir, a reserva aparece na área do cliente.'
                 : 'Ainda não conseguimos confirmar o pagamento por aqui. Se você concluiu o pagamento, consulte a área do cliente em instantes ou fale com a gente — não refaça a compra.'}
           </p>
           {indefinido && (
@@ -118,18 +152,21 @@ export default function PreVendaSucessoPage() {
         {referencia && (
           <div className="mt-9 rounded-2xl border p-5" style={{ borderColor: LINE, background: SURFACE }}>
             <p className="font-mono text-[0.65rem] uppercase tracking-[0.14em]" style={{ color: MUTED }}>
-              Código do pedido — guarde
+              Código da reserva — guarde
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <code className="min-w-0 flex-1 break-all font-mono text-xs text-white/85">{referencia}</code>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <code className="whitespace-nowrap font-mono text-base font-bold text-white sm:min-w-0 sm:flex-1 sm:text-lg">{codigoReserva || referencia}</code>
               <button
                 type="button" onClick={copiar}
-                className="shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/5"
+                className="self-start rounded-lg border px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/5 sm:shrink-0"
                 style={{ borderColor: LINE }}
               >
-                {copiado ? 'Copiado ✓' : 'Copiar'}
+                {copiado ? 'Copiado' : 'Copiar código'}
               </button>
             </div>
+            <p className="mt-3 break-all text-xs" style={{ color: MUTED }}>
+              Referência técnica do pagamento: <span className="font-mono text-white/75">{referencia}</span>
+            </p>
             {info?.contract_version && (
               <p className="mt-3 text-xs" style={{ color: MUTED }}>
                 Contrato <strong className="text-white">{info.contract_version}</strong>
@@ -137,6 +174,24 @@ export default function PreVendaSucessoPage() {
                 <Link to="/prevenda/contrato" className="underline underline-offset-2" style={{ color: GREEN }}>ver contrato</Link>
               </p>
             )}
+          </div>
+        )}
+
+        {paymentUrl && !pago && (
+          <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: 'rgba(74,222,128,0.30)', background: 'rgba(74,222,128,0.06)' }}>
+            <h2 className="text-base font-bold text-white">Seu Pix está pronto</h2>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
+              Abra o ambiente seguro do Mercado Pago para ver o QR Code ou copiar o código Pix. Esta página continuará consultando a confirmação.
+            </p>
+            <a
+              href={paymentUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-4 inline-flex rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110"
+              style={{ background: GREEN, color: '#05130a' }}
+            >
+              Abrir Pix no Mercado Pago
+            </a>
           </div>
         )}
 
@@ -153,8 +208,8 @@ export default function PreVendaSucessoPage() {
         <div className="mt-6 rounded-2xl border p-6" style={{ borderColor: 'rgba(74,222,128,0.26)', background: 'rgba(74,222,128,0.06)' }}>
           <h2 className="text-sm font-bold uppercase tracking-wider text-white">Acompanhe quando quiser</h2>
           <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
-            Consulte o status do pedido a qualquer momento com o e-mail e o CPF da compra. Pode cancelar
-            com reembolso integral até o envio.
+            Consulte o status com o e-mail e o CPF/CNPJ da compra. Antes de mostrar o pedido, enviaremos
+            um código de uso único para esse e-mail. Você pode cancelar com reembolso integral até o envio.
           </p>
           <Link
             to="/prevenda/pedido"

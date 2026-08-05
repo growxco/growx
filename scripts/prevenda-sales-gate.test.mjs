@@ -28,8 +28,8 @@ test('sales gate defaults closed without breaking legacy payment status', async 
 
     res = mockRes();
     await checkout({ method: 'GET', headers: {}, query: {} }, res);
-    assert.equal(res.statusCode, 400);
-    assert.equal(res.body.error, 'invalid_reference');
+    assert.equal(res.statusCode, 404);
+    assert.equal(res.body.error, 'pedido_nao_encontrado');
 
     res = mockRes();
     await checkout({ method: 'OPTIONS', headers: {} }, res);

@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Inventario transacional da pre-venda do Modulo Grow-X.
+
+Parameters:
+  TableName:
+    Type: String
+    Default: growx-prevenda-reservas-prod
+    AllowedPattern: '[A-Za-z0-9_.-]+'
+
+Resources:
+  PrevendaInventoryTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: outbox_partition
+          AttributeType: S
+        - AttributeName: next_attempt_at
+          AttributeType: N
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: webhook-outbox-due
+          KeySchema:
+            - AttributeName: outbox_partition
+              KeyType: HASH
+            - AttributeName: next_attempt_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: KEYS_ONLY
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Application
+          Value: growx-prevenda
+        - Key: Environment
+          Value: production
+        - Key: DataClassification
+          Value: pseudonymous-operational
+
+Outputs:
+  TableName:
+    Value: !Ref PrevendaInventoryTable
+  TableArn:
+    Value: !GetAtt PrevendaInventoryTable.Arn
+  WebhookOutboxDueIndexName:
+    Value: webhook-outbox-due

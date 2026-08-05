@@ -5,6 +5,7 @@
  */
 import { estadoDoLote } from './_lib/lote.js';
 import { rateLimit, clientIp } from './_lib/ai.js';
+import { OFERTA } from '../src/lib/oferta.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -17,17 +18,15 @@ export default async function handler(req, res) {
   // nunca reabre cobrança por acidente e a UI recebe um estado explícito.
   if (process.env.PREVENDA_SALES_ENABLED !== 'true') {
     return res.status(200).json({
-      total: 100,
-      vendidas: 0,
-      reservadas: 0,
+      total: OFERTA.loteTotal,
       restantes: 0,
       esgotado: false,
       confiavel: false,
       motivo: 'validacao_produto',
       reconciliacaoPendente: false,
+      financeiroPendente: false,
     });
   }
-
   if (!rateLimit(`lote:${clientIp(req)}`, 60)) return res.status(429).json({ error: 'rate_limited' });
 
   try {
@@ -37,10 +36,15 @@ export default async function handler(req, res) {
       vendidas: lote.vendidas,
       restantes: lote.restantes,
       esgotado: lote.esgotado,
-      // Sem confirmação dos dois provedores a página não deve anunciar número.
+      reservadas: lote.reservadas,
       confiavel: lote.confiavel,
+      reconciliacaoPendente: lote.reconciliacaoPendente,
+      financeiroPendente: lote.financeiroPendente,
     });
-  } catch {
-    return res.status(502).json({ error: 'contagem_indisponivel' });
+  } catch (error) {
+    console.error('[lote] inventário indisponível:', error.message);
+    res.setHeader('Retry-After', '60');
+    // Não devolve nenhum parcial: a UI não pode convertê-lo em escassez falsa.
+    return res.status(503).json({ error: 'contagem_indisponivel', confiavel: false });
   }
 }
