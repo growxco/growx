@@ -131,7 +131,7 @@ Arquivo: `.env.local` (criar a partir de `.env.example`). O site institucional f
 - `RATE#<hmac>#<janela>` limita a três aquisições bem-sucedidas por IP em cada janela fixa de 31 minutos. Colisão de slot não incrementa o contador; esses itens expiram após 48 horas.
 - `REQUEST`/`BUYER` liberados recebem TTL de 30 dias; os pagos, 5 anos. `SLOT` nunca recebe TTL, pois exclusão automática não pode reabrir capacidade.
 - `SLOT`/`REQUEST`/`BUYER` registram `contract_version`, `terms_acknowledged_at` e `email_hash` sem PII em claro. Retry do mesmo UUID com identidade ou versão contratual divergente falha fechado.
-- A role usada pela Vercel precisa de `dynamodb:GetItem`, `dynamodb:BatchGetItem`, `dynamodb:TransactWriteItems` e `dynamodb:UpdateItem` exclusivamente na tabela, mais `dynamodb:Query` exclusivamente no GSI `webhook-outbox-due`.
+- A role usada pela Vercel precisa de `dynamodb:GetItem`, `dynamodb:BatchGetItem` e `dynamodb:UpdateItem` exclusivamente na tabela, mais `dynamodb:Query` exclusivamente no GSI `webhook-outbox-due`. Como `TransactWriteItems` é autorizado pelas ações de item subjacentes, `dynamodb:PutItem` e `dynamodb:DeleteItem` também são permitidos na tabela somente quando `dynamodb:EnclosingOperation=TransactWriteItems`; não conceder uma ação IAM fictícia `dynamodb:TransactWriteItems`.
 
 O template `infra/prevenda-inventory.yml` provisiona somente a tabela; não cria usuário nem chave IAM. `infra/prevenda-vercel-oidc.yml` cria a role temporária com trust exato para `owner:grow-xs-projects:project:growx:environment:production`. O provider OIDC existente precisa aceitar a audiência `sts.amazonaws.com` antes do smoke.
 
