@@ -31,6 +31,24 @@ test('React Router permanece na primeira versão corrigida da série 7', async (
   assert.equal(packageJson.dependencies?.['react-router-dom'], '7.18.2');
 });
 
+test('Aikido permite rescan manual limitado sem enfraquecer o baseline', async () => {
+  const workflow = await read('../../.github/workflows/aikido.yml');
+
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /repositories\/code/);
+  assert.match(workflow, /external_repo_numeric_id/);
+  assert.match(workflow, /if status != 204:/);
+  assert.match(workflow, /group: aikido-\$\{\{ github\.repository \}\}-\$\{\{ github\.ref \}\}/);
+  assert.match(workflow, /cancel-in-progress: false/);
+  assert.match(workflow, /deadline = time\.monotonic\(\) \+ 600/);
+  assert.match(workflow, /for _ in range\(40\):/);
+  assert.match(workflow, /time\.sleep\(min\(15, remaining\)\)/);
+  assert.match(workflow, /timeout_seconds=max\(1, min\(15, remaining\)\)/);
+  assert.match(workflow, /AIKIDO_GATE_BASELINE_COUNT: "0"/);
+  assert.match(workflow, /AIKIDO_GATE_HIGH_BASELINE: "0"/);
+  assert.doesNotMatch(workflow, /status\s*==\s*429|retries\s*=/);
+});
+
 test('.env.example mantém pré-venda fechada e documenta o contrato operacional', async () => {
   const example = await read('../../.env.example');
   const salesFlags = example.match(/^PREVENDA_SALES_ENABLED=/gm) || [];
