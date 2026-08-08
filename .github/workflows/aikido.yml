@@ -136,6 +136,11 @@ jobs:
                   total += 1
                   severity = (item.get("severity") or "unknown").lower()
                   counts[severity] = counts.get(severity, 0) + 1
+                  patched_versions = item.get("patched_versions")
+                  if isinstance(patched_versions, list):
+                      patched_versions = ", ".join(
+                          str(version) for version in patched_versions[:5]
+                      )
 
                   # Somente metadados operacionais seguros. Nunca publicar snippets,
                   # evidências, payloads ou campos de segredo do export do provedor.
@@ -144,18 +149,20 @@ jobs:
                           "id": safe_cell(issue_id),
                           "severity": safe_cell(severity),
                           "type": safe_cell(item.get("issue_type") or item.get("type")),
-                          "title": safe_cell(
-                              item.get("issue_title")
-                              or item.get("title")
-                              or item.get("rule_name")
-                              or item.get("name")
+                          "rule": safe_cell(item.get("rule")),
+                          "cve": safe_cell(item.get("cve_id") or item.get("cve_id_alias")),
+                          "target": safe_cell(
+                              item.get("affected_package") or item.get("affected_file")
                           ),
                           "file": safe_cell(
-                              item.get("issue_file")
+                              item.get("affected_file")
+                              or item.get("issue_file")
                               or item.get("code_repo_file_path")
                               or item.get("file_path")
                               or item.get("path")
                           ),
+                          "installed": safe_cell(item.get("installed_version")),
+                          "patched": safe_cell(patched_versions),
                       }
                   )
 
@@ -175,11 +182,13 @@ jobs:
                       "",
                       "### Open findings (sanitized)",
                       "",
-                      "| ID | Severity | Type | Finding | File |",
-                      "| --- | --- | --- | --- | --- |",
+                      "| ID | Severity | Type | Rule | CVE | Target | File | Installed | Patched |",
+                      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
               ]
               summary_lines.extend(
-                  f"| {row['id']} | {row['severity']} | {row['type']} | {row['title']} | {row['file']} |"
+                  f"| {row['id']} | {row['severity']} | {row['type']} | {row['rule']} | "
+                  f"{row['cve']} | {row['target']} | {row['file']} | {row['installed']} | "
+                  f"{row['patched']} |"
                   for row in details
               )
               summary = "\n".join(summary_lines)
