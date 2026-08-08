@@ -91,11 +91,49 @@ function AnalyticsGate({ consent }) {
 }
 
 function ScrollToTopAndTrack() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
     analytics.pageView(pathname);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!hash) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return undefined;
+    }
+
+    let targetId;
+    try { targetId = decodeURIComponent(hash.slice(1)); }
+    catch { targetId = hash.slice(1); }
+
+    let observer;
+    let timeout;
+    let frame;
+    const scrollToTarget = () => {
+      const target = document.getElementById(targetId);
+      if (!target) return false;
+      target.scrollIntoView({ block: 'start', behavior: 'auto' });
+      return true;
+    };
+
+    frame = window.requestAnimationFrame(() => {
+      if (scrollToTarget()) return;
+      observer = new MutationObserver(() => {
+        if (scrollToTarget()) observer.disconnect();
+      });
+      observer.observe(document.getElementById('main') || document.body, {
+        childList: true,
+        subtree: true,
+      });
+      timeout = window.setTimeout(() => observer?.disconnect(), 3_000);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      observer?.disconnect();
+    };
+  }, [pathname, hash]);
   return null;
 }
 

@@ -11,6 +11,7 @@ import { PREVENDA_RELEASE } from '@/lib/prevendaRelease';
 import { formataTelefoneBr, normalizaTelefoneBr, telefoneBrValido } from '../../shared/br-phone.js';
 import { safeCheckoutRedirectUrl } from '../../shared/checkout-redirect.js';
 import { createRequestId } from '../../shared/provider-identifiers.js';
+import { buildInterestConsent } from '../../shared/interest-consent.js';
 import ControllerShowcase from '@/components/prevenda/ControllerShowcase';
 import ImageLightbox from '@/components/prevenda/ImageLightbox';
 import TurnstileWidget from '@/components/prevenda/TurnstileWidget';
@@ -453,6 +454,7 @@ function ListaEspera({ purchaseHref = '#reservar', purchaseLabel = 'Voltar à co
           _segment: 'cultivo',
           _source: 'prevenda',
           _path: '/prevenda',
+          consent: buildInterestConsent(),
         }),
       });
       if (!r.ok) throw new Error('falhou');
@@ -542,7 +544,7 @@ function ListaEspera({ purchaseHref = '#reservar', purchaseLabel = 'Voltar à co
         )}
       </p>
       <p className="text-xs leading-relaxed sm:col-span-2" style={{ color: MUTED }}>
-        Ao enviar, você autoriza a Grow-X a entrar em contato sobre o Módulo Grow-X. Veja a{' '}
+        Ao enviar, você autoriza e-mail e WhatsApp somente sobre esta pré-venda e o lançamento do Módulo Grow-X. Veja a{' '}
         <Link to="/privacidade" className="underline underline-offset-2" style={{ color: GREEN }}>
           Política de Privacidade
         </Link>.
@@ -1030,7 +1032,7 @@ export default function PreVendaPage() {
       </section>
 
       {/* ---------- COMO FUNCIONA ---------- */}
-      <section id="como" style={{ borderTop: `1px solid ${LINE}`, background: SURFACE }}>
+      <section id="como" className="scroll-mt-20" style={{ borderTop: `1px solid ${LINE}`, background: SURFACE }}>
         <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
           <p className={eyebrow} style={{ color: GREEN }}>Pré-venda sem mistério</p>
           <h2 className="mt-5 max-w-2xl text-display-lg font-extrabold text-white">
