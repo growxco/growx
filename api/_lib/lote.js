@@ -11,6 +11,7 @@ import {
   getReservation,
   inventorySummary,
   listSlots,
+  recordUnattachedProviderSearchNegative,
   releaseReservation,
   releaseUnattachedReservation,
 } from './inventory.js';
@@ -18,6 +19,12 @@ import {
   normalizeMercadoPagoOrderCanonical,
   verifyMercadoPagoOrderBinding,
 } from '../mp-webhook.js';
+import {
+  MP_ORDER_EXTERNAL_REFERENCE_PATTERN,
+  MP_ORDER_ID_PATTERN,
+  MP_ORDER_PAYMENT_ID_PATTERN,
+} from '../../shared/provider-identifiers.js';
+import { safeStripeCheckoutUrl } from '../../shared/checkout-redirect.js';
 const STRIPE_API = 'https://api.stripe.com/v1';
 const MP_API = 'https://api.mercadopago.com';
 const MP_REF = 'gx-modulo-prevenda';
@@ -33,7 +40,8 @@ const MIN_MP_SETTLEMENT_GRACE_MINUTES = 120;
 const MAX_MP_SETTLEMENT_GRACE_MINUTES = 24 * 60;
 const CONSUMED_MP = new Set(['approved', 'refunded', 'charged_back', 'in_mediation']);
 const PENDING_MP = new Set(['pending', 'in_process', 'authorized']);
-const MP_ORDER_ID = /^ORD[A-Z0-9]{20,64}$/;
+const MP_ORDER_SEARCH_PAGE_SIZE = 50;
+const MP_ORDER_SEARCH_MAX_PAGES = 20;
 const MP_ORDER_PENDING = new Set(['created', 'processing', 'action_required']);
 const MP_ORDER_RELEASABLE = new Set(['canceled', 'expired', 'failed']);
 const MP_ORDER_UNSUPPORTED_FINANCIAL = new Set(['refunded', 'charged_back', 'partially_refunded']);
@@ -64,6 +72,145 @@ function reservationOffer(reservation) {
     throw new ProviderUnavailableError('reservation_offer_snapshot_invalid');
   }
   return { amount, currency, sku, contractVersion };
+}
+
+function decimalCents(value) {
+  const normalized = String(value ?? '').trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
+  const [whole, fractional = ''] = normalized.split('.');
+  const cents = (Number(whole) * 100) + Number(fractional.padEnd(2, '0'));
+  return Number.isSafeInteger(cents) ? cents : null;
+}
+
+function providerPagingInteger(value) {
+  if (typeof value === 'number') {
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function expectedMpOrderExternalReference(reservation) {
+  const requestId = String(reservation?.requestId || '').toLowerCase();
+  const expected = `gx-modulo-prevenda-${requestId}`;
+  const match = String(reservation?.providerExternalReference || '').match(
+    MP_ORDER_EXTERNAL_REFERENCE_PATTERN,
+  );
+  if (reservation?.providerProtocol !== 'mp_orders_v1'
+      || !match
+      || match[1].toLowerCase() !== requestId
+      || reservation?.providerExternalReference !== expected
+      || reservation?.providerIdempotencyKey !== requestId) {
+    throw new ProviderUnavailableError('mp_order_intent_invalid');
+  }
+  return expected;
+}
+
+function mpOrderSearchWindow(reservation, now) {
+  const created = Date.parse(reservation?.createdAt || '');
+  if (!Number.isFinite(created) || !Number.isFinite(now?.getTime()) || now.getTime() < created) {
+    throw new ProviderUnavailableError('mp_order_search_window_invalid');
+  }
+  return {
+    beginDate: new Date(created - (5 * 60_000)).toISOString(),
+    endDate: now.toISOString(),
+  };
+}
+
+async function searchMercadoPagoOrders(reservation, now, fetchImpl) {
+  const externalReference = expectedMpOrderExternalReference(reservation);
+  const { beginDate, endDate } = mpOrderSearchWindow(reservation, now);
+  const found = [];
+  let expectedTotal = null;
+  let expectedTotalPages = null;
+
+  for (let page = 1; page <= MP_ORDER_SEARCH_MAX_PAGES; page += 1) {
+    const query = new URLSearchParams({
+      begin_date: beginDate,
+      end_date: endDate,
+      external_reference: externalReference,
+      type: 'online',
+      page: String(page),
+      page_size: String(MP_ORDER_SEARCH_PAGE_SIZE),
+    });
+    const response = await mpGet(`/v1/orders?${query}`, fetchImpl);
+    const data = Array.isArray(response?.data) ? response.data : null;
+    const paging = response?.paging;
+    const total = providerPagingInteger(paging?.total);
+    const totalPages = providerPagingInteger(paging?.total_pages);
+    const offset = providerPagingInteger(paging?.offset);
+    const limit = providerPagingInteger(paging?.limit);
+    const expectedOffset = (page - 1) * MP_ORDER_SEARCH_PAGE_SIZE;
+    if (!data
+        || !Number.isInteger(total) || total < 0
+        || !Number.isInteger(totalPages) || totalPages < 0
+        || !Number.isInteger(offset) || offset !== expectedOffset
+        || !Number.isInteger(limit) || limit !== MP_ORDER_SEARCH_PAGE_SIZE
+        || totalPages !== Math.ceil(total / MP_ORDER_SEARCH_PAGE_SIZE)
+        || (expectedTotal !== null && total !== expectedTotal)
+        || (expectedTotalPages !== null && totalPages !== expectedTotalPages)) {
+      throw new ProviderUnavailableError('mp_orders_search_truncated');
+    }
+    if (expectedTotal === null) {
+      expectedTotal = total;
+      expectedTotalPages = totalPages;
+      if (totalPages > MP_ORDER_SEARCH_MAX_PAGES) {
+        throw new ProviderUnavailableError('mp_orders_search_truncated');
+      }
+    }
+    const expectedPageLength = Math.min(
+      MP_ORDER_SEARCH_PAGE_SIZE,
+      Math.max(0, expectedTotal - offset),
+    );
+    if (found.length !== offset || data.length !== expectedPageLength) {
+      throw new ProviderUnavailableError('mp_orders_search_truncated');
+    }
+    for (const candidate of data) {
+      if (!MP_ORDER_ID_PATTERN.test(String(candidate?.id || ''))
+          || candidate?.type !== 'online'
+          || candidate?.external_reference !== externalReference) {
+        throw new ProviderUnavailableError('mp_order_search_result_mismatch');
+      }
+      found.push(candidate);
+    }
+    if (found.length === expectedTotal) {
+      if (new Set(found.map((candidate) => candidate.id)).size !== found.length) {
+        throw new ProviderUnavailableError('mp_order_search_result_mismatch');
+      }
+      return found;
+    }
+  }
+  throw new ProviderUnavailableError('mp_orders_search_truncated');
+}
+
+function validateRecoveredMpOrder(order, reservation, expectedOrderId) {
+  const offer = reservationOffer(reservation);
+  const externalReference = expectedMpOrderExternalReference(reservation);
+  const payments = order?.transactions?.payments;
+  const payment = Array.isArray(payments) && payments.length === 1 ? payments[0] : null;
+  const currencies = [
+    order?.currency,
+    order?.currency_id,
+    payment?.currency,
+    payment?.currency_id,
+  ].filter((value) => value !== undefined && value !== null && value !== '');
+  if (!order || String(order.id || '') !== expectedOrderId
+      || !MP_ORDER_ID_PATTERN.test(expectedOrderId)
+      || order.type !== 'online'
+      || order.processing_mode !== 'automatic'
+      || (order.capture_mode != null && order.capture_mode !== 'automatic')
+      || order.external_reference !== externalReference
+      || decimalCents(order.total_amount) !== offer.amount
+      || !payment
+      || !MP_ORDER_PAYMENT_ID_PATTERN.test(String(payment.id || ''))
+      || decimalCents(payment.amount) !== offer.amount
+      || payment.payment_method?.id !== 'pix'
+      || payment.payment_method?.type !== 'bank_transfer'
+      || currencies.some((currency) => String(currency).toUpperCase() !== offer.currency)) {
+    throw new ProviderUnavailableError('mp_order_recovery_mismatch');
+  }
+  return order;
 }
 
 function assertProviderMetadata(reservation, metadata, code) {
@@ -244,7 +391,7 @@ async function reconcileStripe(reservation, context) {
       slot: reservation.slot,
       provider: 'stripe',
       providerRef: session.id,
-      providerUrl: typeof session.url === 'string' ? session.url : undefined,
+      providerUrl: safeStripeCheckoutUrl(session.url) || undefined,
       providerExpiresAt: new Date(sessionExpiresAt * 1000).toISOString(),
       now,
       ...inventoryOptions,
@@ -363,21 +510,106 @@ async function reconcileMercadoPago(reservation, context) {
   });
 }
 
+async function recoverUnattachedMercadoPagoOrder(reservation, context) {
+  const { fetchImpl, now, inventoryOptions } = context;
+  const candidates = await searchMercadoPagoOrders(reservation, now, fetchImpl);
+  if (candidates.length === 0) {
+    let recorded;
+    try {
+      recorded = await recordUnattachedProviderSearchNegative({
+        requestId: reservation.requestId,
+        slot: reservation.slot,
+        now,
+        ...inventoryOptions,
+      });
+    } catch (error) {
+      throw new ProviderUnavailableError('mp_order_negative_record_failed', error);
+    }
+    if (recorded?.providerRef) return { reservation: recorded, order: null };
+    if (Number(recorded?.providerSearchNegativeCount || 0) >= 2
+        && unattachedRecoveryGraceElapsed(recorded || reservation, now)) {
+      try {
+        await releaseUnattachedReservation({
+          requestId: reservation.requestId,
+          slot: reservation.slot,
+          provider: 'mercadopago',
+          reason: 'mp_order_negative_after_recovery_grace',
+          now,
+          ...inventoryOptions,
+        });
+      } catch (error) {
+        const after = await getReservation(reservation.requestId, inventoryOptions)
+          .catch(() => null);
+        if (after?.providerRef) return { reservation: after, order: null };
+        throw new ProviderUnavailableError('mp_order_negative_release_failed', error);
+      }
+    }
+    return null;
+  }
+  if (candidates.length !== 1) {
+    throw new ProviderUnavailableError('mp_order_search_conflict');
+  }
+
+  const candidateId = String(candidates[0].id);
+  const order = validateRecoveredMpOrder(
+    await mpGet(`/v1/orders/${encodeURIComponent(candidateId)}`, fetchImpl),
+    reservation,
+    candidateId,
+  );
+  const expiration = Date.parse(reservation.providerExpiresAt || '');
+  if (!Number.isFinite(expiration)) {
+    throw new ProviderUnavailableError('mp_order_without_expiration');
+  }
+  try {
+    await attachProvider({
+      requestId: reservation.requestId,
+      slot: reservation.slot,
+      provider: 'mercadopago',
+      providerProtocol: 'mp_orders_v1',
+      providerRef: candidateId,
+      providerExpiresAt: new Date(expiration).toISOString(),
+      now,
+      ...inventoryOptions,
+    });
+  } catch (error) {
+    const concurrent = await getReservation(reservation.requestId, inventoryOptions)
+      .catch(() => null);
+    if (concurrent?.providerRef !== candidateId) {
+      throw new ProviderUnavailableError('mp_order_attach_conflict', error);
+    }
+  }
+  const attached = await getReservation(reservation.requestId, inventoryOptions);
+  if (!attached || attached.providerRef !== candidateId
+      || attached.providerProtocol !== 'mp_orders_v1') {
+    throw new ProviderUnavailableError('mp_order_attach_incomplete');
+  }
+  return { reservation: attached, order };
+}
+
 /**
- * Orders é um protocolo separado do Checkout Pro. A referência ORD anexada é
- * a única chave canônica aceita; uma reserva Orders sem essa referência não é
- * pesquisada nem liberada por inferência.
+ * Orders é um protocolo separado do Checkout Pro. Sem ORD anexada, somente a
+ * busca oficial completa pelo external_reference do intent pode recuperar a
+ * reserva; ambiguidade nunca escolhe candidata nem libera capacidade.
  */
-async function reconcileMercadoPagoOrder(reservation, context) {
+async function reconcileMercadoPagoOrder(initialReservation, context) {
   const {
     fetchImpl, now, inventoryOptions, deadlineAt, reconcileMercadoPagoOrderPaidImpl,
   } = context;
-  if (!reservation.providerRef) return;
-  if (!MP_ORDER_ID.test(String(reservation.providerRef))) {
+  let reservation = initialReservation;
+  let order = null;
+  if (!reservation.providerRef) {
+    const recovered = await recoverUnattachedMercadoPagoOrder(reservation, context);
+    if (!recovered) return;
+    reservation = recovered.reservation;
+    order = recovered.order;
+  }
+  if (!MP_ORDER_ID_PATTERN.test(String(reservation.providerRef))) {
     throw new ProviderUnavailableError('mp_order_attachment_invalid');
   }
 
-  const order = await mpGet(`/v1/orders/${encodeURIComponent(reservation.providerRef)}`, fetchImpl);
+  if (!order) {
+    order = await mpGet(`/v1/orders/${encodeURIComponent(reservation.providerRef)}`, fetchImpl);
+  }
   const orderPayments = Array.isArray(order?.transactions?.payments)
     ? order.transactions.payments
     : [];

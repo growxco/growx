@@ -19,9 +19,11 @@ jobs:
       AIKIDO_GATE_BASELINE_COUNT: "0"
       AIKIDO_GATE_HIGH_BASELINE: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -37,7 +39,6 @@ jobs:
           import json
           import os
           import sys
-          import time
           import urllib.error
           import urllib.parse
           import urllib.request
@@ -45,15 +46,12 @@ jobs:
           OAUTH_URL = "https://app.aikido.dev/api/oauth/token"
           ISSUES_URL = "https://app.aikido.dev/api/public/v1/issues/export"
 
-          def http(method: str, url: str, *, headers=None, data=None, retries=3):
+          def http(method: str, url: str, *, headers=None, data=None):
               req = urllib.request.Request(url, method=method, headers=headers or {}, data=data)
               try:
                   with urllib.request.urlopen(req, timeout=30) as resp:
                       return resp.status, resp.read().decode("utf-8", "replace")
               except urllib.error.HTTPError as exc:
-                  if exc.code == 429 and retries > 0:
-                      time.sleep(30)
-                      return http(method, url, headers=headers, data=data, retries=retries - 1)
                   return exc.code, exc.read().decode("utf-8", "replace")
 
           def oauth_token(client_id: str, secret: str) -> str:
@@ -70,7 +68,7 @@ jobs:
                   data=body,
               )
               if status != 200:
-                  raise SystemExit(f"OAuth failed: HTTP {status}: {raw[:300]}")
+                  raise SystemExit(f"OAuth failed: HTTP {status}")
               return json.loads(raw)["access_token"]
 
           def issue_items(raw: str):
@@ -83,6 +81,22 @@ jobs:
                       if isinstance(value, list):
                           return [item for item in value if isinstance(item, dict)]
               return []
+
+          def safe_cell(value, *, fallback="-") -> str:
+              if isinstance(value, (dict, list, tuple, set)):
+                  return fallback
+              text = "".join(
+                  character if ord(character) >= 32 and ord(character) != 127 else " "
+                  for character in str(value or "")
+              )
+              text = (
+                  text.replace("&", "&amp;")
+                  .replace("<", "&lt;")
+                  .replace(">", "&gt;")
+                  .replace("|", "\\|")
+                  .strip()
+              )
+              return text[:160] if text else fallback
 
           def main() -> int:
               client_id = os.environ.get("AIKIDO_CLIENT_ID", "").strip()
@@ -108,18 +122,23 @@ jobs:
               critical_baseline = int(os.environ["AIKIDO_GATE_BASELINE_COUNT"])
               high_baseline = int(os.environ["AIKIDO_GATE_HIGH_BASELINE"])
               token = oauth_token(client_id, secret)
-              params = urllib.parse.urlencode({"filter_status": "open", "per_page": 2000})
+              params = urllib.parse.urlencode({
+                  "filter_status": "open",
+                  "filter_code_repo_name": repo,
+                  "per_page": 2000,
+              })
               status, raw = http(
                   "GET",
                   f"{ISSUES_URL}?{params}",
                   headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
               )
               if status != 200:
-                  print(f"::error::Aikido issues export failed: HTTP {status}: {raw[:300]}", flush=True)
+                  print(f"::error::Aikido issues export failed: HTTP {status}", flush=True)
                   return 1
 
               seen = set()
               counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+              details = []
               total = 0
               for item in issue_items(raw):
                   if (item.get("code_repo_name") or "").lower() != repo:
@@ -131,9 +150,39 @@ jobs:
                   total += 1
                   severity = (item.get("severity") or "unknown").lower()
                   counts[severity] = counts.get(severity, 0) + 1
+                  patched_versions = item.get("patched_versions")
+                  if isinstance(patched_versions, list):
+                      patched_versions = ", ".join(
+                          str(version) for version in patched_versions[:5]
+                      )
 
-              summary = "\n".join(
-                  [
+                  # Somente metadados operacionais seguros. Nunca publicar snippets,
+                  # evidências, payloads ou campos de segredo do export do provedor.
+                  details.append(
+                      {
+                          "id": safe_cell(issue_id),
+                          "severity": safe_cell(severity),
+                          "type": safe_cell(item.get("issue_type") or item.get("type")),
+                          "rule": safe_cell(item.get("rule")),
+                          "cve": safe_cell(item.get("cve_id") or item.get("cve_id_alias")),
+                          "target": safe_cell(
+                              item.get("affected_package") or item.get("affected_file")
+                          ),
+                          "file": safe_cell(
+                              item.get("affected_file")
+                              or item.get("issue_file")
+                              or item.get("code_repo_file_path")
+                              or item.get("file_path")
+                              or item.get("path")
+                          ),
+                          "installed": safe_cell(item.get("installed_version")),
+                          "patched": safe_cell(patched_versions),
+                      }
+                  )
+
+              severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+              details.sort(key=lambda row: (severity_order.get(row["severity"], 9), row["id"]))
+              summary_lines = [
                       "## Aikido gate",
                       "",
                       f"Repo: `{repo}` - Total open: **{total}**",
@@ -144,8 +193,19 @@ jobs:
                       f"| high | {counts.get('high', 0)} | {high_baseline} | {'OK' if counts.get('high', 0) <= high_baseline else 'FAIL'} |",
                       f"| medium | {counts.get('medium', 0)} | (not gated) | -- |",
                       f"| low | {counts.get('low', 0)} | (not gated) | -- |",
-                  ]
+                      "",
+                      "### Open findings (sanitized)",
+                      "",
+                      "| ID | Severity | Type | Rule | CVE | Target | File | Installed | Patched |",
+                      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+              ]
+              summary_lines.extend(
+                  f"| {row['id']} | {row['severity']} | {row['type']} | {row['rule']} | "
+                  f"{row['cve']} | {row['target']} | {row['file']} | {row['installed']} | "
+                  f"{row['patched']} |"
+                  for row in details
               )
+              summary = "\n".join(summary_lines)
               print(summary, flush=True)
               if os.environ.get("GITHUB_STEP_SUMMARY"):
                   with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:

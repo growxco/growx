@@ -63,11 +63,11 @@ async function sendFormsubmit(payload) {
       const ok = data?.success === true || data?.success === 'true';
       // Modo de falha mais provável: 200 com success=false quando o e-mail de
       // destino não está ativado no FormSubmit. Sem log, some sem deixar rastro.
-      if (!ok) console.error('[notify] formsubmit recusou:', JSON.stringify(data).slice(0, 200));
+      if (!ok) console.error('[notify] formsubmit recusou:', { status: r.status, code: 'invalid_ack' });
       return ok;
     } catch { return true; }
   } catch (e) {
-    console.error('[notify] formsubmit falhou:', e.message);
+    console.error('[notify] formsubmit falhou:', { error: e?.name || 'Error' });
     return false;
   }
 }

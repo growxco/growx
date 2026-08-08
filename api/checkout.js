@@ -4,8 +4,8 @@
  * POST { method: 'cartao' | 'pix' }
  *   cartao → Stripe Checkout, R$ 3.000 em até 12x  → { url }
  *   pix    → Mercado Pago Orders API (Pix-only), R$ 2.800 → { url local }
- * GET ?session_id=cs_...  ou  ?order_id=ORD...  ou  ?payment_id=123 (legado)
- *   → status do pagamento pra página de confirmação.
+ * POST { action: 'status', requestId } + Authorization Bearer (ou cookie HttpOnly)
+ *   → status do pagamento para a página de confirmação, sem token na URL.
  *
  * No cartão coletamos CPF, exigimos aceite do contrato de pré-venda e pedimos
  * pra Stripe emitir a fatura (que ela envia por e-mail ao comprador). Recursos
@@ -36,6 +36,18 @@ import {
   TurnstileUnavailableError,
   verifyCheckoutChallenge,
 } from './_lib/turnstile.js';
+import { normalizaTelefoneBr, telefoneBrNacional, telefoneBrValido } from '../shared/br-phone.js';
+import {
+  safeCheckoutRedirectUrl,
+  safeGrowxCheckoutReturnUrl,
+  safeStripeCheckoutUrl,
+} from '../shared/checkout-redirect.js';
+import {
+  MP_ORDER_ID_PATTERN,
+  MP_ORDER_PAYMENT_ID_PATTERN,
+  normalizeRequestId,
+  REQUEST_ID_PATTERN,
+} from '../shared/provider-identifiers.js';
 import { checkoutAbertoEm, expiracaoDaReserva, OFERTA } from '../src/lib/oferta.js';
 
 export const config = { runtime: 'nodejs' };
@@ -45,12 +57,11 @@ const STRIPE_API = 'https://api.stripe.com/v1';
 const MP_API = 'https://api.mercadopago.com';
 const PROVIDER_TIMEOUT_MS = 8_000;
 const STRIPE_MIN_EXPIRY_LEAD_MS = (30 * 60 * 1000) + 5_000;
-const VALID_REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VALID_SLOT = /^SLOT#(?:0(?:0[1-9]|[1-9]\d)|100)$/;
 const VALID_STATUS_TOKEN = /^[a-f0-9]{64}$/;
-const VALID_MP_ORDER_ID = /^ORD[A-Z0-9]{10,80}$/;
-const VALID_MP_ORDER_PAYMENT_ID = /^PAY[A-Z0-9]{10,80}$/;
 const MP_PIX_EXPIRATION_TIME = 'PT30M';
+export const CHECKOUT_STATUS_TTL_MS = 48 * 60 * 60 * 1000;
+const STATUS_COOKIE = '__Host-growx_prevenda_status';
 
 export const CONTRACT_VERSION = OFERTA.contratoVersao;
 const CONTRACT_URL = `${SITE}/prevenda/contrato`;
@@ -107,7 +118,7 @@ function reservationOffer(reservation) {
 export function checkoutStatusToken(secret, { provider, requestId, slot }) {
   if (typeof secret !== 'string' || Buffer.byteLength(secret, 'utf8') < 32
       || !['stripe', 'mercadopago'].includes(provider)
-      || !VALID_REQUEST_ID.test(String(requestId || ''))
+      || !REQUEST_ID_PATTERN.test(String(requestId || ''))
       || !VALID_SLOT.test(String(slot || ''))) {
     throw new Error('invalid_checkout_status_binding');
   }
@@ -124,15 +135,71 @@ export function verifyCheckoutStatusToken(secret, binding, candidate) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function statusReturnQuery(reservation, provider) {
+export function statusReturnFragment(reservation, provider) {
   const token = reservation.statusToken;
   if (!['stripe', 'mercadopago'].includes(provider)
-      || !VALID_REQUEST_ID.test(String(reservation.requestId || ''))
+      || !REQUEST_ID_PATTERN.test(String(reservation.requestId || ''))
       || !VALID_SLOT.test(String(reservation.slot || ''))
       || !VALID_STATUS_TOKEN.test(String(token || ''))) {
     throw new Error('invalid_checkout_status_binding');
   }
-  return `request_id=${encodeURIComponent(reservation.requestId)}&status_token=${encodeURIComponent(token)}`;
+  const fragment = new URLSearchParams({
+    request_id: reservation.requestId,
+    status_token: token,
+  });
+  return `#${fragment.toString()}`;
+}
+
+export function checkoutStatusDescriptor(provider) {
+  if (provider === 'stripe') return { provider: 'stripe', payment_method: 'card' };
+  if (provider === 'mercadopago') return { provider: 'mercadopago', payment_method: 'pix' };
+  throw new Error('invalid_checkout_status_provider');
+}
+
+export function checkoutStatusTokenActive(reservation, now = new Date()) {
+  const issuedAt = Date.parse(reservation?.createdAt || '');
+  const current = new Date(now).getTime();
+  return Number.isFinite(issuedAt)
+    && Number.isFinite(current)
+    && current >= issuedAt
+    && current - issuedAt <= CHECKOUT_STATUS_TTL_MS;
+}
+
+export function statusCookieHeader(requestId, statusToken) {
+  if (!REQUEST_ID_PATTERN.test(String(requestId || ''))
+      || !VALID_STATUS_TOKEN.test(String(statusToken || ''))) return null;
+  return [
+    `${STATUS_COOKIE}=${requestId}.${statusToken}`,
+    `Max-Age=${Math.floor(CHECKOUT_STATUS_TTL_MS / 1000)}`,
+    'Path=/',
+    'HttpOnly',
+    'Secure',
+    'SameSite=Lax',
+  ].join('; ');
+}
+
+function setStatusCookie(res, requestId, statusToken) {
+  const header = statusCookieHeader(requestId, statusToken);
+  if (header) res.setHeader('Set-Cookie', header);
+}
+
+export function statusCredentials(req, body) {
+  const authorization = String(req.headers?.authorization || req.headers?.Authorization || '').trim();
+  const bodyRequestId = normalizeRequestId(body?.requestId || body?.request_id);
+  if (authorization) {
+    const match = /^Bearer ([a-f0-9]{64})$/i.exec(authorization);
+    return match && bodyRequestId
+      ? { requestId: bodyRequestId, statusToken: match[1].toLowerCase() }
+      : null;
+  }
+  const cookieHeader = String(req.headers?.cookie || '');
+  const encoded = cookieHeader.split(';').map((part) => part.trim())
+    .find((part) => part.startsWith(`${STATUS_COOKIE}=`))
+    ?.slice(STATUS_COOKIE.length + 1);
+  const match = /^([0-9a-f-]{36})\.([a-f0-9]{64})$/i.exec(String(encoded || ''));
+  const cookieRequestId = normalizeRequestId(match?.[1]);
+  if (!match || !cookieRequestId || (bodyRequestId && bodyRequestId !== cookieRequestId)) return null;
+  return { requestId: cookieRequestId, statusToken: match[2].toLowerCase() };
 }
 
 export const isDefinitiveProviderCreationFailure = (error) => {
@@ -201,8 +268,8 @@ export function stripeParams(on, comprador, reservation) {
   const offer = reservationOffer(reservation);
   const p = new URLSearchParams();
   p.set('mode', 'payment');
-  p.set('success_url', `${SITE}/prevenda/sucesso?session_id={CHECKOUT_SESSION_ID}&${statusReturnQuery(reservation, 'stripe')}`);
-  p.set('cancel_url', `${SITE}/prevenda?checkout=cancelado`);
+  p.set('success_url', `${SITE}/prevenda/sucesso${statusReturnFragment(reservation, 'stripe')}`);
+  p.set('cancel_url', `${SITE}/prevenda#checkout=cancelado`);
   p.set('locale', 'pt-BR');
   // Restringe a cartão síncrono. Métodos assíncronos podem concluir a sessão
   // sem pagamento e deixariam o hold sem uma transição final inequívoca.
@@ -325,6 +392,7 @@ export function buildMpPreference(comprador, reservation) {
   const offer = reservationOffer(reservation);
   const [primeiro, ...resto] = comprador.nome.split(/\s+/);
   const [cidade = '', uf = ''] = comprador.cidadeUf.split(/\s*[-/]\s*/, 2);
+  const telefone = telefoneBrNacional(comprador.telefone);
   return {
     items: [{
       id: 'gx-modulo-prevenda-pix',
@@ -340,7 +408,9 @@ export function buildMpPreference(comprador, reservation) {
       surname: resto.join(' ') || primeiro,
       email: comprador.email,
       identification: { type: tipoDocumento(comprador.cpf) || 'CPF', number: comprador.cpf },
-      ...(comprador.telefone ? { phone: { number: digitos(comprador.telefone) } } : {}),
+      ...(telefoneBrValido(telefone) ? {
+        phone: { area_code: telefone.slice(0, 2), number: telefone.slice(2) },
+      } : {}),
     },
     ...(comprador.cep ? {
       shipments: {
@@ -360,9 +430,9 @@ export function buildMpPreference(comprador, reservation) {
       installments: 1,
     },
     back_urls: {
-      success: `${SITE}/prevenda/sucesso?${statusReturnQuery(reservation, 'mercadopago')}`,
-      pending: `${SITE}/prevenda/sucesso?${statusReturnQuery(reservation, 'mercadopago')}`,
-      failure: `${SITE}/prevenda?checkout=falhou`,
+      success: `${SITE}/prevenda/sucesso${statusReturnFragment(reservation, 'mercadopago')}`,
+      pending: `${SITE}/prevenda/sucesso${statusReturnFragment(reservation, 'mercadopago')}`,
+      failure: `${SITE}/prevenda#checkout=falhou`,
     },
     auto_return: 'approved',
     expires: true,
@@ -423,9 +493,37 @@ const mpDecimalCents = (value) => {
 };
 
 export function mpOrderExternalReference(reservation) {
-  const requestId = String(reservation?.requestId || '').toLowerCase();
-  if (!VALID_REQUEST_ID.test(requestId)) throw new Error('invalid_mp_order_reservation');
-  return `gx-modulo-prevenda-${requestId}`;
+  const requestId = normalizeRequestId(reservation?.requestId);
+  if (!requestId) throw new Error('invalid_mp_order_reservation');
+  const expected = `gx-modulo-prevenda-${requestId}`;
+  const persisted = String(reservation?.providerExternalReference || '').trim();
+  if (persisted && persisted !== expected) throw new Error('invalid_mp_order_external_reference');
+  return persisted || expected;
+}
+
+export function mpOrderIdempotencyKey(reservation) {
+  const requestId = normalizeRequestId(reservation?.requestId);
+  if (!requestId) throw new Error('invalid_mp_order_reservation');
+  const persisted = String(reservation?.providerIdempotencyKey || '').trim();
+  if (persisted && persisted !== requestId) throw new Error('invalid_mp_order_idempotency_key');
+  return persisted || requestId;
+}
+
+export function canRetryUnattachedMpOrder(reservation, now = new Date()) {
+  const expiration = Date.parse(reservation?.providerExpiresAt || '');
+  if (reservation?.state !== 'held'
+      || reservation?.provider !== 'mercadopago'
+      || reservation?.providerProtocol !== 'mp_orders_v1'
+      || reservation?.providerRef
+      || reservation?.providerUrl
+      || !Number.isFinite(expiration)
+      || expiration <= new Date(now).getTime()) return false;
+  try {
+    return reservation.providerExternalReference === mpOrderExternalReference(reservation)
+      && reservation.providerIdempotencyKey === mpOrderIdempotencyKey(reservation);
+  } catch {
+    return false;
+  }
 }
 
 export function buildMpOrder(comprador, reservation) {
@@ -435,8 +533,9 @@ export function buildMpOrder(comprador, reservation) {
   const documentType = tipoDocumento(comprador?.cpf);
   const documentNumber = digitos(comprador?.cpf);
   const email = String(comprador?.email || '').trim().toLowerCase();
+  const telefone = telefoneBrNacional(comprador?.telefone);
   if (!firstName || !lastNameParts.length || !emailValido(email)
-      || !documentType || !documentoValido(documentNumber)) {
+      || !documentType || !documentoValido(documentNumber) || !telefoneBrValido(telefone)) {
     throw new Error('invalid_mp_order_payer');
   }
   const amount = mpAmountString(offer.amount);
@@ -458,6 +557,7 @@ export function buildMpOrder(comprador, reservation) {
       first_name: firstName,
       last_name: lastNameParts.join(' '),
       identification: { type: documentType, number: documentNumber },
+      phone: { area_code: telefone.slice(0, 2), number: telefone.slice(2) },
     },
   };
 }
@@ -491,10 +591,10 @@ function mpOrderMatchesReservation(order, reservation, { requireTicketUrl }) {
   if (offer.currency !== 'BRL') return null;
   const payment = mpOrderPayment(order);
   const ticketUrl = safeMpTicketUrl(payment?.payment_method?.ticket_url);
-  const orderId = String(order?.id || '').toUpperCase();
-  const paymentId = String(payment?.id || '').toUpperCase();
-  if (!VALID_MP_ORDER_ID.test(orderId)
-      || !VALID_MP_ORDER_PAYMENT_ID.test(paymentId)
+  const orderId = String(order?.id || '').trim();
+  const paymentId = String(payment?.id || '').trim();
+  if (!MP_ORDER_ID_PATTERN.test(orderId)
+      || !MP_ORDER_PAYMENT_ID_PATTERN.test(paymentId)
       || order?.type !== 'online'
       || order?.processing_mode !== 'automatic'
       || order?.external_reference !== externalReference
@@ -523,13 +623,13 @@ export function validateMpPixOrderResponse(order, reservation) {
 
 export function mpOrderStatusBelongsToReservation(order, reservation) {
   return Boolean(mpOrderMatchesReservation(order, reservation, { requireTicketUrl: false })
-    && String(order.id).toUpperCase() === String(reservation?.providerRef || '').toUpperCase());
+    && String(order.id) === String(reservation?.providerRef || ''));
 }
 
 export function mpOrderStatusUrl(orderId, reservation) {
-  const normalized = String(orderId || '').toUpperCase();
-  if (!VALID_MP_ORDER_ID.test(normalized)) throw new Error('invalid_mp_order_id');
-  return `${SITE}/prevenda/sucesso?order_id=${encodeURIComponent(normalized)}&${statusReturnQuery(reservation, 'mercadopago')}`;
+  const normalized = String(orderId || '').trim();
+  if (!MP_ORDER_ID_PATTERN.test(normalized)) throw new Error('invalid_mp_order_id');
+  return `${SITE}/prevenda/sucesso${statusReturnFragment(reservation, 'mercadopago')}`;
 }
 
 export async function createMpOrder(comprador, reservation, { fetchImpl = fetch } = {}) {
@@ -544,7 +644,7 @@ export async function createMpOrder(comprador, reservation, { fetchImpl = fetch 
         Accept: 'application/json',
         Authorization: `Bearer ${mpToken()}`,
         'Content-Type': 'application/json',
-        'X-Idempotency-Key': reservation.requestId,
+        'X-Idempotency-Key': mpOrderIdempotencyKey(reservation),
       },
       body: JSON.stringify(buildMpOrder(comprador, reservation)),
     });
@@ -625,20 +725,32 @@ export function mpStatusBelongsToReservation(payment, merchantOrder, reservation
     && merchantOrder.payments.some((candidate) => String(candidate?.id) === paymentId));
 }
 
-export function statusRequestAuthorized({ provider, providerReference, requestId, statusToken, reservation, secret }) {
-  const storedMpReference = String(reservation?.providerRef || '').toUpperCase();
+export function statusRequestAuthorized({
+  provider,
+  providerReference,
+  requestId,
+  statusToken,
+  reservation,
+  secret,
+  now = new Date(),
+}) {
+  const storedReference = String(reservation?.providerRef || '');
   const storedMpProtocol = String(reservation?.providerProtocol || '')
-    || (VALID_MP_ORDER_ID.test(storedMpReference) ? 'mp_orders_v1' : 'mp_checkout_pro_v1');
-  const requestedMpReference = String(providerReference || '').toUpperCase();
+    || (MP_ORDER_ID_PATTERN.test(storedReference) ? 'mp_orders_v1' : 'mp_checkout_pro_v1');
+  const requestedReference = String(providerReference || '');
+  const legacyPaymentReference = requestedReference || String(reservation?.lastProviderRef || '');
   if (!reservation
       || reservation.requestId !== requestId
       || reservation.provider !== provider
       || !VALID_SLOT.test(String(reservation.slot || ''))
-      || (provider === 'stripe' && reservation.providerRef !== providerReference)
+      || !checkoutStatusTokenActive(reservation, now)
+      || (provider === 'stripe' && (!/^cs_[A-Za-z0-9_]+$/.test(storedReference)
+        || (requestedReference && requestedReference !== storedReference)))
       || (provider === 'mercadopago' && storedMpProtocol === 'mp_orders_v1'
-        && (!VALID_MP_ORDER_ID.test(requestedMpReference) || requestedMpReference !== storedMpReference))
+        && (!MP_ORDER_ID_PATTERN.test(storedReference)
+          || (requestedReference && requestedReference !== storedReference)))
       || (provider === 'mercadopago' && storedMpProtocol !== 'mp_orders_v1'
-        && (!reservation.providerRef || !/^\d{5,}$/.test(String(providerReference || ''))))) return false;
+        && (!storedReference || !/^\d{5,}$/.test(legacyPaymentReference)))) return false;
   return verifyCheckoutStatusToken(secret, {
     provider,
     requestId,
@@ -646,136 +758,200 @@ export function statusRequestAuthorized({ provider, providerReference, requestId
   }, statusToken);
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', 'https://www.growx.com.br');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+const LEDGER_PAID_STATUS = Object.freeze({
+  stripe: 'paid',
+  mercadopago: 'approved',
+});
 
-  const ip = clientIp(req);
-  if (!rateLimit(ip, 20)) return res.status(429).json({ error: 'rate_limited' });
+const LEDGER_REVERSAL_STATUSES = new Set([
+  'refund_pending',
+  'refund_failed',
+  'partially_refunded',
+  'refunded',
+  'disputed',
+  'charged_back',
+]);
 
-  if (req.method === 'GET') {
-    const sessionId = String(req.query?.session_id || '');
-    const paymentId = String(req.query?.payment_id || '');
-    const orderId = String(req.query?.order_id || '').toUpperCase();
-    const requestId = String(req.query?.request_id || '').trim().toLowerCase();
-    const statusToken = String(req.query?.status_token || '').trim().toLowerCase();
-    const provider = /^cs_[a-zA-Z0-9_]+$/.test(sessionId)
-      ? 'stripe'
-      : (VALID_MP_ORDER_ID.test(orderId) || /^\d{5,}$/.test(paymentId) ? 'mercadopago' : null);
-    const providerReference = provider === 'stripe' ? sessionId : (orderId || paymentId);
-    const secret = reservationSecret();
-    const notFound = () => res.status(404).json({ error: 'pedido_nao_encontrado' });
+/**
+ * O provider confirma o estado externo; o ledger confirma a titularidade da
+ * unidade. A resposta pública só pode afirmar `paid` quando os dois convergem.
+ */
+export function checkoutPublicPaymentStatus(reservation, providerPaymentStatus) {
+  const provider = String(reservation?.provider || '');
+  const state = String(reservation?.state || '');
+  const ledgerPaymentStatus = String(reservation?.paymentStatus || '').toLowerCase();
+  const providerStatus = String(providerPaymentStatus || '').trim().toLowerCase();
+  const compatiblePaidStatus = LEDGER_PAID_STATUS[provider];
+  const ledgerPaid = state === 'paid'
+    && compatiblePaidStatus
+    && ledgerPaymentStatus === compatiblePaidStatus;
 
-    // A referência do provider é compartilhável e, no MP, enumerável. Exigimos
-    // um token HMAC opaco emitido no redirect e uma reserva forte correspondente
-    // antes de consultar a conta financeira compartilhada.
-    if (!provider || !VALID_REQUEST_ID.test(requestId) || !VALID_STATUS_TOKEN.test(statusToken)) {
-      return notFound();
-    }
-    if (!secret) return res.status(503).json({ error: 'checkout_status_not_configured' });
-    let reservation;
-    try { reservation = await getReservation(requestId); }
-    catch (error) {
-      console.error('[checkout-status] inventário indisponível:', error?.name || 'Error');
-      return res.status(503).json({ error: 'checkout_status_unavailable' });
-    }
-    if (!statusRequestAuthorized({
-      provider, providerReference, requestId, statusToken, reservation, secret,
-    })) return notFound();
+  if (ledgerPaid && providerStatus === 'paid') return 'paid';
 
-    if (provider === 'stripe') {
-      if (!stripeKey()) return res.status(503).json({ error: 'stripe_not_configured' });
-      try {
-        const session = await stripeRequest('GET', `/checkout/sessions/${sessionId}`);
-        if (!stripeStatusBelongsToReservation(session, reservation)) return notFound();
-        return res.status(200).json({
-          payment_status: session.payment_status,
-          amount_total: session.amount_total,
-          currency: session.currency,
-          sku: session.metadata.sku,
-          reference: session.id,
-          // O token autoriza apenas este status pseudônimo; PII continua na
-          // área do cliente, autenticada por e-mail + documento.
-          contract_accepted: session.consent?.terms_of_service === 'accepted',
-          contract_version: session.metadata.contract_version,
-        });
-      } catch (error) {
-        return error.status === 404 ? notFound() : res.status(502).json({ error: 'stripe_error' });
-      }
-    }
+  // Held sem revisão financeira pode expor somente um estado não pago do
+  // provider. Qualquer pagamento visto antes do commit canônico fica pendente.
+  if (state === 'held'
+      && !ledgerPaymentStatus
+      && providerStatus
+      && providerStatus !== 'paid'
+      && !LEDGER_REVERSAL_STATUSES.has(providerStatus)) return providerStatus;
 
-    if (!mpToken()) return res.status(503).json({ error: 'mercadopago_not_configured' });
-    if (VALID_MP_ORDER_ID.test(orderId)) {
-      try {
-        const order = await getMpOrder(orderId);
-        if (!mpOrderStatusBelongsToReservation(order, reservation)) return notFound();
-        const validated = mpOrderMatchesReservation(order, reservation, { requireTicketUrl: false });
-        const paid = order.status === 'processed' && order.status_detail === 'accredited';
-        return res.status(200).json({
-          payment_status: paid ? 'paid' : (order.status === 'action_required' ? 'pending' : order.status),
-          amount_total: reservation.offerAmountCents,
-          currency: String(reservation.offerCurrency).toLowerCase(),
-          sku: reservation.offerSku,
-          reference: String(order.id),
-          payment_reference: validated.paymentId,
-          contract_version: reservation.contractVersion,
-          // A URL financeira nunca é persistida nem devolvida no POST. Só este
-          // GET autenticado pelo status_token pode entregá-la ao frontend.
-          ticket_url: validated.ticketUrl,
-        });
-      } catch (error) {
-        return error.status === 404 ? notFound() : res.status(502).json({ error: 'mp_error' });
-      }
-    }
+  // released, reversões, estados corrompidos e divergência ledger/provider
+  // nunca podem acionar UI ou analytics de compra confirmada.
+  return 'reconciling';
+}
 
-    // Compatibilidade Checkout Pro: payment_id numérico e merchant_order.
-    // mp-webhook, cron, pedido e pós-venda ainda dependem deste protocolo e
-    // precisam migrar para Orders antes de PREVENDA_PIX_ENABLED ser ativada.
+async function handleCheckoutStatus(req, res, body) {
+  const credentials = statusCredentials(req, body);
+  const secret = reservationSecret();
+  const notFound = () => res.status(404).json({ error: 'pedido_nao_encontrado' });
+  if (!credentials) return notFound();
+  if (!secret) return res.status(503).json({ error: 'checkout_status_not_configured' });
+
+  let reservation;
+  try { reservation = await getReservation(credentials.requestId); }
+  catch (error) {
+    console.error('[checkout-status] inventário indisponível:', error?.name || 'Error');
+    return res.status(503).json({ error: 'checkout_status_unavailable' });
+  }
+  if (!reservation) return notFound();
+
+  const provider = reservation.provider;
+  const storedProtocol = String(reservation.providerProtocol || '')
+    || (MP_ORDER_ID_PATTERN.test(String(reservation.providerRef || ''))
+      ? 'mp_orders_v1'
+      : 'mp_checkout_pro_v1');
+  const sessionId = String(body?.sessionId || body?.session_id || reservation.providerRef || '');
+  const orderId = String(body?.orderId || body?.order_id || reservation.providerRef || '');
+  const paymentId = String(
+    body?.paymentId || body?.payment_id || reservation.lastProviderRef || '',
+  );
+  const providerReference = provider === 'stripe'
+    ? sessionId
+    : (storedProtocol === 'mp_orders_v1' ? orderId : paymentId);
+
+  if (!statusRequestAuthorized({
+    provider,
+    providerReference,
+    requestId: credentials.requestId,
+    statusToken: credentials.statusToken,
+    reservation,
+    secret,
+  })) return notFound();
+
+  if (provider === 'stripe') {
+    if (!stripeKey()) return res.status(503).json({ error: 'stripe_not_configured' });
     try {
-      const payment = await getMpPayment(paymentId);
-      const merchantOrderId = String(payment?.order?.id || '');
-      if (!/^\d{5,}$/.test(merchantOrderId)) return notFound();
-      const merchantOrder = await getMpMerchantOrder(merchantOrderId);
-      if (!mpStatusBelongsToReservation(payment, merchantOrder, reservation)) return notFound();
+      const session = await stripeRequest('GET', `/checkout/sessions/${sessionId}`);
+      if (!stripeStatusBelongsToReservation(session, reservation)) return notFound();
       return res.status(200).json({
-        payment_status: payment.status === 'approved' ? 'paid' : payment.status,
-        amount_total: Math.round(Number(payment.transaction_amount) * 100),
-        currency: String(payment.currency_id).toLowerCase(),
-        sku: payment.metadata.sku,
-        reference: String(payment.id),
-        contract_version: payment.metadata.contract_version,
+        ...checkoutStatusDescriptor('stripe'),
+        request_id: credentials.requestId,
+        payment_status: checkoutPublicPaymentStatus(reservation, session.payment_status),
+        amount_total: session.amount_total,
+        currency: session.currency,
+        sku: session.metadata.sku,
+        reference: session.id,
+        contract_accepted: session.consent?.terms_of_service === 'accepted',
+        contract_version: session.metadata.contract_version,
+      });
+    } catch (error) {
+      return error.status === 404 ? notFound() : res.status(502).json({ error: 'stripe_error' });
+    }
+  }
+
+  if (provider !== 'mercadopago') return notFound();
+  if (!mpToken()) return res.status(503).json({ error: 'mercadopago_not_configured' });
+  if (storedProtocol === 'mp_orders_v1') {
+    try {
+      const order = await getMpOrder(orderId);
+      if (!mpOrderStatusBelongsToReservation(order, reservation)) return notFound();
+      const validated = mpOrderMatchesReservation(order, reservation, { requireTicketUrl: false });
+      const paid = order.status === 'processed' && order.status_detail === 'accredited';
+      return res.status(200).json({
+        ...checkoutStatusDescriptor('mercadopago'),
+        request_id: credentials.requestId,
+        payment_status: checkoutPublicPaymentStatus(
+          reservation,
+          paid ? 'paid' : (order.status === 'action_required' ? 'pending' : order.status),
+        ),
+        amount_total: reservation.offerAmountCents,
+        currency: String(reservation.offerCurrency).toLowerCase(),
+        sku: reservation.offerSku,
+        reference: String(order.id),
+        payment_reference: validated.paymentId,
+        contract_version: reservation.contractVersion,
+        ticket_url: validated.ticketUrl,
       });
     } catch (error) {
       return error.status === 404 ? notFound() : res.status(502).json({ error: 'mp_error' });
     }
   }
 
-  if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
+  try {
+    const payment = await getMpPayment(paymentId);
+    const merchantOrderId = String(payment?.order?.id || '');
+    if (!/^\d{5,}$/.test(merchantOrderId)) return notFound();
+    const merchantOrder = await getMpMerchantOrder(merchantOrderId);
+    if (!mpStatusBelongsToReservation(payment, merchantOrder, reservation)) return notFound();
+    return res.status(200).json({
+      ...checkoutStatusDescriptor('mercadopago'),
+      request_id: credentials.requestId,
+      payment_status: checkoutPublicPaymentStatus(
+        reservation,
+        payment.status === 'approved' ? 'paid' : payment.status,
+      ),
+      amount_total: Math.round(Number(payment.transaction_amount) * 100),
+      currency: String(payment.currency_id).toLowerCase(),
+      sku: payment.metadata.sku,
+      reference: String(payment.id),
+      contract_version: payment.metadata.contract_version,
+    });
+  } catch (error) {
+    return error.status === 404 ? notFound() : res.status(502).json({ error: 'mp_error' });
+  }
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.growx.com.br');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST, OPTIONS');
+    return res.status(405).json({ error: 'method_not_allowed' });
+  }
+
+  let body;
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {}); }
+  catch { return res.status(400).json({ error: 'invalid_json' }); }
+
+  const isStatusRequest = body?.action === 'status';
+  const ip = clientIp(req);
+  if (!rateLimit(ip, isStatusRequest ? 30 : 20)) {
+    return res.status(429).json({ error: 'rate_limited' });
+  }
+  if (isStatusRequest) return handleCheckoutStatus(req, res, body);
 
   // Fail closed: novas cobranças só podem ser abertas por uma decisão explícita
-  // de operação. O GET continua disponível para as sessões legadas concluírem
-  // o retorno enquanto Hardware/Jurídico aprovam datasheet, kit e frete.
-  // Ausência da env nunca abre vendas por acidente.
+  // de operação. A consulta autenticada de status continua disponível mesmo
+  // com o gate fechado para concluir pagamentos já iniciados.
   if (process.env.PREVENDA_SALES_ENABLED !== 'true') {
     res.setHeader('Retry-After', '300');
     return res.status(503).json({ error: 'vendas_pausadas' });
   }
 
-  let body;
-  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
-  catch { return res.status(400).json({ error: 'invalid_json' }); }
-
   const requestedMethod = String(body?.method || body?.sku || '');
   const method = requestedMethod === 'prevenda' ? 'cartao' : requestedMethod;
-  const requestId = String(body?.requestId || body?.request_id || '').trim().toLowerCase();
+  const requestId = normalizeRequestId(body?.requestId || body?.request_id);
   const now = new Date();
 
   if (!['cartao', 'pix'].includes(method)) {
     return res.status(400).json({ error: 'invalid_method', valid: ['cartao', 'pix'] });
   }
-  if (!VALID_REQUEST_ID.test(requestId)) return res.status(400).json({ error: 'request_id_invalido' });
+  if (!requestId) return res.status(400).json({ error: 'request_id_invalido' });
   if (!checkoutAbertoEm(now)) {
     return res.status(410).json({
       error: 'oferta_encerrada',
@@ -784,8 +960,8 @@ export default async function handler(req, res) {
   }
 
   const provider = method === 'pix' ? 'mercadopago' : 'stripe';
-  // Orders já restringe a criação a Pix, mas webhook/cron/pedido/pós-venda
-  // ainda estão no protocolo legado. Até a migração ponta a ponta, a flag fecha.
+  // A flag de Pix permanece independente para permitir homologação e rollback
+  // sem afetar cartão nem pagamentos Pix já iniciados.
   if (provider === 'mercadopago' && process.env.PREVENDA_PIX_ENABLED !== 'true') {
     return res.status(503).json({ error: 'pix_em_homologacao' });
   }
@@ -834,13 +1010,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'ciencia_especificacoes_obrigatoria' });
   }
 
-  // O cadastro de compra termina aqui: nome, e-mail e CPF/CNPJ. A Stripe pode
-  // coletar endereço no checkout do cartão; no Pix, a entrega é confirmada
-  // depois do pagamento pela área do cliente/time, sem aumentar abandono.
+  // WhatsApp é obrigatório para confirmação operacional. O Dynamo recebe só
+  // hashes; o número canônico é enviado ao provider financeiro quando necessário.
   const cep = digitos(body?.cep);
   const endereco = String(body?.endereco || '').trim().slice(0, 200);
   const cidadeUf = String(body?.cidadeUf || '').trim().slice(0, 120);
-  const telefone = String(body?.telefone || '').trim().slice(0, 40);
+  const telefone = normalizaTelefoneBr(String(body?.telefone || '').slice(0, 40));
+  if (!telefone) return res.status(400).json({ error: 'telefone_invalido' });
 
   const comprador = {
     nome, email, cpf, cep, endereco, cidadeUf, telefone,
@@ -893,6 +1069,13 @@ export default async function handler(req, res) {
   }
 
   let reservation;
+  const providerProtocolIntent = provider === 'mercadopago' ? 'mp_orders_v1' : undefined;
+  const providerExternalReference = provider === 'mercadopago'
+    ? mpOrderExternalReference({ requestId })
+    : undefined;
+  const providerIdempotencyKey = provider === 'mercadopago'
+    ? mpOrderIdempotencyKey({ requestId })
+    : undefined;
   try {
     reservation = await acquireReservation({
       requestId,
@@ -904,6 +1087,9 @@ export default async function handler(req, res) {
       offerCurrency: OFFER[method].currency,
       offerSku: OFFER[method].sku,
       contractVersion: CONTRACT_VERSION,
+      providerProtocol: providerProtocolIntent,
+      providerExternalReference,
+      providerIdempotencyKey,
       providerExpiresAt,
       now: reservationNow,
     });
@@ -929,53 +1115,94 @@ export default async function handler(req, res) {
     throw e;
   }
 
-  // Só o request que criou REQUEST#uuid pode criar o objeto financeiro. Um
-  // concorrente recebe a URL já anexada ou espera o primeiro terminar.
-  if (!reservation.created) {
-    if (reservation.state === 'paid') return res.status(409).json({ error: 'pedido_ja_confirmado' });
-    if (reservation.state === 'released') return res.status(409).json({ error: 'reserva_expirada' });
-    if (reservation.providerUrl) {
-      return res.status(200).json({
-        url: reservation.providerUrl,
-        id: reservation.providerRef,
-        provider,
-      });
-    }
-    res.setHeader('Retry-After', '2');
-    return res.status(409).json({ error: 'reserva_em_processamento' });
+  const originalProviderExpiresAt = new Date(reservation.providerExpiresAt);
+  if (!Number.isFinite(originalProviderExpiresAt.getTime())) {
+    res.setHeader('Retry-After', '60');
+    return res.status(503).json({ error: 'capacidade_indisponivel' });
   }
-
   const providerReservation = {
     ...reservation,
     requestId,
     buyerKey,
-    createdAt: reservationNow,
-    providerExpiresAt,
+    createdAt: reservation.createdAt || reservationNow,
+    providerExpiresAt: originalProviderExpiresAt,
     statusToken: checkoutStatusToken(guardSecret, {
       provider,
       requestId,
       slot: reservation.slot,
     }),
   };
+  // Fallback curto para providers/browsers que não preservem o fragmento no
+  // retorno. HttpOnly impede analytics e JavaScript de lerem a credencial.
+  setStatusCookie(res, requestId, providerReservation.statusToken);
+
+  // Orders pode ter sido criada antes de uma resposta/attach falhar. O retry
+  // reutiliza o mesmo intent e a mesma chave idempotente; nunca adquire outro
+  // slot nem inventa uma segunda referência.
+  if (!reservation.created) {
+    if (reservation.state === 'paid') return res.status(409).json({ error: 'pedido_ja_confirmado' });
+    if (reservation.state === 'released') return res.status(409).json({ error: 'reserva_expirada' });
+    if (provider === 'mercadopago'
+        && reservation.providerProtocol === 'mp_orders_v1'
+        && reservation.providerRef) {
+      try {
+        return res.status(200).json({
+          url: mpOrderStatusUrl(reservation.providerRef, providerReservation),
+          id: reservation.providerRef,
+          provider,
+        });
+      } catch {
+        res.setHeader('Retry-After', '60');
+        return res.status(503).json({ error: 'provider_indisponivel' });
+      }
+    }
+    if (reservation.providerUrl) {
+      const replayUrl = safeCheckoutRedirectUrl(reservation.providerUrl);
+      if (!replayUrl) {
+        res.setHeader('Retry-After', '60');
+        return res.status(503).json({ error: 'provider_indisponivel' });
+      }
+      return res.status(200).json({
+        url: replayUrl,
+        id: reservation.providerRef,
+        provider,
+      });
+    }
+    const canRetryOrder = canRetryUnattachedMpOrder(reservation, reservationNow);
+    if (!canRetryOrder) {
+      res.setHeader('Retry-After', '2');
+      return res.status(409).json({
+        error: originalProviderExpiresAt.getTime() <= reservationNow.getTime()
+          ? 'reserva_expirada'
+          : 'reserva_em_processamento',
+      });
+    }
+  }
 
   try {
     let providerRef;
     let providerUrl;
+    let ledgerProviderUrl;
     let providerProtocol;
     if (provider === 'stripe') {
       const session = await createStripeSession(comprador, providerReservation);
       providerRef = session.id;
-      providerUrl = session.url;
+      providerUrl = safeStripeCheckoutUrl(session.url);
+      ledgerProviderUrl = providerUrl;
     } else {
       const order = await createMpOrder(comprador, providerReservation);
-      providerRef = String(order.id).toUpperCase();
-      providerUrl = mpOrderStatusUrl(providerRef, providerReservation);
+      providerRef = String(order.id);
+      providerUrl = safeGrowxCheckoutReturnUrl(
+        mpOrderStatusUrl(providerRef, providerReservation),
+      );
+      // Dynamo nunca persiste o status_token. O cookie HttpOnly permite
+      // reconstruir o retorno em retries, e o primeiro redirect usa fragmento.
+      ledgerProviderUrl = `${SITE}/prevenda/sucesso`;
       providerProtocol = 'mp_orders_v1';
-      // Primeira fatia apenas: a URL local, o frontend e o GET autenticado já
-      // entendem Orders. Webhook, cron, pedido e pós-venda ainda precisam
-      // migrar antes de a flag Pix poder ser ligada com segurança.
     }
-    if (!providerRef || !providerUrl) throw new Error('provider_checkout_invalid');
+    if (!providerRef || !providerUrl || !ledgerProviderUrl) {
+      throw new Error('provider_checkout_invalid');
+    }
 
     await attachProvider({
       requestId,
@@ -983,13 +1210,13 @@ export default async function handler(req, res) {
       provider,
       providerProtocol,
       providerRef,
-      providerUrl,
-      providerExpiresAt: providerExpiresAt.toISOString(),
+      providerUrl: ledgerProviderUrl,
+      providerExpiresAt: originalProviderExpiresAt.toISOString(),
       now: reservationNow,
     });
     return res.status(200).json({ url: providerUrl, id: providerRef, provider });
   } catch (e) {
-    if (isDefinitiveProviderCreationFailure(e)) {
+    if (reservation.created && isDefinitiveProviderCreationFailure(e)) {
       try {
         await releaseUnattachedReservation({
           requestId,

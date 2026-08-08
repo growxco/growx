@@ -1,23 +1,33 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import process from 'node:process';
 import test from 'node:test';
-import { URL } from 'node:url';
+import { URL, URLSearchParams } from 'node:url';
 
 import {
   buildMpOrder,
   buildMpPreference,
+  canRetryUnattachedMpOrder,
+  CHECKOUT_STATUS_TTL_MS,
   checkoutStatusToken,
+  checkoutStatusTokenActive,
+  checkoutPublicPaymentStatus,
+  checkoutStatusDescriptor,
   createMpOrder,
   isDefinitiveProviderCreationFailure,
   mpOrderExternalReference,
+  mpOrderIdempotencyKey,
   mpOrderStatusBelongsToReservation,
   mpOrderStatusUrl,
   mpStatusBelongsToReservation,
   providerErrorLogFields,
   statusRequestAuthorized,
+  statusCookieHeader,
+  statusCredentials,
   stripeStatusBelongsToReservation,
   stripeCheckoutIdempotencyKey,
   stripeParams,
+  statusReturnFragment,
   validateMpPixOrderResponse,
   verifyCheckoutStatusToken,
 } from '../../api/checkout.js';
@@ -91,6 +101,13 @@ test('PII vai em campos padrão dos providers e nunca em metadata nova', () => {
 
   const stripe = stripeParams({ installments: true, consent: true, invoice: true }, comprador, reservation);
   assert.equal(stripe.get('customer_email'), comprador.email);
+  const stripeReturn = new URL(stripe.get('success_url'));
+  assert.equal(stripeReturn.search, '');
+  assert.equal(new URLSearchParams(stripeReturn.hash.slice(1)).get('request_id'), reservation.requestId);
+  assert.equal(new URLSearchParams(stripeReturn.hash.slice(1)).get('status_token'), reservation.statusToken);
+  const stripeCancel = new URL(stripe.get('cancel_url'));
+  assert.equal(stripeCancel.search, '');
+  assert.equal(stripeCancel.hash, '#checkout=cancelado');
   assert.equal(stripe.get('payment_method_types[0]'), 'card');
   assert.equal(stripe.get('tax_id_collection[enabled]'), 'true');
   assert.equal(stripe.get('payment_method_options[card][installments][enabled]'), 'true');
@@ -117,8 +134,13 @@ test('PII vai em campos padrão dos providers e nunca em metadata nova', () => {
   assert.equal(mp.payer.identification.number, comprador.cpf);
   assert.equal(mp.shipments.receiver_address.zip_code, comprador.cep);
   assert.doesNotMatch(JSON.stringify(mp.metadata), /Pessoa Teste|pessoa@example\.com|52998224725|Rua Exemplo/);
-  assert.match(mp.back_urls.success, /request_id=/);
-  assert.match(mp.back_urls.success, /status_token=[a-f0-9]{64}/);
+  const mpReturn = new URL(mp.back_urls.success);
+  assert.equal(mpReturn.search, '');
+  assert.equal(new URLSearchParams(mpReturn.hash.slice(1)).get('request_id'), reservation.requestId);
+  assert.equal(new URLSearchParams(mpReturn.hash.slice(1)).get('status_token'), reservation.statusToken);
+  const mpFailure = new URL(mp.back_urls.failure);
+  assert.equal(mpFailure.search, '');
+  assert.equal(mpFailure.hash, '#checkout=falhou');
 
   const orderReservation = {
     ...reservation,
@@ -130,8 +152,19 @@ test('PII vai em campos padrão dos providers e nunca em metadata nova', () => {
   assert.equal(order.payer.first_name, 'Pessoa');
   assert.equal(order.payer.last_name, 'Teste');
   assert.equal(order.payer.identification.number, comprador.cpf);
+  assert.deepEqual(order.payer.phone, { area_code: '41', number: '999999999' });
   assert.equal('metadata' in order, false);
   assert.equal('shipments' in order, false);
+});
+
+test('status autenticado explicita provedor e método sem depender da referência financeira', () => {
+  assert.deepEqual(checkoutStatusDescriptor('stripe'), {
+    provider: 'stripe', payment_method: 'card',
+  });
+  assert.deepEqual(checkoutStatusDescriptor('mercadopago'), {
+    provider: 'mercadopago', payment_method: 'pix',
+  });
+  assert.throws(() => checkoutStatusDescriptor('desconhecido'), /invalid_checkout_status_provider/);
 });
 
 test('checkout do provider deriva preço, moeda, SKU e contrato do snapshot antigo da reserva', () => {
@@ -201,6 +234,7 @@ test('Orders API cria somente Pix com R$ do snapshot, idempotência e retorno lo
     nome: 'Pessoa Teste da Silva',
     email: 'Pessoa@Example.com',
     cpf: '52998224725',
+    telefone: '+5541999999999',
   };
   const reservation = {
     requestId: '7ed9e944-1d84-4c28-9ec8-0eb66294a735',
@@ -264,6 +298,7 @@ test('Orders API cria somente Pix com R$ do snapshot, idempotência e retorno lo
           first_name: 'Pessoa',
           last_name: 'Teste da Silva',
           identification: { type: 'CPF', number: comprador.cpf },
+          phone: { area_code: '41', number: '999999999' },
         });
         return { ok: true, status: 201, json: async () => orderResponse };
       },
@@ -275,9 +310,10 @@ test('Orders API cria somente Pix com R$ do snapshot, idempotência e retorno lo
     const providerUrl = new URL(mpOrderStatusUrl(created.id, reservation));
     assert.equal(providerUrl.origin, 'https://www.growx.com.br');
     assert.equal(providerUrl.pathname, '/prevenda/sucesso');
-    assert.equal(providerUrl.searchParams.get('order_id'), created.id);
-    assert.equal(providerUrl.searchParams.get('request_id'), reservation.requestId);
-    assert.equal(providerUrl.searchParams.get('status_token'), reservation.statusToken);
+    assert.equal(providerUrl.search, '');
+    const providerFragment = new URLSearchParams(providerUrl.hash.slice(1));
+    assert.equal(providerFragment.get('request_id'), reservation.requestId);
+    assert.equal(providerFragment.get('status_token'), reservation.statusToken);
 
     const attached = { ...reservation, providerRef: created.id, providerProtocol: 'mp_orders_v1' };
     assert.equal(mpOrderStatusBelongsToReservation(created, attached), true);
@@ -308,6 +344,85 @@ test('Orders API cria somente Pix com R$ do snapshot, idempotência e retorno lo
   }
 });
 
+test('retry Orders reutiliza intent durável antes do vencimento e nunca muda a chave', async () => {
+  const previousToken = process.env.MP_ACCESS_TOKEN;
+  process.env.MP_ACCESS_TOKEN = 'APP_USR_test_orders_retry';
+  const requestId = '7ed9e944-1d84-4c28-9ec8-0eb66294a735';
+  const reservation = {
+    requestId,
+    slot: 'SLOT#001',
+    provider: 'mercadopago',
+    providerProtocol: 'mp_orders_v1',
+    providerExternalReference: `gx-modulo-prevenda-${requestId}`,
+    providerIdempotencyKey: requestId,
+    state: 'held',
+    providerRef: null,
+    providerUrl: null,
+    providerExpiresAt: '2026-08-05T12:31:00.000Z',
+    offerAmountCents: OFERTA.pixCentavos,
+    offerCurrency: 'BRL',
+    offerSku: 'prevenda_pix',
+    contractVersion: OFERTA.contratoVersao,
+  };
+  const comprador = {
+    nome: 'Pessoa Teste',
+    email: 'pessoa@example.com',
+    cpf: '52998224725',
+    telefone: '+5541999999999',
+  };
+  const order = {
+    id: 'ORD01HRYFWNYRE1MR1E60MW3X0T2P',
+    type: 'online',
+    processing_mode: 'automatic',
+    total_amount: '2800.00',
+    external_reference: reservation.providerExternalReference,
+    transactions: { payments: [{
+      id: 'PAY01HRYFXQ53Q3JPEC48MYWMR0TE',
+      amount: '2800.00',
+      payment_method: {
+        id: 'pix',
+        type: 'bank_transfer',
+        ticket_url: 'https://www.mercadopago.com.br/payments/retry/ticket',
+      },
+    }] },
+  };
+  const requests = [];
+  const fetchImpl = async (url, options) => {
+    requests.push({ url, options });
+    return { ok: true, status: 201, json: async () => order };
+  };
+  try {
+    assert.equal(canRetryUnattachedMpOrder(
+      reservation,
+      new Date('2026-08-05T12:30:59.999Z'),
+    ), true);
+    const [first, replay] = await Promise.all([
+      createMpOrder(comprador, reservation, { fetchImpl }),
+      createMpOrder(comprador, reservation, { fetchImpl }),
+    ]);
+    assert.equal(first.id, replay.id);
+    assert.equal(requests.length, 2);
+    assert.ok(requests.every(({ options }) => (
+      options.headers['X-Idempotency-Key'] === requestId
+      && JSON.parse(options.body).external_reference === reservation.providerExternalReference
+    )));
+    assert.equal(mpOrderIdempotencyKey(reservation), requestId);
+    assert.equal(canRetryUnattachedMpOrder(
+      reservation,
+      new Date('2026-08-05T12:31:00.000Z'),
+    ), false);
+    assert.equal(canRetryUnattachedMpOrder({ ...reservation, providerRef: order.id },
+      new Date('2026-08-05T12:30:00.000Z')), false);
+    assert.throws(
+      () => mpOrderIdempotencyKey({ ...reservation, providerIdempotencyKey: randomUUID() }),
+      /invalid_mp_order_idempotency_key/,
+    );
+  } finally {
+    if (previousToken === undefined) delete process.env.MP_ACCESS_TOKEN;
+    else process.env.MP_ACCESS_TOKEN = previousToken;
+  }
+});
+
 test('status de checkout exige HMAC e binding exato da reserva e do produto', () => {
   const secret = 'status-secret-with-at-least-thirty-two-characters';
   const reservation = {
@@ -319,6 +434,7 @@ test('status de checkout exige HMAC e binding exato da reserva e do produto', ()
     offerCurrency: 'BRL',
     offerSku: 'prevenda_cartao',
     contractVersion: OFERTA.contratoVersao,
+    createdAt: '2026-08-07T12:00:00.000Z',
   };
   const token = checkoutStatusToken(secret, {
     provider: reservation.provider,
@@ -335,6 +451,7 @@ test('status de checkout exige HMAC e binding exato da reserva e do produto', ()
     statusToken: token,
     reservation,
     secret,
+    now: new Date('2026-08-07T12:30:00.000Z'),
   }), true);
   assert.equal(statusRequestAuthorized({
     provider: 'stripe',
@@ -343,6 +460,7 @@ test('status de checkout exige HMAC e binding exato da reserva e do produto', ()
     statusToken: '',
     reservation,
     secret,
+    now: new Date('2026-08-07T12:30:00.000Z'),
   }), false, 'provider id sozinho nunca autoriza consulta');
 
   const stripeSession = {
@@ -408,6 +526,7 @@ test('status de checkout exige HMAC e binding exato da reserva e do produto', ()
     statusToken: orderToken,
     reservation: orderReservation,
     secret,
+    now: new Date('2026-08-07T12:30:00.000Z'),
   }), true);
   assert.equal(statusRequestAuthorized({
     provider: 'mercadopago',
@@ -416,7 +535,68 @@ test('status de checkout exige HMAC e binding exato da reserva e do produto', ()
     statusToken: orderToken,
     reservation: orderReservation,
     secret,
+    now: new Date('2026-08-07T12:30:00.000Z'),
   }), false, 'order_id diferente nunca autoriza refetch da reserva');
+});
+
+test('Stripe paid no provider não supera refund, dispute ou late payment no ledger', () => {
+  const canonicalPaid = { provider: 'stripe', state: 'paid', paymentStatus: 'paid' };
+  assert.equal(checkoutPublicPaymentStatus(canonicalPaid, 'paid'), 'paid');
+
+  for (const paymentStatus of [
+    'refund_pending',
+    'refund_failed',
+    'partially_refunded',
+    'refunded',
+    'disputed',
+    'charged_back',
+  ]) {
+    assert.equal(
+      checkoutPublicPaymentStatus({ ...canonicalPaid, paymentStatus }, 'paid'),
+      'reconciling',
+      `Stripe Session continua paid, mas ledger está ${paymentStatus}`,
+    );
+  }
+
+  assert.equal(checkoutPublicPaymentStatus({
+    provider: 'stripe', state: 'released', paymentStatus: null,
+  }, 'paid'), 'reconciling', 'pagamento tardio não reativa reserva released');
+  assert.equal(checkoutPublicPaymentStatus({
+    provider: 'stripe', state: 'held', paymentStatus: null,
+  }, 'paid'), 'reconciling', 'provider pago antes do commit canônico permanece pendente');
+  assert.equal(checkoutPublicPaymentStatus({
+    provider: 'stripe', state: 'held', paymentStatus: null,
+  }, 'unpaid'), 'unpaid');
+});
+
+test('Mercado Pago só confirma paid após ledger approved e falha fechado em reversões', () => {
+  const canonicalPaid = { provider: 'mercadopago', state: 'paid', paymentStatus: 'approved' };
+  assert.equal(checkoutPublicPaymentStatus(canonicalPaid, 'paid'), 'paid');
+  assert.equal(
+    checkoutPublicPaymentStatus({ ...canonicalPaid, paymentStatus: 'paid' }, 'paid'),
+    'reconciling',
+    'status Stripe não é compatível com ledger Mercado Pago',
+  );
+
+  for (const paymentStatus of ['refund_pending', 'refunded', 'disputed', 'charged_back']) {
+    assert.equal(
+      checkoutPublicPaymentStatus({ ...canonicalPaid, paymentStatus }, 'paid'),
+      'reconciling',
+      `Order paga não supera ledger ${paymentStatus}`,
+    );
+  }
+
+  assert.equal(checkoutPublicPaymentStatus({
+    provider: 'mercadopago', state: 'released', paymentStatus: null,
+  }, 'paid'), 'reconciling', 'Order tardia não reativa reserva released');
+  assert.equal(
+    checkoutPublicPaymentStatus(canonicalPaid, 'pending'),
+    'reconciling',
+    'divergência entre provider e ledger nunca antecipa confirmação',
+  );
+  assert.equal(checkoutPublicPaymentStatus({
+    provider: 'mercadopago', state: 'held', paymentStatus: null,
+  }, 'pending'), 'pending');
 });
 
 test('somente rejeição conclusiva pré-criação autoriza liberar hold unattached', () => {
@@ -447,12 +627,12 @@ test('log de erro do provider nunca inclui mensagem ou PII devolvida', () => {
   assert.doesNotMatch(JSON.stringify(logged), /pessoa@|52998224725|Rua Exemplo/);
 });
 
-test('redirect financeiro é removido da URL antes do analytics sem perder o binding', () => {
+test('redirect financeiro usa somente fragmento e é removido antes do analytics', () => {
   const previousWindow = globalThis.window;
   const token = 'a'.repeat(64);
   const location = {
     pathname: '/prevenda/sucesso',
-    href: `https://www.growx.com.br/prevenda/sucesso?session_id=cs_test_secure&request_id=7ed9e944-1d84-4c28-9ec8-0eb66294a735&status_token=${token}`,
+    href: `https://www.growx.com.br/prevenda/sucesso#request_id=7ed9e944-1d84-4c28-9ec8-0eb66294a735&status_token=${token}`,
   };
   const history = {
     state: {},
@@ -467,7 +647,7 @@ test('redirect financeiro é removido da URL antes do analytics sem perder o bin
     captureCheckoutReturnBeforeAnalytics();
     assert.equal(location.href, 'https://www.growx.com.br/prevenda/sucesso');
     assert.deepEqual(readCheckoutReturn(), {
-      sessionId: 'cs_test_secure',
+      sessionId: '',
       paymentId: '',
       orderId: '',
       requestId: '7ed9e944-1d84-4c28-9ec8-0eb66294a735',
@@ -479,4 +659,51 @@ test('redirect financeiro é removido da URL antes do analytics sem perder o bin
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('token de status expira em 48 horas e fragmento nunca cria search params', () => {
+  const reservation = {
+    requestId: '7ed9e944-1d84-4c28-9ec8-0eb66294a735',
+    slot: 'SLOT#001',
+    createdAt: '2026-08-07T12:00:00.000Z',
+  };
+  reservation.statusToken = checkoutStatusToken(
+    'status-secret-with-at-least-thirty-two-characters',
+    { provider: 'stripe', requestId: reservation.requestId, slot: reservation.slot },
+  );
+  const url = new URL(`https://www.growx.com.br/prevenda/sucesso${statusReturnFragment(reservation, 'stripe')}`);
+  assert.equal(url.search, '');
+  assert.equal(url.hash.includes('status_token='), true);
+  assert.equal(checkoutStatusTokenActive(
+    reservation,
+    new Date(Date.parse(reservation.createdAt) + CHECKOUT_STATUS_TTL_MS),
+  ), true);
+  assert.equal(checkoutStatusTokenActive(
+    reservation,
+    new Date(Date.parse(reservation.createdAt) + CHECKOUT_STATUS_TTL_MS + 1),
+  ), false);
+});
+
+test('fallback usa cookie HttpOnly curto e nunca aceita Authorization ambígua', () => {
+  const requestId = '7ed9e944-1d84-4c28-9ec8-0eb66294a735';
+  const token = 'b'.repeat(64);
+  const cookie = statusCookieHeader(requestId, token);
+  assert.match(cookie, /^__Host-growx_prevenda_status=/);
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+  assert.match(cookie, /SameSite=Lax/);
+  assert.match(cookie, /Max-Age=172800/);
+
+  assert.deepEqual(statusCredentials({
+    headers: { authorization: `Bearer ${token}` },
+  }, { requestId }), { requestId, statusToken: token });
+  assert.deepEqual(statusCredentials({
+    headers: { cookie },
+  }, { action: 'status' }), { requestId, statusToken: token });
+  assert.equal(statusCredentials({
+    headers: { authorization: 'Bearer inválido', cookie },
+  }, { requestId }), null, 'header presente e inválido não pode cair no cookie');
+  assert.equal(statusCredentials({
+    headers: { cookie },
+  }, { requestId: '018f6f20-f18f-4fef-8d6d-42a9f1846fa1' }), null);
 });

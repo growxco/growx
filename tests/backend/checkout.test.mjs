@@ -55,6 +55,7 @@ test('checkout sem Dynamo falha fechado com 503', async () => {
         nome: 'Pessoa Teste',
         email: 'pessoa@example.com',
         cpf: '52998224725',
+        telefone: '+5541999999999',
         aceite: true,
         cienciaEspecificacoes: true,
         turnstileToken: 'valid-turnstile-token-with-enough-characters',
@@ -74,6 +75,63 @@ test('checkout sem Dynamo falha fechado com 503', async () => {
     else process.env.PREVENDA_SALES_ENABLED = previousSales;
     if (previousSecret === undefined) delete process.env.PREVENDA_RESERVATION_SECRET;
     else process.env.PREVENDA_RESERVATION_SECRET = previousSecret;
+    if (previousTurnstileEnabled === undefined) delete process.env.PREVENDA_TURNSTILE_ENABLED;
+    else process.env.PREVENDA_TURNSTILE_ENABLED = previousTurnstileEnabled;
+    if (previousTurnstileSecret === undefined) delete process.env.TURNSTILE_SECRET_KEY;
+    else process.env.TURNSTILE_SECRET_KEY = previousTurnstileSecret;
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test('checkout exige WhatsApp brasileiro válido antes de tocar o inventário', async () => {
+  const previousTable = process.env.PREVENDA_INVENTORY_TABLE;
+  const previousStripe = process.env.STRIPE_SECRET_KEY;
+  const previousSales = process.env.PREVENDA_SALES_ENABLED;
+  const previousTurnstileEnabled = process.env.PREVENDA_TURNSTILE_ENABLED;
+  const previousTurnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+  const previousFetch = globalThis.fetch;
+  delete process.env.PREVENDA_INVENTORY_TABLE;
+  process.env.STRIPE_SECRET_KEY = 'sk_test_checkout';
+  process.env.PREVENDA_SALES_ENABLED = 'true';
+  process.env.PREVENDA_TURNSTILE_ENABLED = 'true';
+  process.env.TURNSTILE_SECRET_KEY = 'turnstile-test-secret';
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      success: true,
+      action: 'prevenda_checkout',
+      hostname: 'www.growx.com.br',
+    }),
+  });
+  try {
+    for (const telefone of ['', '+5520999999999']) {
+      const res = responseMock();
+      await checkoutHandler({
+        method: 'POST',
+        headers: { 'x-forwarded-for': `phone-${randomUUID()}` },
+        body: {
+          method: 'cartao',
+          requestId: randomUUID(),
+          nome: 'Pessoa Teste',
+          email: 'pessoa@example.com',
+          cpf: '52998224725',
+          telefone,
+          aceite: true,
+          cienciaEspecificacoes: true,
+          turnstileToken: 'valid-turnstile-token-with-enough-characters',
+        },
+      }, res);
+      assert.equal(res.statusCode, 400);
+      assert.deepEqual(res.body, { error: 'telefone_invalido' });
+    }
+  } finally {
+    if (previousTable === undefined) delete process.env.PREVENDA_INVENTORY_TABLE;
+    else process.env.PREVENDA_INVENTORY_TABLE = previousTable;
+    if (previousStripe === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = previousStripe;
+    if (previousSales === undefined) delete process.env.PREVENDA_SALES_ENABLED;
+    else process.env.PREVENDA_SALES_ENABLED = previousSales;
     if (previousTurnstileEnabled === undefined) delete process.env.PREVENDA_TURNSTILE_ENABLED;
     else process.env.PREVENDA_TURNSTILE_ENABLED = previousTurnstileEnabled;
     if (previousTurnstileSecret === undefined) delete process.env.TURNSTILE_SECRET_KEY;
@@ -147,6 +205,39 @@ test('gate desligado pausa checkout e mantém /api/lote acessível sem contagem 
     assert.equal(loteRes.body.restantes, 0);
     assert.equal('vendidas' in loteRes.body, false);
     assert.equal('reservadas' in loteRes.body, false);
+  } finally {
+    if (previousSales === undefined) delete process.env.PREVENDA_SALES_ENABLED;
+    else process.env.PREVENDA_SALES_ENABLED = previousSales;
+  }
+});
+
+test('status não aceita GET/query e POST autenticável permanece fora do gate de vendas', async () => {
+  const previousSales = process.env.PREVENDA_SALES_ENABLED;
+  delete process.env.PREVENDA_SALES_ENABLED;
+  try {
+    const getRes = responseMock();
+    await checkoutHandler({
+      method: 'GET',
+      headers: { 'x-forwarded-for': `status-get-${randomUUID()}` },
+      query: {
+        request_id: randomUUID(),
+        status_token: 'a'.repeat(64),
+      },
+    }, getRes);
+    assert.equal(getRes.statusCode, 405);
+    assert.deepEqual(getRes.body, { error: 'method_not_allowed' });
+
+    const postRes = responseMock();
+    await checkoutHandler({
+      method: 'POST',
+      headers: { 'x-forwarded-for': `status-post-${randomUUID()}` },
+      body: { action: 'status' },
+    }, postRes);
+    assert.equal(postRes.statusCode, 404);
+    assert.deepEqual(postRes.body, { error: 'pedido_nao_encontrado' });
+    assert.equal(postRes.headers['Cache-Control'], 'no-store');
+    assert.equal(postRes.headers['Referrer-Policy'], 'no-referrer');
+    assert.match(postRes.headers['Access-Control-Allow-Headers'], /Authorization/);
   } finally {
     if (previousSales === undefined) delete process.env.PREVENDA_SALES_ENABLED;
     else process.env.PREVENDA_SALES_ENABLED = previousSales;

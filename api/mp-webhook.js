@@ -25,6 +25,12 @@ import {
   withWebhookReservationLock,
   WebhookOutboxBusyError,
 } from './_lib/webhook-outbox.js';
+import {
+  MP_ORDER_EXTERNAL_REFERENCE_PATTERN,
+  MP_ORDER_ID_PATTERN,
+  MP_ORDER_PAYMENT_ID_PATTERN,
+  REQUEST_ID_PATTERN,
+} from '../shared/provider-identifiers.js';
 import { reservationCode } from '../shared/reservation-code.js';
 import { OFERTA, brl } from '../src/lib/oferta.js';
 
@@ -41,12 +47,8 @@ const SKU = 'prevenda_pix';
 const PROVIDER_TIMEOUT_MS = 8_000;
 const HANDLER_PROVIDER_BUDGET_MS = 45_000;
 const MAX_LATE_REFUND_ATTEMPTS = 3;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ORDER_ID = /^ORD[A-Z0-9]{20,64}$/;
-const ORDER_PAYMENT_ID = /^PAY[A-Z0-9]{20,64}$/;
 const ORDER_REFUND_ID = /^REF[A-Z0-9]{20,64}$/;
 const ORDER_CHARGEBACK_ID = /^CBK[A-Z0-9]{20,64}$/;
-const ORDER_EXTERNAL_REFERENCE = /^gx-modulo-prevenda-([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 const SLOT = /^SLOT#(?:0(?:0[1-9]|[1-9]\d)|100)$/;
 const BUYER_HASH = /^[a-f0-9]{64}$/;
 const MP_REFUND_STATUSES = new Set([
@@ -138,12 +140,12 @@ const scalar = (value) => Array.isArray(value) ? '' : String(value ?? '').trim()
 export function verifyMercadoPagoSignature({ xSignature, xRequestId, dataId, secret }) {
   const signature = scalar(xSignature);
   const requestId = scalar(xRequestId);
-  // O SDK oficial assina o data.id exatamente como veio na query. Isso não
-  // fazia diferença para Payment numérico, mas é decisivo para IDs ORD... .
+  // O formato canônico recebido continua sendo validado e preservado para o
+  // refetch. O manifesto oficial, porém, normaliza data.id para lowercase.
   const normalizedDataId = scalar(dataId);
   if (!secret || !signature || signature.length > 1024
       || !requestId || requestId.length > 200
-      || (!/^\d{5,}$/.test(normalizedDataId) && !ORDER_ID.test(normalizedDataId))) return false;
+      || (!/^\d{5,}$/.test(normalizedDataId) && !MP_ORDER_ID_PATTERN.test(normalizedDataId))) return false;
 
   const parts = signature.split(',').map((part) => {
     const index = part.indexOf('=');
@@ -155,7 +157,8 @@ export function verifyMercadoPagoSignature({ xSignature, xRequestId, dataId, sec
     .map(([, value]) => value.toLowerCase());
   if (!/^\d{10,13}$/.test(timestamp) || !candidates.length) return false;
 
-  const manifest = `id:${normalizedDataId};request-id:${requestId};ts:${timestamp};`;
+  const manifestDataId = normalizedDataId.toLowerCase();
+  const manifest = `id:${manifestDataId};request-id:${requestId};ts:${timestamp};`;
   const expected = createHmac('sha256', secret).update(manifest).digest();
   return candidates.some((candidate) => {
     const received = Buffer.from(candidate, 'hex');
@@ -167,7 +170,7 @@ function reservationMetadata(metadata) {
   const requestId = String(metadata?.request_id || '');
   const slot = String(metadata?.slot_id || '');
   const buyerHash = String(metadata?.buyer_hash || '').toLowerCase();
-  integrity(UUID.test(requestId), 'invalid_reservation_id');
+  integrity(REQUEST_ID_PATTERN.test(requestId), 'invalid_reservation_id');
   integrity(SLOT.test(slot), 'invalid_reservation_slot');
   integrity(BUYER_HASH.test(buyerHash), 'invalid_buyer_hash');
   return { requestId, slot, buyerHash };
@@ -487,7 +490,7 @@ function validateMercadoPagoPayment(payment, offer = currentOffer()) {
 
 function orderRequestId(order) {
   const externalReference = scalar(order?.external_reference);
-  const match = ORDER_EXTERNAL_REFERENCE.exec(externalReference);
+  const match = MP_ORDER_EXTERNAL_REFERENCE_PATTERN.exec(externalReference);
   integrity(Boolean(match), 'invalid_order_external_reference');
   const requestId = match[1].toLowerCase();
   integrity(externalReference.toLowerCase() === `${EXTERNAL_REFERENCE}-${requestId}`,
@@ -513,7 +516,7 @@ function validateMercadoPagoOrderPayment(order, offer) {
   const payments = orderTransactions(order);
   integrity(payments.length === 1, 'invalid_order_payment_count');
   const payment = payments[0];
-  integrity(ORDER_PAYMENT_ID.test(String(payment?.id || '')), 'invalid_order_payment_id');
+  integrity(MP_ORDER_PAYMENT_ID_PATTERN.test(String(payment?.id || '')), 'invalid_order_payment_id');
   integrity(payment?.payment_method?.id === 'pix'
     && payment?.payment_method?.type === 'bank_transfer', 'invalid_order_payment_method');
   integrity(moneyCents(payment.amount) === offer.amountCents, 'invalid_order_payment_amount');
@@ -585,7 +588,7 @@ function normalizeMercadoPagoOrderChargeback(order, payment) {
 }
 
 function validateMercadoPagoOrderEnvelope(order, offer) {
-  integrity(order && ORDER_ID.test(String(order.id || '')), 'invalid_order_object');
+  integrity(order && MP_ORDER_ID_PATTERN.test(String(order.id || '')), 'invalid_order_object');
   integrity(order.type === 'online', 'invalid_order_type');
   integrity(order.processing_mode === 'automatic', 'invalid_order_processing_mode');
   if (order.capture_mode !== undefined && order.capture_mode !== null) {
@@ -762,7 +765,7 @@ export function normalizeMercadoPagoOrderCanonical(order, boundReservation) {
   const payments = orderTransactions(order);
   return {
     orderId: String(order.id),
-    paymentId: payments.length === 1 && ORDER_PAYMENT_ID.test(String(payments[0]?.id || ''))
+    paymentId: payments.length === 1 && MP_ORDER_PAYMENT_ID_PATTERN.test(String(payments[0]?.id || ''))
       ? String(payments[0].id)
       : null,
     reservation,
@@ -1399,7 +1402,7 @@ async function compensateLateMercadoPagoOrder({
 /** Processa somente uma Order canônica já relida e diretamente vinculada. */
 export async function processMercadoPagoOrder(order, dependencies = {}) {
   const deps = { ...DEFAULT_DEPS, ...dependencies };
-  integrity(order && ORDER_ID.test(String(order.id || '')), 'invalid_order_object');
+  integrity(order && MP_ORDER_ID_PATTERN.test(String(order.id || '')), 'invalid_order_object');
   const binding = dependencies.boundReservation
     || await verifyMercadoPagoOrderBinding(order, {
       getReservationImpl: dependencies.getReservationImpl || getReservation,
@@ -1563,7 +1566,7 @@ async function fetchPayment(token, paymentId, options = {}) {
 
 export async function fetchMercadoPagoOrder(token, orderId, options = {}) {
   if (!token) throw new MercadoPagoProviderError('mp_order_not_configured');
-  integrity(ORDER_ID.test(String(orderId || '')), 'invalid_order_id');
+  integrity(MP_ORDER_ID_PATTERN.test(String(orderId || '')), 'invalid_order_id');
   return withProviderBudget(options, 'mp_order_fetch_failed', async ({ signal, fetchImpl }) => {
     const response = await fetchImpl(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(orderId)}`, {
       signal,
@@ -1593,7 +1596,7 @@ export async function refundMercadoPagoOrder(token, orderId, options = {}) {
   if (!token || !idempotencyKey) {
     throw new MercadoPagoProviderError('mp_order_refund_not_configured');
   }
-  integrity(ORDER_ID.test(String(orderId || '')), 'invalid_order_id');
+  integrity(MP_ORDER_ID_PATTERN.test(String(orderId || '')), 'invalid_order_id');
   const requestedCents = amountCents === undefined ? expectedTotalCents : Number(amountCents);
   if (!Number.isInteger(expectedTotalCents) || expectedTotalCents <= 0
       || !Number.isInteger(requestedCents) || requestedCents <= 0
@@ -1602,7 +1605,7 @@ export async function refundMercadoPagoOrder(token, orderId, options = {}) {
     throw new MercadoPagoProviderError('mp_order_refund_invalid_amount');
   }
   const partial = requestedCents !== expectedTotalCents;
-  if (partial) integrity(ORDER_PAYMENT_ID.test(String(paymentId || '')), 'invalid_order_payment_id');
+  if (partial) integrity(MP_ORDER_PAYMENT_ID_PATTERN.test(String(paymentId || '')), 'invalid_order_payment_id');
   const providerIdempotencyKey = createHash('sha256').update(idempotencyKey).digest('hex');
   let requestFailure = null;
   let responseStatus = null;
@@ -1867,7 +1870,7 @@ export async function reconcileMercadoPagoOrderById(token, orderId, {
   processOrderImpl = processMercadoPagoOrder,
   processDependencies = {},
 } = {}) {
-  if (!token || !ORDER_ID.test(String(orderId || ''))) {
+  if (!token || !MP_ORDER_ID_PATTERN.test(String(orderId || ''))) {
     throw new MercadoPagoProviderError('mp_order_reconciliation_not_configured');
   }
   const providerOptions = { deadlineAt, fetchImpl };
@@ -1929,7 +1932,7 @@ export default async function handler(req, res) {
   const requestId = scalar(req.headers?.['x-request-id']);
   const signature = scalar(req.headers?.['x-signature']);
   const validResourceId = topic === 'order'
-    ? ORDER_ID.test(resourceId)
+    ? MP_ORDER_ID_PATTERN.test(resourceId)
     : /^\d{5,}$/.test(resourceId);
   if (!validResourceId) return res.status(400).json({ error: 'invalid_data_id' });
   if (!verifyMercadoPagoSignature({

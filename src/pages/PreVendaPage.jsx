@@ -4,8 +4,12 @@ import { Check, Plus, ShoppingCart } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import ThemeToggle from '@/components/visual/ThemeToggle';
 import { track } from '@/lib/analytics';
+import { clearCheckoutOutcome, readCheckoutOutcome } from '@/lib/checkoutReturn';
 import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
 import { OFERTA, brlCurto, parcelaCurta } from '@/lib/oferta';
+import { formataTelefoneBr, normalizaTelefoneBr, telefoneBrValido } from '../../shared/br-phone.js';
+import { safeCheckoutRedirectUrl } from '../../shared/checkout-redirect.js';
+import { createRequestId } from '../../shared/provider-identifiers.js';
 import ControllerShowcase from '@/components/prevenda/ControllerShowcase';
 import ImageLightbox from '@/components/prevenda/ImageLightbox';
 import TurnstileWidget from '@/components/prevenda/TurnstileWidget';
@@ -153,9 +157,11 @@ function useCheckout() {
 
   const pagar = async (metodo, comprador) => {
     if (loading) return;
-    const requestId = requestIds.current[metodo]
-      || globalThis.crypto?.randomUUID?.()
-      || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const requestId = requestIds.current[metodo] || createRequestId();
+    if (!requestId) {
+      setErro('Este navegador não oferece geração segura de identificadores. Atualize-o ou fale com o atendimento.');
+      return;
+    }
     requestIds.current[metodo] = requestId;
     setLoading(metodo);
     setErro(null);
@@ -168,8 +174,11 @@ function useCheckout() {
       });
       const data = await r.json().catch(() => null);
       if (r.ok && data?.url) {
-        window.location.href = data.url;
-        return;
+        const redirectUrl = safeCheckoutRedirectUrl(data.url);
+        if (redirectUrl) {
+          window.location.assign(redirectUrl);
+          return;
+        }
       }
       track('checkout_error', { method: metodo, code: data?.error || r.status, page: '/prevenda' });
       const mensagens = {
@@ -188,6 +197,7 @@ function useCheckout() {
         verificacao_seguranca_indisponivel: 'A verificação de segurança está indisponível. Nenhuma reserva será aberta agora.',
         reconciliacao_financeira_pendente: 'Reservas pausadas enquanto confirmamos o estado financeiro do lote anterior. Nenhuma cobrança será aberta agora.',
         provider_indisponivel: 'O provedor de pagamento não respondeu com segurança. Nenhuma nova vaga será aberta até a reconciliação.',
+        telefone_invalido: 'Informe um WhatsApp brasileiro válido, com DDD.',
       };
       if (data?.error === 'reserva_expirada') delete requestIds.current[metodo];
       setErro(mensagens[data?.error] || 'Não conseguimos abrir o checkout agora. Tenta de novo — ou fecha direto no WhatsApp.');
@@ -297,7 +307,7 @@ function EscolhaPagamento({ metodo, onChange, loading, disabled = false }) {
   );
 }
 
-function Nav() {
+function Nav({ compraDisponivel, ctaHref, ctaLabel, ctaLabelMobile }) {
   const [solid, setSolid] = useState(false);
   useEffect(() => {
     const onScroll = () => setSolid(window.scrollY > 24);
@@ -329,13 +339,14 @@ function Nav() {
           </Link>
           <ThemeToggle className="prevenda-theme-toggle size-10 shrink-0" />
           <a
-            href="#reservar"
+            href={ctaHref}
             onClick={() => track('click_cta_prevenda', { placement: 'nav', page: '/prevenda' })}
             className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80] sm:px-5"
             style={{ background: GREEN, color: CTA_TEXT }}
           >
-            <ShoppingCart aria-hidden="true" size={16} />
-            Comprar<span className="hidden sm:inline"> módulo</span>
+            {compraDisponivel && <ShoppingCart aria-hidden="true" size={16} />}
+            <span className="sm:hidden">{ctaLabelMobile}</span>
+            <span className="hidden sm:inline">{ctaLabel}</span>
           </a>
         </div>
       </div>
@@ -343,7 +354,7 @@ function Nav() {
   );
 }
 
-function BarraFixa() {
+function BarraFixa({ ctaHref, ctaLabel }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > 760);
@@ -375,19 +386,19 @@ function BarraFixa() {
           </p>
         </div>
         <a
-          href="#reservar"
+          href={ctaHref}
           onClick={() => track('click_cta_prevenda', { placement: 'sticky', page: '/prevenda' })}
           className="shrink-0 rounded-xl px-5 py-3 text-sm font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
           style={{ background: GREEN, color: CTA_TEXT }}
         >
-          Comprar módulo
+          {ctaLabel}
         </a>
       </div>
     </div>
   );
 }
 
-function ListaEspera() {
+function ListaEspera({ purchaseHref = '#reservar', purchaseLabel = 'Voltar à compra' }) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -400,12 +411,11 @@ function ListaEspera() {
     e.preventDefault();
     if (estado === 'enviando') return;
 
-    const digitos = whatsapp.replace(/\D/g, '');
-    const telefoneNacional = digitos.startsWith('55') && digitos.length > 11 ? digitos.slice(2) : digitos;
+    const telefoneCanonico = normalizaTelefoneBr(whatsapp);
     const falhas = {
       nome: !nomeCompleto(nome),
       email: !emailValido(email),
-      whatsapp: !/^\d{10,11}$/.test(telefoneNacional),
+      whatsapp: !telefoneCanonico,
     };
     const primeiraFalha = Object.entries(falhas).find(([, invalido]) => invalido)?.[0];
 
@@ -430,7 +440,7 @@ function ListaEspera() {
         body: JSON.stringify({
           name: nome.trim(),
           email: email.trim().toLowerCase(),
-          phone: `+55${telefoneNacional}`,
+          phone: telefoneCanonico,
           message: 'Interesse na lista da pré-venda do Módulo Grow-X.',
           _form: 'prevenda-lista',
           _segment: 'cultivo',
@@ -453,13 +463,13 @@ function ListaEspera() {
         <p className="text-lg font-bold text-white">Interesse cadastrado.</p>
         <p className="mt-1 text-sm" style={{ color: MUTED }}>Te chamamos antes do preço subir.</p>
         <a
-          href="#reservar"
+          href={purchaseHref}
           onClick={() => track('click_cta_prevenda', { placement: 'interest-success', page: '/prevenda' })}
           className="mt-4 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold"
           style={{ background: GREEN, color: CTA_TEXT }}
         >
           <ShoppingCart aria-hidden="true" size={16} />
-          Voltar à compra
+          {purchaseLabel}
         </a>
       </div>
     );
@@ -503,7 +513,7 @@ function ListaEspera() {
           ref={(node) => { refs.current.whatsapp = node; }}
           id="lista-whatsapp" type="tel" inputMode="tel" value={whatsapp}
           onChange={(e) => {
-            setWhatsapp(e.target.value);
+            setWhatsapp(formataTelefoneBr(e.target.value));
             setErros((current) => ({ ...current, whatsapp: false }));
           }}
           placeholder="(41) 99999-9999" autoComplete="tel" required
@@ -543,12 +553,13 @@ export default function PreVendaPage() {
   const fieldRefs = useRef({});
   const formStarted = useRef(false);
   const [form, setForm] = useState({
-    nome: '', email: '', cpf: '', aceite: false, ciencia: false,
+    nome: '', email: '', cpf: '', whatsapp: '', aceite: false, ciencia: false,
   });
   const [erroCampo, setErroCampo] = useState({});
   const [avisoForm, setAvisoForm] = useState(null);
   const [metodoPagamento, setMetodoPagamento] = useState(PIX_ENABLED ? 'pix' : 'cartao');
   const [lightbox, setLightbox] = useState(null);
+  const [checkoutOutcome, setCheckoutOutcome] = useState(() => readCheckoutOutcome());
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false);
@@ -582,6 +593,7 @@ export default function PreVendaPage() {
       nome: !nomeCompleto(form.nome),
       email: !emailValido(form.email),
       cpf: !documentoValido(form.cpf),
+      whatsapp: !telefoneBrValido(form.whatsapp),
       ciencia: !form.ciencia,
       aceite: !form.aceite,
       verificacao: !turnstileToken,
@@ -594,6 +606,7 @@ export default function PreVendaPage() {
         nome: 'Informe seu nome completo (nome e sobrenome).',
         email: 'Confere o e-mail — é nele que chega a confirmação do pedido.',
         cpf: 'Documento inválido. Confere o CPF — ou informe o CNPJ, se a compra for pela empresa.',
+        whatsapp: 'Informe um WhatsApp brasileiro válido, com DDD.',
         ciencia: 'Confirme que você leu quais especificações ainda serão formalizadas antes do envio.',
         aceite: 'Marque o aceite do contrato pra seguir pro pagamento.',
         verificacao: turnstileUnavailable
@@ -611,6 +624,7 @@ export default function PreVendaPage() {
     setTurnstileResetKey((current) => current + 1);
     pagar(metodo, {
       nome: form.nome, email: form.email, cpf: form.cpf, aceite: true,
+      telefone: normalizaTelefoneBr(form.whatsapp),
       cienciaEspecificacoes: form.ciencia,
       turnstileToken: challengeToken,
     });
@@ -673,6 +687,21 @@ export default function PreVendaPage() {
             ? `${lote.restantes} de ${lote.total} unidades disponíveis`
             : `Pré-venda aberta · lote limitado a ${OFERTA.loteTotal}`;
   const loteEmAtencao = encerrada || (!loteCarregando && (lote?.esgotado || lote?.confiavel === false));
+  const compraDisponivel = !reservaPausada;
+  const ctaHref = loteCarregando ? '#reservar' : compraDisponivel ? '#reservar' : '#lista';
+  const ctaLabel = loteCarregando
+    ? 'Ver disponibilidade'
+    : compraDisponivel
+      ? 'Comprar módulo'
+      : encerrada || lote?.esgotado
+        ? 'Entrar na lista do próximo lote'
+        : 'Receber aviso da abertura';
+  const ctaLabelMobile = loteCarregando ? 'Ver' : compraDisponivel ? 'Comprar' : 'Receber aviso';
+
+  const dispensarCheckoutOutcome = () => {
+    clearCheckoutOutcome();
+    setCheckoutOutcome('');
+  };
 
   return (
     <div style={{ background: BG }} className="prevenda-shell min-h-screen text-white">
@@ -685,7 +714,12 @@ export default function PreVendaPage() {
         jsonLd={productLd}
       />
 
-      <Nav />
+      <Nav
+        compraDisponivel={compraDisponivel}
+        ctaHref={ctaHref}
+        ctaLabel={ctaLabel}
+        ctaLabelMobile={ctaLabelMobile}
+      />
 
       {/* ---------- HERO ---------- */}
       <header id="topo" className="relative isolate overflow-hidden">
@@ -698,6 +732,27 @@ export default function PreVendaPage() {
         </div>
 
         <div className="mx-auto w-full max-w-6xl px-5 pb-20 pt-32 sm:px-8 sm:pb-28 sm:pt-44">
+          {checkoutOutcome && (
+            <div
+              role="alert"
+              className="mb-8 max-w-2xl rounded-2xl border px-5 py-4"
+              style={{ borderColor: 'rgba(245,181,68,0.40)', background: 'rgba(245,181,68,0.10)' }}
+            >
+              <p className="font-bold text-white">
+                {checkoutOutcome === 'cancelado' ? 'Checkout cancelado.' : 'O provedor não concluiu o checkout.'}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--prevenda-warning-text)' }}>
+                Esta mensagem não confirma falha ou aprovação do pagamento. Confira “Meu pedido” antes de iniciar outra tentativa.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-4 text-sm font-semibold">
+                <a href="#reservar" className="underline underline-offset-4" style={{ color: GREEN }}>Revisar compra</a>
+                <Link to="/prevenda/pedido" className="underline underline-offset-4" style={{ color: GREEN }}>Abrir Meu pedido</Link>
+                <button type="button" onClick={dispensarCheckoutOutcome} className="underline underline-offset-4" style={{ color: MUTED }}>
+                  Fechar aviso
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <Pill tone={loteEmAtencao ? 'amber' : 'green'}>
               <span className="inline-block size-1.5 rounded-full" style={{ background: GREEN }} />
@@ -726,13 +781,13 @@ export default function PreVendaPage() {
 
           <div className="mt-9 flex flex-wrap gap-3">
             <a
-              href="#reservar"
+              href={ctaHref}
               onClick={() => track('click_cta_prevenda', { placement: 'hero', page: '/prevenda' })}
               className="inline-flex items-center gap-2 rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
               style={{ background: GREEN, color: CTA_TEXT }}
             >
-              <ShoppingCart aria-hidden="true" size={18} />
-              Comprar módulo
+              {compraDisponivel && <ShoppingCart aria-hidden="true" size={18} />}
+              {ctaLabel}
             </a>
             <a
               href="#como"
@@ -800,13 +855,13 @@ export default function PreVendaPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <a
-              href="#reservar"
+              href={ctaHref}
               onClick={() => track('click_cta_prevenda', { placement: 'offer-rail', page: '/prevenda' })}
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold transition hover:brightness-110"
               style={{ background: GREEN, color: CTA_TEXT }}
             >
-              <ShoppingCart aria-hidden="true" size={17} />
-              Comprar módulo
+              {compraDisponivel && <ShoppingCart aria-hidden="true" size={17} />}
+              {ctaLabel}
             </a>
             <Link
               to="/prevenda/pedido"
@@ -1153,13 +1208,30 @@ export default function PreVendaPage() {
                         />
                       </label>
                     </div>
+                    <label className="block text-sm font-semibold text-white" htmlFor="reserva-whatsapp">
+                      WhatsApp com DDD
+                      <input
+                        ref={(node) => { fieldRefs.current.whatsapp = node; }}
+                        id="reserva-whatsapp" type="tel" inputMode="tel" value={form.whatsapp}
+                        onChange={(event) => {
+                          setForm((current) => ({ ...current, whatsapp: formataTelefoneBr(event.target.value) }));
+                          setErroCampo((current) => ({ ...current, whatsapp: false }));
+                        }}
+                        placeholder="(41) 99999-9999" autoComplete="tel" required
+                        aria-invalid={erroCampo.whatsapp || undefined} aria-describedby="reserva-erro reserva-whatsapp-finalidade"
+                        className={`${INPUT_CLASS} font-mono`}
+                        style={{ borderColor: erroCampo.whatsapp ? 'rgba(245,181,68,0.6)' : LINE }}
+                      />
+                    </label>
                   </div>
                 </fieldset>
 
-                <p className="mt-4 text-xs leading-relaxed" style={{ color: MUTED }}>
+                <p id="reserva-whatsapp-finalidade" className="mt-4 text-xs leading-relaxed" style={{ color: MUTED }}>
                   {PIX_ENABLED
-                    ? 'O formulário de compra pede somente nome, e-mail e CPF/CNPJ. Os dados de entrega são confirmados depois do pagamento.'
-                    : 'O cartão é processado pela Stripe. Pix permanece indisponível até a homologação do fluxo exclusivo.'}
+                    ? 'Usamos seu WhatsApp para confirmar a compra, os dados de entrega e atualizações do pedido. O pagamento é processado pelo provedor escolhido.'
+                    : 'Usamos seu WhatsApp para confirmar a compra, os dados de entrega e atualizações do pedido. O cartão é processado pela Stripe; Pix permanece indisponível até a homologação do fluxo exclusivo.'}
+                  {' '}O contato é mantido somente pelo prazo necessário para executar o contrato e cumprir obrigações legais, conforme a{' '}
+                  <Link to="/privacidade" className="underline underline-offset-2" style={{ color: GREEN }}>Política de Privacidade</Link>.
                 </p>
 
                 <label
@@ -1298,7 +1370,9 @@ export default function PreVendaPage() {
               Te avisamos quando o lote estiver acabando e no dia do lançamento na ExpoCannabis. Somente comunicações sobre este lançamento.
             </p>
           </div>
-          <ListaEspera />
+          <ListaEspera
+            purchaseLabel={compraDisponivel ? 'Voltar à compra' : 'Ver estado da pré-venda'}
+          />
         </div>
       </section>
 
@@ -1331,22 +1405,22 @@ export default function PreVendaPage() {
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <a
-              href="#reservar"
+              href={ctaHref}
               onClick={() => track('click_cta_prevenda', { placement: 'final', page: '/prevenda' })}
               className="inline-flex items-center gap-2 rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110"
               style={{ background: GREEN, color: CTA_TEXT }}
             >
-              <ShoppingCart aria-hidden="true" size={18} />
-              Comprar módulo
+              {compraDisponivel && <ShoppingCart aria-hidden="true" size={18} />}
+              {ctaLabel}
             </a>
-            <a
+            {compraDisponivel && <a
               href="#lista"
               onClick={() => track('click_cta_prevenda', { placement: 'final-interesse', page: '/prevenda' })}
               className="px-3 py-4 text-sm font-semibold underline underline-offset-4"
               style={{ color: MUTED }}
             >
               Só quero receber o aviso
-            </a>
+            </a>}
           </div>
         </div>
       </section>
@@ -1374,7 +1448,7 @@ export default function PreVendaPage() {
         </div>
       </footer>
 
-      <BarraFixa />
+      <BarraFixa ctaHref={ctaHref} ctaLabel={ctaLabel} />
       <ImageLightbox item={lightbox} onClose={closeLightbox} />
     </div>
   );

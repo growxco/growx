@@ -17,15 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
       - run: npm ci --legacy-peer-deps
+      - run: npm audit --package-lock-only --audit-level=high
       - run: node --test tests/config/*.test.mjs
       - run: npm run lint
       - run: npm run test:backend
+      - run: npm run test:frontend
+      - run: npm run test:sales-gate
       - run: npm run build

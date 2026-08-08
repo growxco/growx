@@ -6,6 +6,54 @@
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const OPENAI_BASE = 'https://api.openai.com/v1/chat/completions';
 
+const AI_PROVIDERS = new Set(['gemini', 'openai']);
+const AI_ERROR_CODES = new Set(['http_error', 'network_error', 'invalid_response']);
+
+export class AiProviderError extends Error {
+  constructor(provider, status = null, code = 'http_error') {
+    super('ai_provider_request_failed');
+    this.name = 'AiProviderError';
+    this.provider = AI_PROVIDERS.has(provider) ? provider : 'unknown';
+    this.status = Number.isInteger(status) && status >= 400 && status <= 599 ? status : null;
+    this.code = AI_ERROR_CODES.has(code) ? code : 'http_error';
+  }
+}
+
+export function aiErrorLogFields(error) {
+  if (!(error instanceof AiProviderError)) {
+    return { provider: 'unknown', status: null, code: 'enrichment_failed' };
+  }
+  return {
+    provider: error.provider,
+    status: error.status,
+    code: error.code,
+  };
+}
+
+async function providerFetch(provider, url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    throw new AiProviderError(provider, null, 'network_error');
+  }
+}
+
+async function discardProviderBody(response) {
+  try {
+    await response?.body?.cancel?.();
+  } catch {
+    // O corpo externo não é necessário para decisão nem diagnóstico.
+  }
+}
+
+async function providerJson(provider, response) {
+  try {
+    return await response.json();
+  } catch {
+    throw new AiProviderError(provider, response?.status, 'invalid_response');
+  }
+}
+
 export const GROWX_SYSTEM_PROMPT = `Você é o assistente oficial da Grow-X Co. (www.growx.com.br) — empresa brasileira de tecnologia agro sediada em Curitiba/PR.
 
 CONTEXTO DA EMPRESA:
@@ -63,16 +111,16 @@ export async function callGemini({ messages, model, apiKey, temperature = 0.5 })
     ],
   };
 
-  const res = await fetch(`${GEMINI_BASE}/${m}:generateContent?key=${apiKey}`, {
+  const res = await providerFetch('gemini', `${GEMINI_BASE}/${m}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = await res.text().catch(() => '');
-    throw new Error(`gemini ${res.status}: ${err.slice(0, 300)}`);
+    await discardProviderBody(res);
+    throw new AiProviderError('gemini', res.status);
   }
-  const data = await res.json();
+  const data = await providerJson('gemini', res);
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   return { text, raw: data, provider: 'gemini', model: m };
 }
@@ -82,7 +130,7 @@ export async function callGemini({ messages, model, apiKey, temperature = 0.5 })
  */
 export async function callOpenAI({ messages, model, apiKey, temperature = 0.5 }) {
   const m = model || 'gpt-4o-mini';
-  const res = await fetch(OPENAI_BASE, {
+  const res = await providerFetch('openai', OPENAI_BASE, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -96,10 +144,10 @@ export async function callOpenAI({ messages, model, apiKey, temperature = 0.5 })
     }),
   });
   if (!res.ok) {
-    const err = await res.text().catch(() => '');
-    throw new Error(`openai ${res.status}: ${err.slice(0, 300)}`);
+    await discardProviderBody(res);
+    throw new AiProviderError('openai', res.status);
   }
-  const data = await res.json();
+  const data = await providerJson('openai', res);
   const text = data?.choices?.[0]?.message?.content ?? '';
   return { text, raw: data, provider: 'openai', model: m };
 }

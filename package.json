@@ -3,12 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "node scripts/verifica-oferta.mjs && vite build",
     "verifica:oferta": "node scripts/verifica-oferta.mjs",
     "test:sales-gate": "node --test scripts/prevenda-sales-gate.test.mjs",
     "test:backend": "node --test tests/backend/*.test.mjs",
+    "test:frontend": "node --test tests/frontend/*.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "optimize:images": "node scripts/optimize-images.mjs"
