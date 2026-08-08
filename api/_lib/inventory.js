@@ -1355,7 +1355,8 @@ async function transitionReservation({
     return { outcome: 'idempotent' };
   }
   const { client: db, table } = requireConfig({ client, tableName });
-  const names = { '#state': 'state', '#provider': 'provider', '#ttl': 'ttl' };
+  const slotNames = { '#state': 'state', '#provider': 'provider' };
+  const guardNames = { ...slotNames, '#ttl': 'ttl' };
   const values = {
     ':held': s('held'), ':next': s(state), ':rid': s(requestId),
     ':provider': s(provider), ':now': s(now.toISOString()),
@@ -1427,7 +1428,7 @@ async function transitionReservation({
             Key: { pk: s(slot) },
             UpdateExpression: `SET ${set.join(', ')} REMOVE buyer_pk, provider_url`,
             ConditionExpression: `${baseCondition}${refCondition}${eventCondition}`,
-            ExpressionAttributeNames: names,
+            ExpressionAttributeNames: slotNames,
             ExpressionAttributeValues: values,
           },
         },
@@ -1437,7 +1438,7 @@ async function transitionReservation({
             Key: { pk: s(requestPk(requestId)) },
             UpdateExpression: `SET ${guardSet.join(', ')} REMOVE provider_url`,
             ConditionExpression: `${baseCondition}${refCondition}${eventCondition}`,
-            ExpressionAttributeNames: names,
+            ExpressionAttributeNames: guardNames,
             ExpressionAttributeValues: guardValues,
           },
         },
@@ -1447,7 +1448,7 @@ async function transitionReservation({
             Key: { pk: s(currentBefore.buyerPk) },
             UpdateExpression: `SET ${guardSet.join(', ')}`,
             ConditionExpression: `${baseCondition}${eventCondition}`,
-            ExpressionAttributeNames: names,
+            ExpressionAttributeNames: guardNames,
             ExpressionAttributeValues: guardValues,
           },
         },
