@@ -10,6 +10,16 @@ test('vercel.json fixa as Functions em Sao Paulo e declara o schema oficial', ()
   assert.deepEqual(config.regions, ['gru1']);
 });
 
+test('CSP permite somente o host exato do beacon Cloudflare injetado em produção', () => {
+  const header = config.headers
+    ?.flatMap((entry) => entry.headers || [])
+    .find((entry) => entry.key.toLowerCase() === 'content-security-policy');
+
+  assert.ok(header?.value.includes('script-src'));
+  assert.ok(header.value.includes('https://static.cloudflareinsights.com'));
+  assert.ok(!header.value.includes('https://*.cloudflareinsights.com'));
+});
+
 test('cron de reconciliacao permanece configurado a cada minuto', () => {
   assert.ok(config.crons?.some((cron) => (
     cron.path === '/api/cron/reconcile' && cron.schedule === '* * * * *'

@@ -5,15 +5,29 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      scan_scope:
+        description: Aikido scan scope
+        type: choice
+        required: true
+        default: dependencies
+        options:
+          - dependencies
+          - all
 
 permissions:
   contents: read
+
+concurrency:
+  group: aikido-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   aikido-workspace-gate:
     name: Aikido workspace gate
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       AIKIDO_GATE_REPO: growx
       AIKIDO_GATE_BASELINE_COUNT: "0"
@@ -31,6 +45,8 @@ jobs:
         env:
           AIKIDO_CLIENT_ID: ${{ secrets.AIKIDO_CLIENT_ID }}
           AIKIDO_CLIENT_SECRET: ${{ secrets.AIKIDO_CLIENT_SECRET }}
+          AIKIDO_SCAN_SCOPE: ${{ inputs.scan_scope }}
+          AIKIDO_GITHUB_REPOSITORY_ID: ${{ github.event.repository.id }}
         run: |
           python - <<'PY'
           from __future__ import annotations
@@ -39,17 +55,19 @@ jobs:
           import json
           import os
           import sys
+          import time
           import urllib.error
           import urllib.parse
           import urllib.request
 
           OAUTH_URL = "https://app.aikido.dev/api/oauth/token"
           ISSUES_URL = "https://app.aikido.dev/api/public/v1/issues/export"
+          REPOSITORIES_URL = "https://app.aikido.dev/api/public/v1/repositories/code"
 
-          def http(method: str, url: str, *, headers=None, data=None):
+          def http(method: str, url: str, *, headers=None, data=None, timeout_seconds=30):
               req = urllib.request.Request(url, method=method, headers=headers or {}, data=data)
               try:
-                  with urllib.request.urlopen(req, timeout=30) as resp:
+                  with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
                       return resp.status, resp.read().decode("utf-8", "replace")
               except urllib.error.HTTPError as exc:
                   return exc.code, exc.read().decode("utf-8", "replace")
@@ -71,16 +89,124 @@ jobs:
                   raise SystemExit(f"OAuth failed: HTTP {status}")
               return json.loads(raw)["access_token"]
 
-          def issue_items(raw: str):
+          def collection_items(raw: str):
               data = json.loads(raw)
               if isinstance(data, list):
                   return [item for item in data if isinstance(item, dict)]
               if isinstance(data, dict):
-                  for key in ("data", "items", "issues", "results"):
+                  for key in ("data", "items", "issues", "results", "repositories"):
                       value = data.get(key)
                       if isinstance(value, list):
                           return [item for item in value if isinstance(item, dict)]
+                  if "id" in data:
+                      return [data]
               return []
+
+          def object_payload(raw: str):
+              data = json.loads(raw)
+              if isinstance(data, dict) and isinstance(data.get("data"), dict):
+                  return data["data"]
+              return data if isinstance(data, dict) else {}
+
+          def manual_scan(token: str, repo: str) -> bool:
+              if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
+                  return True
+              if os.environ.get("GITHUB_REF") != "refs/heads/main":
+                  print("::error::Manual Aikido scan is restricted to main", flush=True)
+                  return False
+
+              github_repo_id = os.environ.get("AIKIDO_GITHUB_REPOSITORY_ID", "").strip()
+              if not github_repo_id.isdigit():
+                  print("::error::GitHub repository id missing for manual scan", flush=True)
+                  return False
+              params = urllib.parse.urlencode({
+                  "filter_name": repo,
+                  "filter_branch": "main",
+                  "per_page": 200,
+              })
+              status, raw = http(
+                  "GET",
+                  f"{REPOSITORIES_URL}?{params}",
+                  headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+              )
+              if status != 200:
+                  print(f"::error::Aikido repository lookup failed: HTTP {status}", flush=True)
+                  return False
+              matches = [
+                  item for item in collection_items(raw)
+                  if str(item.get("name") or "").lower() == repo
+                  and str(item.get("provider") or "").lower() == "github"
+                  and str(item.get("branch") or "").lower() == "main"
+                  and str(item.get("external_repo_numeric_id") or "") == github_repo_id
+              ]
+              if len(matches) != 1 or not isinstance(matches[0].get("id"), int):
+                  print("::error::Expected exactly one matching Aikido main repository", flush=True)
+                  return False
+
+              code_repo_id = matches[0]["id"]
+              detail_url = f"{REPOSITORIES_URL}/{code_repo_id}"
+              status, raw = http(
+                  "GET",
+                  detail_url,
+                  headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+              )
+              if status != 200:
+                  print(f"::error::Aikido repository detail failed: HTTP {status}", flush=True)
+                  return False
+              previous_scan = object_payload(raw).get("last_scanned_at")
+              if not isinstance(previous_scan, int):
+                  print("::error::Aikido repository scan timestamp is invalid", flush=True)
+                  return False
+              scope = os.environ.get("AIKIDO_SCAN_SCOPE", "dependencies")
+              query = ""
+              if scope == "all":
+                  query = "?" + urllib.parse.urlencode({
+                      "include_sast_scan": "true",
+                      "include_iac_scan": "true",
+                      "include_secrets_scan": "true",
+                  })
+              elif scope != "dependencies":
+                  print("::error::Unsupported Aikido scan scope", flush=True)
+                  return False
+
+              status, _ = http(
+                  "POST",
+                  f"{REPOSITORIES_URL}/{code_repo_id}/scan{query}",
+                  headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                  data=b"",
+              )
+              if status != 204:
+                  print(f"::error::Aikido scan trigger failed: HTTP {status}", flush=True)
+                  return False
+              print(f"Aikido {scope} scan initiated for main", flush=True)
+
+              # O POST não devolve scan id. Serializamos este workflow por repo/ref
+              # e usamos um deadline de parede; o gate abaixo ainda valida o feed.
+              deadline = time.monotonic() + 600
+              for _ in range(40):
+                  remaining = deadline - time.monotonic()
+                  if remaining <= 0:
+                      break
+                  time.sleep(min(15, remaining))
+                  remaining = deadline - time.monotonic()
+                  if remaining <= 0:
+                      break
+                  status, raw = http(
+                      "GET",
+                      detail_url,
+                      headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+                      timeout_seconds=max(1, min(15, remaining)),
+                  )
+                  if status != 200:
+                      print(f"::error::Aikido scan status failed: HTTP {status}", flush=True)
+                      return False
+                  last_scanned_at = object_payload(raw).get("last_scanned_at")
+                  if isinstance(last_scanned_at, int) and last_scanned_at > previous_scan:
+                      print("Aikido manual scan completed", flush=True)
+                      time.sleep(5)
+                      return True
+              print("::error::Aikido manual scan timed out after 10 minutes", flush=True)
+              return False
 
           def safe_cell(value, *, fallback="-") -> str:
               if isinstance(value, (dict, list, tuple, set)):
@@ -122,6 +248,8 @@ jobs:
               critical_baseline = int(os.environ["AIKIDO_GATE_BASELINE_COUNT"])
               high_baseline = int(os.environ["AIKIDO_GATE_HIGH_BASELINE"])
               token = oauth_token(client_id, secret)
+              if not manual_scan(token, repo):
+                  return 1
               params = urllib.parse.urlencode({
                   "filter_status": "open",
                   "filter_code_repo_name": repo,
@@ -140,7 +268,7 @@ jobs:
               counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
               details = []
               total = 0
-              for item in issue_items(raw):
+              for item in collection_items(raw):
                   if (item.get("code_repo_name") or "").lower() != repo:
                       continue
                   issue_id = item.get("id")
