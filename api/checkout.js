@@ -38,6 +38,11 @@ import {
 } from './_lib/turnstile.js';
 import { normalizaTelefoneBr, telefoneBrNacional, telefoneBrValido } from '../shared/br-phone.js';
 import {
+  safeCheckoutRedirectUrl,
+  safeGrowxCheckoutReturnUrl,
+  safeStripeCheckoutUrl,
+} from '../shared/checkout-redirect.js';
+import {
   MP_ORDER_ID_PATTERN,
   MP_ORDER_PAYMENT_ID_PATTERN,
   normalizeRequestId,
@@ -1152,8 +1157,13 @@ export default async function handler(req, res) {
       }
     }
     if (reservation.providerUrl) {
+      const replayUrl = safeCheckoutRedirectUrl(reservation.providerUrl);
+      if (!replayUrl) {
+        res.setHeader('Retry-After', '60');
+        return res.status(503).json({ error: 'provider_indisponivel' });
+      }
       return res.status(200).json({
-        url: reservation.providerUrl,
+        url: replayUrl,
         id: reservation.providerRef,
         provider,
       });
@@ -1177,12 +1187,14 @@ export default async function handler(req, res) {
     if (provider === 'stripe') {
       const session = await createStripeSession(comprador, providerReservation);
       providerRef = session.id;
-      providerUrl = session.url;
-      ledgerProviderUrl = session.url;
+      providerUrl = safeStripeCheckoutUrl(session.url);
+      ledgerProviderUrl = providerUrl;
     } else {
       const order = await createMpOrder(comprador, providerReservation);
       providerRef = String(order.id);
-      providerUrl = mpOrderStatusUrl(providerRef, providerReservation);
+      providerUrl = safeGrowxCheckoutReturnUrl(
+        mpOrderStatusUrl(providerRef, providerReservation),
+      );
       // Dynamo nunca persiste o status_token. O cookie HttpOnly permite
       // reconstruir o retorno em retries, e o primeiro redirect usa fragmento.
       ledgerProviderUrl = `${SITE}/prevenda/sucesso`;

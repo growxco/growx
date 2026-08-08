@@ -24,6 +24,13 @@ test('release fixa Node 24 e executa todos os gates locais no Verify', async () 
   }
 });
 
+test('React Router permanece na primeira versão corrigida da série 7', async () => {
+  const packageJson = JSON.parse(await read('../../package.json'));
+
+  assert.equal(packageJson.dependencies?.['react-router'], '7.18.2');
+  assert.equal(packageJson.dependencies?.['react-router-dom'], '7.18.2');
+});
+
 test('.env.example mantém pré-venda fechada e documenta o contrato operacional', async () => {
   const example = await read('../../.env.example');
   const salesFlags = example.match(/^PREVENDA_SALES_ENABLED=/gm) || [];

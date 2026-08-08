@@ -8,6 +8,7 @@ import { clearCheckoutOutcome, readCheckoutOutcome } from '@/lib/checkoutReturn'
 import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
 import { OFERTA, brlCurto, parcelaCurta } from '@/lib/oferta';
 import { formataTelefoneBr, normalizaTelefoneBr, telefoneBrValido } from '../../shared/br-phone.js';
+import { safeCheckoutRedirectUrl } from '../../shared/checkout-redirect.js';
 import { createRequestId } from '../../shared/provider-identifiers.js';
 import ControllerShowcase from '@/components/prevenda/ControllerShowcase';
 import ImageLightbox from '@/components/prevenda/ImageLightbox';
@@ -173,8 +174,11 @@ function useCheckout() {
       });
       const data = await r.json().catch(() => null);
       if (r.ok && data?.url) {
-        window.location.href = data.url;
-        return;
+        const redirectUrl = safeCheckoutRedirectUrl(data.url);
+        if (redirectUrl) {
+          window.location.assign(redirectUrl);
+          return;
+        }
       }
       track('checkout_error', { method: metodo, code: data?.error || r.status, page: '/prevenda' });
       const mensagens = {

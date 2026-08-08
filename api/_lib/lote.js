@@ -24,6 +24,7 @@ import {
   MP_ORDER_ID_PATTERN,
   MP_ORDER_PAYMENT_ID_PATTERN,
 } from '../../shared/provider-identifiers.js';
+import { safeStripeCheckoutUrl } from '../../shared/checkout-redirect.js';
 const STRIPE_API = 'https://api.stripe.com/v1';
 const MP_API = 'https://api.mercadopago.com';
 const MP_REF = 'gx-modulo-prevenda';
@@ -390,7 +391,7 @@ async function reconcileStripe(reservation, context) {
       slot: reservation.slot,
       provider: 'stripe',
       providerRef: session.id,
-      providerUrl: typeof session.url === 'string' ? session.url : undefined,
+      providerUrl: safeStripeCheckoutUrl(session.url) || undefined,
       providerExpiresAt: new Date(sessionExpiresAt * 1000).toISOString(),
       now,
       ...inventoryOptions,
