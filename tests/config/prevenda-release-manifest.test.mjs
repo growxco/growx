@@ -31,6 +31,16 @@ test('v3 é não aprovável por env e exige nova versão com pacote final', () =
   assert.deepEqual(PREVENDA_RELEASE.paymentMethods, ['cartao']);
 });
 
+test('release aprovado precisa publicar artefato cujo conteúdo tenha o hash declarado', async () => {
+  if (!PREVENDA_RELEASE.approved) {
+    assert.equal(PREVENDA_RELEASE.disclosuresPath, null);
+    return;
+  }
+  const artifactUrl = new URL(`../../public${PREVENDA_RELEASE.disclosuresPath}`, import.meta.url);
+  const artifact = await readFile(fileURLToPath(artifactUrl));
+  assert.equal(sha256(artifact), PREVENDA_RELEASE.disclosuresSha256);
+});
+
 test('versão histórica sem snapshot cai em página explícita, nunca em 404 fabricado', async () => {
   assert.equal(contratoSnapshotDisponivel('v2-2026-08-05'), false);
   assert.equal(contratoPath('v2-2026-08-05'), '/contratos/indisponivel.html');
