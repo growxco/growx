@@ -158,18 +158,40 @@ async function readRawBody(req) {
     if (direct.length > MAX_WEBHOOK_BYTES) throw new Error('payload_too_large');
     return direct.toString('utf8');
   }
-  // Um objeto já parseado não preserva os bytes usados por Stripe-Signature.
-  if (direct && typeof direct === 'object') return null;
-  if (!req || typeof req[Symbol.asyncIterator] !== 'function') return null;
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of req) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    size += buffer.length;
-    if (size > MAX_WEBHOOK_BYTES) throw new Error('payload_too_large');
-    chunks.push(buffer);
-  }
-  return Buffer.concat(chunks).toString('utf8');
+  // A runtime Node da Vercel expõe `req.body` já parseado, mas repõe os bytes
+  // originais redirecionando os listeners `data`/`end` para um PassThrough.
+  // O async iterator continua ligado ao IncomingMessage já consumido; por isso
+  // a leitura precisa usar exatamente a interface de eventos restaurada.
+  if (!req || typeof req.on !== 'function') return null;
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      if (typeof req.removeListener === 'function') {
+        req.removeListener('error', onError);
+        req.removeListener('aborted', onAborted);
+      }
+      callback(value);
+    };
+    const onError = () => finish(reject, new Error('request_stream_error'));
+    const onAborted = () => finish(reject, new Error('request_aborted'));
+    req.on('end', () => finish(resolve, Buffer.concat(chunks).toString('utf8')));
+    req.on('error', onError);
+    req.on('aborted', onAborted);
+    req.on('data', (chunk) => {
+      if (settled) return;
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += buffer.length;
+      if (size > MAX_WEBHOOK_BYTES) {
+        finish(reject, new Error('payload_too_large'));
+        return;
+      }
+      chunks.push(buffer);
+    });
+  });
 }
 
 function reservationMetadata(metadata) {

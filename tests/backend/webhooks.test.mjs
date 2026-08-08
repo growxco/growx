@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import process from 'node:process';
+import { PassThrough, Readable } from 'node:stream';
 import test from 'node:test';
 
 import mpHandler, {
@@ -30,6 +31,28 @@ function responseMock() {
     status(code) { this.statusCode = code; return this; },
     json(body) { this.body = body; return this; },
   };
+}
+
+async function vercelReplayRequest(rawBody, parsedBody = JSON.parse(rawBody)) {
+  const req = Readable.from([rawBody]);
+  for await (const chunk of req) {
+    // Reproduz o addHelpers da Vercel, que consome o IncomingMessage antes
+    // de instalar req.body e restaurar data/end em um PassThrough.
+    void chunk;
+  }
+  assert.equal(req.readableEnded, true);
+  const replay = new PassThrough();
+  const replayOn = replay.on.bind(replay);
+  const originalOn = req.on.bind(req);
+  req.read = replay.read.bind(replay);
+  req.on = req.addListener = (name, callback) => (
+    name === 'data' || name === 'end' ? replayOn(name, callback) : originalOn(name, callback)
+  );
+  replay.write(rawBody);
+  replay.end();
+  req.method = 'POST';
+  req.body = parsedBody;
+  return req;
 }
 
 function durableHarness() {
@@ -220,6 +243,69 @@ test('Stripe-Signature inválida é rejeitada antes de consumir quota da API', a
     }, res);
     assert.equal(res.statusCode, 400);
     assert.deepEqual(res.body, { error: 'invalid_signature' });
+    assert.equal(fetchCalls, 0);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = previousKey;
+    if (previousWebhookSecret === undefined) delete process.env.STRIPE_WEBHOOK_SECRET;
+    else process.env.STRIPE_WEBHOOK_SECRET = previousWebhookSecret;
+  }
+});
+
+test('Stripe usa stream bruto replayado quando a Vercel já expôs req.body parseado', async () => {
+  const previousKey = process.env.STRIPE_SECRET_KEY;
+  const previousWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const previousFetch = globalThis.fetch;
+  const webhookSecret = 'whsec_test_webhook';
+  const timestamp = Math.floor(Date.now() / 1000);
+  const rawBody = JSON.stringify({ id: 'evt_checkout123' });
+  const signature = createHmac('sha256', webhookSecret)
+    .update(`${timestamp}.${rawBody}`).digest('hex');
+  let fetchCalls = 0;
+  process.env.STRIPE_SECRET_KEY = 'sk_test_webhook';
+  process.env.STRIPE_WEBHOOK_SECRET = webhookSecret;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => stripeSession({ amount_total: OFERTA.cartaoCentavos - 1 }),
+    };
+  };
+  try {
+    const req = await vercelReplayRequest(rawBody);
+    req.headers = { 'stripe-signature': `t=${timestamp},v1=${signature}` };
+    const res = responseMock();
+    await stripeHandler(req, res);
+    assert.equal(res.statusCode, 500);
+    assert.deepEqual(res.body, { error: 'stripe_event_integrity_failed' });
+    assert.equal(fetchCalls, 1);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = previousKey;
+    if (previousWebhookSecret === undefined) delete process.env.STRIPE_WEBHOOK_SECRET;
+    else process.env.STRIPE_WEBHOOK_SECRET = previousWebhookSecret;
+  }
+});
+
+test('Stripe limita a 64 KiB também o corpo replayado pela Vercel', async () => {
+  const previousKey = process.env.STRIPE_SECRET_KEY;
+  const previousWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const previousFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  process.env.STRIPE_SECRET_KEY = 'sk_test_webhook';
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_webhook';
+  globalThis.fetch = async () => { fetchCalls += 1; throw new Error('não deveria buscar'); };
+  try {
+    const rawBody = JSON.stringify({ padding: 'x'.repeat(64 * 1024) });
+    const req = await vercelReplayRequest(rawBody);
+    req.headers = { 'stripe-signature': 't=1786000000,v1=00' };
+    const res = responseMock();
+    await stripeHandler(req, res);
+    assert.equal(res.statusCode, 413);
+    assert.deepEqual(res.body, { error: 'invalid_payload' });
     assert.equal(fetchCalls, 0);
   } finally {
     globalThis.fetch = previousFetch;
