@@ -36,6 +36,11 @@ import {
   TurnstileUnavailableError,
   verifyCheckoutChallenge,
 } from './_lib/turnstile.js';
+import {
+  salesReleaseAllowsMethod,
+  salesReleaseReady,
+} from './_lib/release-gate.js';
+import { PREVENDA_RELEASE } from '../src/lib/prevendaRelease.js';
 import { normalizaTelefoneBr, telefoneBrNacional, telefoneBrValido } from '../shared/br-phone.js';
 import {
   safeCheckoutRedirectUrl,
@@ -64,7 +69,7 @@ export const CHECKOUT_STATUS_TTL_MS = 48 * 60 * 60 * 1000;
 const STATUS_COOKIE = '__Host-growx_prevenda_status';
 
 export const CONTRACT_VERSION = OFERTA.contratoVersao;
-const CONTRACT_URL = `${SITE}/prevenda/contrato`;
+const CONTRACT_URL = `${SITE}${OFERTA.contratoPath}`;
 const ENTREGA = OFERTA.entregaBR;
 
 const OFFER = {
@@ -912,7 +917,7 @@ async function handleCheckoutStatus(req, res, body) {
   }
 }
 
-export default async function handler(req, res) {
+export default async function handler(req, res, { releaseManifest = PREVENDA_RELEASE } = {}) {
   res.setHeader('Access-Control-Allow-Origin', 'https://www.growx.com.br');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -942,6 +947,10 @@ export default async function handler(req, res) {
     res.setHeader('Retry-After', '300');
     return res.status(503).json({ error: 'vendas_pausadas' });
   }
+  if (!salesReleaseReady(process.env, releaseManifest)) {
+    res.setHeader('Retry-After', '300');
+    return res.status(503).json({ error: 'release_nao_aprovado' });
+  }
 
   const requestedMethod = String(body?.method || body?.sku || '');
   const method = requestedMethod === 'prevenda' ? 'cartao' : requestedMethod;
@@ -950,6 +959,11 @@ export default async function handler(req, res) {
 
   if (!['cartao', 'pix'].includes(method)) {
     return res.status(400).json({ error: 'invalid_method', valid: ['cartao', 'pix'] });
+  }
+  if (!salesReleaseAllowsMethod(method, process.env, releaseManifest)) {
+    return res.status(503).json({
+      error: method === 'pix' ? 'pix_em_homologacao' : 'release_nao_aprovado',
+    });
   }
   if (!requestId) return res.status(400).json({ error: 'request_id_invalido' });
   if (!checkoutAbertoEm(now)) {
@@ -1087,6 +1101,7 @@ export default async function handler(req, res) {
       offerCurrency: OFFER[method].currency,
       offerSku: OFFER[method].sku,
       contractVersion: CONTRACT_VERSION,
+      releaseManifestSha256: releaseManifest.manifestSha256,
       providerProtocol: providerProtocolIntent,
       providerExternalReference,
       providerIdempotencyKey,

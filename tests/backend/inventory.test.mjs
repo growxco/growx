@@ -23,6 +23,7 @@ import {
 } from '../../api/_lib/inventory.js';
 import { estadoDoLote, reconcileExpiredHolds } from '../../api/_lib/lote.js';
 import { verifyMercadoPagoOrderBinding } from '../../api/mp-webhook.js';
+import { PREVENDA_RELEASE } from '../../src/lib/prevendaRelease.js';
 
 const TABLE = 'growx-prevenda-test';
 const clone = (input) => JSON.parse(JSON.stringify(input));
@@ -178,6 +179,14 @@ class MemoryDynamo {
     if (update.ConditionExpression.includes('contract_version = :contractVersion')
         && value(current, 'contract_version') !== value(values, ':contractVersion')) {
       throw new Error('contract_version_mismatch');
+    }
+    if (update.ConditionExpression.includes('release_manifest_sha256 = :releaseManifestSha256')
+        && value(current, 'release_manifest_sha256') !== value(values, ':releaseManifestSha256')) {
+      throw new Error('release_manifest_sha256_mismatch');
+    }
+    if (update.ConditionExpression.includes('attribute_not_exists(release_manifest_sha256)')
+        && value(current, 'release_manifest_sha256') !== undefined) {
+      throw new Error('legacy_release_manifest_present');
     }
     for (const [field, token] of [
       ['offer_amount_cents', ':offerAmountCents'],
@@ -504,10 +513,14 @@ test('REQUEST uuid é idempotente e nunca ganha um segundo slot', async () => {
   assert.equal([first, second].filter((reservation) => reservation.created).length, 1);
   assert.equal((await listSlots({ client, tableName: TABLE })).filter((slot) => slot.state === 'held').length, 1);
   for (const pk of [first.slot, `REQUEST#${requestId}`, `BUYER#${guards(requestId).buyerKey}`]) {
-    assert.equal(value(client.items.get(pk), 'contract_version'), 'v2-2026-08-05');
+    assert.equal(value(client.items.get(pk), 'contract_version'), 'v3-2026-08-08');
     assert.equal(value(client.items.get(pk), 'offer_amount_cents'), '300000');
     assert.equal(value(client.items.get(pk), 'offer_currency'), 'BRL');
     assert.equal(value(client.items.get(pk), 'offer_sku'), 'prevenda_cartao');
+    assert.equal(
+      value(client.items.get(pk), 'release_manifest_sha256'),
+      PREVENDA_RELEASE.manifestSha256,
+    );
     assert.equal(value(client.items.get(pk), 'terms_acknowledged_at'), '2026-08-05T12:00:00.000Z');
     assert.equal(value(client.items.get(pk), 'email_hash'), hash(`email:${requestId}`));
   }
@@ -522,7 +535,7 @@ test('REQUEST uuid é idempotente e nunca ganha um segundo slot', async () => {
   assert.equal(afterGlobalOfferChange.offerAmountCents, 300_000);
   assert.equal(afterGlobalOfferChange.offerCurrency, 'BRL');
   assert.equal(afterGlobalOfferChange.offerSku, 'prevenda_cartao');
-  assert.equal(afterGlobalOfferChange.contractVersion, 'v2-2026-08-05');
+  assert.equal(afterGlobalOfferChange.contractVersion, 'v3-2026-08-08');
 
   await assert.rejects(
     acquireReservation({ ...args, emailHash: hash('email:outra-identidade') }),
@@ -1858,6 +1871,9 @@ test('hold ativo preserva oferta antiga após mudança global e o drain libera s
     client,
     tableName: TABLE,
   });
+  for (const pk of [paid.slot, `REQUEST#${paidRequestId}`, paid.buyerPk]) {
+    delete client.items.get(pk).release_manifest_sha256;
+  }
   await attachProvider({
     requestId: paidRequestId,
     slot: paid.slot,
@@ -1880,6 +1896,9 @@ test('hold ativo preserva oferta antiga após mudança global e o drain libera s
     client,
     tableName: TABLE,
   });
+  for (const pk of [released.slot, `REQUEST#${releasedRequestId}`, released.buyerPk]) {
+    delete client.items.get(pk).release_manifest_sha256;
+  }
   await attachProvider({
     requestId: releasedRequestId,
     slot: released.slot,

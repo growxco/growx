@@ -55,6 +55,9 @@ test('.env.example mantém pré-venda fechada e documenta o contrato operacional
 
   assert.equal(salesFlags.length, 1);
   assert.match(example, /^PREVENDA_SALES_ENABLED=false$/m);
+  assert.match(example, /^PREVENDA_RELEASE_VERSION=$/m);
+  assert.match(example, /^PREVENDA_APPROVAL_REF=$/m);
+  assert.match(example, /^PREVENDA_DISCLOSURES_SHA256=$/m);
   assert.match(example, /^PREVENDA_PIX_ENABLED=false$/m);
   assert.match(example, /^VITE_PREVENDA_PIX_ENABLED=false\b/m);
   assert.match(example, /^TURNSTILE_EXPECTED_HOSTNAMES=growx\.com\.br,www\.growx\.com\.br$/m);

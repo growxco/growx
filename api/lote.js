@@ -6,10 +6,12 @@
 import { estadoDoLote } from './_lib/lote.js';
 import { rateLimit, clientIp } from './_lib/ai.js';
 import { OFERTA } from '../src/lib/oferta.js';
+import { salesReleaseReady } from './_lib/release-gate.js';
+import { PREVENDA_RELEASE } from '../src/lib/prevendaRelease.js';
 
 export const config = { runtime: 'nodejs' };
 
-export default async function handler(req, res) {
+export default async function handler(req, res, { releaseManifest = PREVENDA_RELEASE } = {}) {
   res.setHeader('Access-Control-Allow-Origin', 'https://www.growx.com.br');
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' });
@@ -23,6 +25,17 @@ export default async function handler(req, res) {
       esgotado: false,
       confiavel: false,
       motivo: 'validacao_produto',
+      reconciliacaoPendente: false,
+      financeiroPendente: false,
+    });
+  }
+  if (!salesReleaseReady(process.env, releaseManifest)) {
+    return res.status(200).json({
+      total: OFERTA.loteTotal,
+      restantes: 0,
+      esgotado: false,
+      confiavel: false,
+      motivo: 'release_nao_aprovado',
       reconciliacaoPendente: false,
       financeiroPendente: false,
     });

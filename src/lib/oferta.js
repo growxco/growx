@@ -34,9 +34,23 @@ export const OFERTA = {
 
   loteTotal: 100,           // teto de unidades da pré-venda
 
-  contratoVersao: 'v2-2026-08-05',
+  contratoVersao: 'v3-2026-08-08',
+  contratoPath: '/contratos/prevenda-v3-2026-08-08.html',
   evento: 'ExpoCannabis Brasil 2026',
 };
+
+const CONTRATOS_PUBLICADOS = Object.freeze({
+  [OFERTA.contratoVersao]: OFERTA.contratoPath,
+});
+
+/** Snapshot conservável da versão aceita; nunca fabrica URL para arquivo ausente. */
+export const contratoPath = (versao = OFERTA.contratoVersao) => {
+  const normalizada = String(versao || '').trim();
+  return CONTRATOS_PUBLICADOS[normalizada] || '/contratos/indisponivel.html';
+};
+
+export const contratoSnapshotDisponivel = (versao = OFERTA.contratoVersao) =>
+  Boolean(CONTRATOS_PUBLICADOS[String(versao || '').trim()]);
 
 export const brl = (centavos) =>
   (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

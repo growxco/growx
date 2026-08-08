@@ -21,6 +21,7 @@ import {
   REQUEST_ID_PATTERN,
 } from '../../shared/provider-identifiers.js';
 import { OFERTA } from '../../src/lib/oferta.js';
+import { PREVENDA_RELEASE } from '../../src/lib/prevendaRelease.js';
 import { getDynamoClient } from './dynamo-client.js';
 
 const VALID_HASH = /^[0-9a-f]{64}$/i;
@@ -182,6 +183,7 @@ function decode(item) {
     offerCurrency: attrS(item, 'offer_currency') || null,
     offerSku: attrS(item, 'offer_sku') || null,
     contractVersion: attrS(item, 'contract_version') || null,
+    releaseManifestSha256: attrS(item, 'release_manifest_sha256') || null,
     termsAcknowledgedAt: attrS(item, 'terms_acknowledged_at') || null,
     providerEventCursor: attrS(item, 'provider_event_cursor') || null,
     providerEventCreated: attrS(item, 'provider_event_created_at') || null,
@@ -254,6 +256,7 @@ function currentOfferSnapshot(provider) {
     offerCurrency: 'BRL',
     offerSku: provider === 'stripe' ? 'prevenda_cartao' : 'prevenda_pix',
     contractVersion: OFERTA.contratoVersao,
+    releaseManifestSha256: PREVENDA_RELEASE.manifestSha256,
   };
 }
 
@@ -272,11 +275,16 @@ function validateOfferSnapshot(snapshot, errorClass = InventoryConflictError) {
   if (!VALID_CONTRACT_VERSION.test(String(snapshot?.contractVersion || ''))) {
     throw new errorClass('invalid_contract_version');
   }
+  const releaseManifestSha256 = String(snapshot?.releaseManifestSha256 || '').toLowerCase();
+  if (snapshot.contractVersion === OFERTA.contratoVersao && !VALID_HASH.test(releaseManifestSha256)) {
+    throw new errorClass('invalid_release_manifest');
+  }
   return {
     offerAmountCents: snapshot.offerAmountCents,
     offerCurrency: snapshot.offerCurrency,
     offerSku: snapshot.offerSku,
     contractVersion: snapshot.contractVersion,
+    releaseManifestSha256: releaseManifestSha256 || null,
   };
 }
 
@@ -284,7 +292,8 @@ function sameOfferSnapshot(left, right) {
   return left?.offerAmountCents === right?.offerAmountCents
     && left?.offerCurrency === right?.offerCurrency
     && left?.offerSku === right?.offerSku
-    && left?.contractVersion === right?.contractVersion;
+    && left?.contractVersion === right?.contractVersion
+    && left?.releaseManifestSha256 === right?.releaseManifestSha256;
 }
 
 function providerEventTimeMs(value) {
@@ -703,6 +712,7 @@ export async function acquireReservation({
   offerCurrency,
   offerSku,
   contractVersion,
+  releaseManifestSha256,
   providerProtocol,
   providerExternalReference,
   providerIdempotencyKey,
@@ -743,6 +753,7 @@ export async function acquireReservation({
     offerCurrency: String(offerCurrency ?? defaults.offerCurrency).toUpperCase(),
     offerSku: offerSku ?? defaults.offerSku,
     contractVersion: contractVersion ?? defaults.contractVersion,
+    releaseManifestSha256: releaseManifestSha256 ?? defaults.releaseManifestSha256,
   });
 
   const expiresAt = new Date(providerExpiresAt);
@@ -784,6 +795,7 @@ export async function acquireReservation({
       offer_currency: s(offer.offerCurrency),
       offer_sku: s(offer.offerSku),
       contract_version: s(offer.contractVersion),
+      release_manifest_sha256: s(offer.releaseManifestSha256),
       terms_acknowledged_at: s(createdAt),
       owner_token: s(ownerToken),
       buyer_pk: s(reservationBuyerPk),
@@ -810,6 +822,7 @@ export async function acquireReservation({
       offer_currency: s(offer.offerCurrency),
       offer_sku: s(offer.offerSku),
       contract_version: s(offer.contractVersion),
+      release_manifest_sha256: s(offer.releaseManifestSha256),
       terms_acknowledged_at: s(createdAt),
       buyer_pk: s(reservationBuyerPk),
       ...(normalizedEmailHash ? { email_hash: s(normalizedEmailHash) } : {}),
@@ -832,6 +845,7 @@ export async function acquireReservation({
       offer_currency: s(offer.offerCurrency),
       offer_sku: s(offer.offerSku),
       contract_version: s(offer.contractVersion),
+      release_manifest_sha256: s(offer.releaseManifestSha256),
       terms_acknowledged_at: s(createdAt),
       ...(normalizedEmailHash ? { email_hash: s(normalizedEmailHash) } : {}),
     };
@@ -1007,6 +1021,9 @@ export async function attachProvider({
     ':offerCurrency': s(offer.offerCurrency),
     ':offerSku': s(offer.offerSku),
     ':contractVersion': s(offer.contractVersion),
+    ...(offer.releaseManifestSha256
+      ? { ':releaseManifestSha256': s(offer.releaseManifestSha256) }
+      : {}),
     ...(providerIntent ? {
       ':externalReference': s(providerIntent.providerExternalReference),
       ':idempotencyKey': s(providerIntent.providerIdempotencyKey),
@@ -1015,7 +1032,10 @@ export async function attachProvider({
   const requestValues = redirectUrl
     ? { ...commonValues, ':url': s(redirectUrl) }
     : commonValues;
-  const ownership = 'reservation_id = :rid AND #state = :held AND #provider = :provider AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion';
+  const releaseManifestOwnership = offer.releaseManifestSha256
+    ? ' AND release_manifest_sha256 = :releaseManifestSha256'
+    : ' AND attribute_not_exists(release_manifest_sha256)';
+  const ownership = `reservation_id = :rid AND #state = :held AND #provider = :provider AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion${releaseManifestOwnership}`;
   const sameReference = ' AND (attribute_not_exists(provider_ref) OR provider_ref = :ref) AND (attribute_not_exists(provider_protocol) OR provider_protocol = :protocol)';
   const sameIntent = providerIntent
     ? ' AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey'
@@ -1112,13 +1132,19 @@ export async function recordUnattachedProviderSearchNegative({
     ':offerCurrency': s(verified.offerCurrency),
     ':offerSku': s(verified.offerSku),
     ':contractVersion': s(verified.contractVersion),
+    ...(verified.releaseManifestSha256
+      ? { ':releaseManifestSha256': s(verified.releaseManifestSha256) }
+      : {}),
     ':previousNegativeCount': n(previousCount),
     ':nextNegativeCount': n(nextCount),
     ':firstAt': s(firstAt),
     ':now': s(nowIso),
   };
   const names = { '#state': 'state', '#provider': 'provider' };
-  const ownership = 'reservation_id = :rid AND #state = :held AND #provider = :provider AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion';
+  const releaseManifestOwnership = verified.releaseManifestSha256
+    ? ' AND release_manifest_sha256 = :releaseManifestSha256'
+    : ' AND attribute_not_exists(release_manifest_sha256)';
+  const ownership = `reservation_id = :rid AND #state = :held AND #provider = :provider AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion${releaseManifestOwnership}`;
   const unattached = ' AND attribute_not_exists(provider_ref) AND attribute_not_exists(provider_url)';
   const sameCounter = ' AND (attribute_not_exists(provider_search_negative_count) OR provider_search_negative_count = :previousNegativeCount)';
   const updateExpression = 'SET provider_search_negative_count = :nextNegativeCount, provider_search_first_at = :firstAt, provider_search_last_at = :now, updated_at = :now';
@@ -1193,6 +1219,9 @@ export async function releaseUnattachedReservation({
     ':offerCurrency': s(offer.offerCurrency),
     ':offerSku': s(offer.offerSku),
     ':contractVersion': s(offer.contractVersion),
+    ...(offer.releaseManifestSha256
+      ? { ':releaseManifestSha256': s(offer.releaseManifestSha256) }
+      : {}),
     ':now': s(now.toISOString()),
     ':reason': s(reason || 'provider_rejected_before_creation'),
     ...(providerIntent ? {
@@ -1206,7 +1235,10 @@ export async function releaseUnattachedReservation({
     ':ttl': n(Math.floor(now.getTime() / 1000) + RELEASED_GUARD_RETENTION_SECONDS),
   };
   const names = { '#state': 'state', '#provider': 'provider', '#ttl': 'ttl' };
-  const ownership = `reservation_id = :rid AND #provider = :provider AND #state = :held AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion${providerIntent ? ' AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey' : ''}`;
+  const releaseManifestOwnership = offer.releaseManifestSha256
+    ? ' AND release_manifest_sha256 = :releaseManifestSha256'
+    : ' AND attribute_not_exists(release_manifest_sha256)';
+  const ownership = `reservation_id = :rid AND #provider = :provider AND #state = :held AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion${releaseManifestOwnership}${providerIntent ? ' AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey' : ''}`;
   const unattached = ' AND attribute_not_exists(provider_ref) AND attribute_not_exists(provider_url)';
   const slotSet = 'SET #state = :released, updated_at = :now, release_reason = :reason REMOVE buyer_pk, provider_url';
   const requestSet = 'SET #state = :released, updated_at = :now, release_reason = :reason, #ttl = :ttl REMOVE provider_url';
@@ -1331,6 +1363,9 @@ async function transitionReservation({
     ':offerCurrency': s(offer.offerCurrency),
     ':offerSku': s(offer.offerSku),
     ':contractVersion': s(offer.contractVersion),
+    ...(offer.releaseManifestSha256
+      ? { ':releaseManifestSha256': s(offer.releaseManifestSha256) }
+      : {}),
   };
   const set = ['#state = :next', 'updated_at = :now'];
   if (providerRef) { values[':ref'] = s(providerRef); set.push('last_provider_ref = :ref'); }
@@ -1370,7 +1405,10 @@ async function transitionReservation({
   if (requireProviderRefMatch && !providerRef) {
     throw new InventoryConflictError('provider_reference_required');
   }
-  const baseCondition = `reservation_id = :rid AND #provider = :provider AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion AND ${allowed}`;
+  const releaseManifestOwnership = offer.releaseManifestSha256
+    ? ' AND release_manifest_sha256 = :releaseManifestSha256'
+    : ' AND attribute_not_exists(release_manifest_sha256)';
+  const baseCondition = `reservation_id = :rid AND #provider = :provider AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion${releaseManifestOwnership} AND ${allowed}`;
   const eventCondition = providerEvent
     ? ' AND (attribute_not_exists(provider_event_cursor) OR provider_event_cursor < :eventCursor)'
     : '';

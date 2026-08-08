@@ -4,6 +4,7 @@ import { ArrowLeft, Check } from 'lucide-react';
 import { SEO } from '@/components/visual';
 import { track } from '@/lib/analytics';
 import { documentoValido, emailValido, formataDocumento } from '@/lib/cpf';
+import { contratoPath, contratoSnapshotDisponivel } from '@/lib/oferta';
 import PreVendaHeader from '@/components/prevenda/PreVendaHeader';
 
 const BG = 'var(--prevenda-bg)';
@@ -97,6 +98,20 @@ function CardPedido({ p }) {
           </div>
         ))}
       </dl>
+
+      {p.contrato_versao && (
+        <p className="mt-4 text-right text-xs">
+          <a
+            href={contratoPath(p.contrato_versao)}
+            className="font-semibold underline underline-offset-2"
+            style={{ color: GREEN }}
+          >
+            {contratoSnapshotDisponivel(p.contrato_versao)
+              ? 'Guardar a versão contratual deste pedido'
+              : 'Solicitar a cópia histórica deste pedido'}
+          </a>
+        </p>
+      )}
 
       {!p.cpf_verificado && (
         <p className="mt-4 text-xs leading-relaxed" style={{ color: 'var(--prevenda-warning)' }}>
@@ -377,10 +392,7 @@ export default function PedidoPage() {
                 Você pode cancelar a qualquer momento <strong className="text-white">até o envio</strong>, com
                 reembolso integral e sem justificativa — é só pedir pelo WhatsApp ou por e-mail. Depois da
                 entrega, o produto tem <strong className="text-white">garantia de 12 meses</strong> conforme o contrato.
-                Detalhes no{' '}
-                <Link to="/prevenda/contrato" className="underline underline-offset-2" style={{ color: GREEN }}>
-                  contrato de pré-venda
-                </Link>.
+                A versão contratual de cada compra fica no próprio cartão do pedido acima.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <a href={CANCELAMENTO_WHATSAPP} target="_blank" rel="noreferrer noopener" className="rounded-xl border px-5 py-3 text-sm font-semibold text-white" style={{ borderColor: LINE }}>

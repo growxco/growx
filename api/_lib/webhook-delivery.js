@@ -1,5 +1,5 @@
 /** Entregas externas usadas exclusivamente pelo outbox dos webhooks. */
-import { OFERTA, brl } from '../../src/lib/oferta.js';
+import { OFERTA, brl, contratoPath } from '../../src/lib/oferta.js';
 
 const SITE = 'https://www.growx.com.br';
 const FROM = 'Grow-X <no-reply@growx.com.br>';
@@ -92,7 +92,7 @@ export async function sendBuyerConfirmationEmail(data, { idempotencyKey, fetchIm
         ${row('Contrato', data.contractVersion || OFERTA.contratoVersao)}
       </table>
       <p style="margin:18px 0 0"><a href="${SITE}/prevenda/pedido" style="display:inline-block;background:#4ade80;color:#05130a;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px">Acompanhar pedido</a></p>
-      <p style="color:#75837b;font-size:13px;line-height:1.6">Reembolso integral até o envio. Defeitos de fabricação têm cobertura de 12 meses, conforme o contrato.</p>
+      <p style="color:#75837b;font-size:13px;line-height:1.6">Reembolso integral até o envio. Defeitos de fabricação têm cobertura de 12 meses, conforme o contrato. <a href="${SITE}${esc(contratoPath(data.contractVersion || OFERTA.contratoVersao))}" style="color:#17843d;font-weight:700">Guardar a cópia contratual vinculada ao pedido</a>.</p>
     </div>
     <p style="color:#8a9a91;font-size:12px;text-align:center">GROW-X CO. TECNOLOGIAS LTDA · CNPJ 59.183.820/0001-09<br>Dúvidas: growx@growx.com.br</p>
   </div></body></html>`;

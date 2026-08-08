@@ -11,6 +11,7 @@ import {
   readCheckoutReturn,
 } from '@/lib/checkoutReturn';
 import { reservationCode } from '../../shared/reservation-code.js';
+import { contratoPath, contratoSnapshotDisponivel } from '@/lib/oferta';
 import PreVendaHeader from '@/components/prevenda/PreVendaHeader';
 
 const BG = 'var(--prevenda-bg)';
@@ -275,7 +276,11 @@ export default function PreVendaSucessoPage() {
               <p className="mt-3 text-xs" style={{ color: MUTED }}>
                 Contrato <strong className="text-white">{info.contract_version}</strong>
                 {info.contract_accepted ? ' · aceite registrado' : ''} ·{' '}
-                <Link to="/prevenda/contrato" className="underline underline-offset-2" style={{ color: GREEN }}>ver contrato</Link>
+                <a href={contratoPath(info.contract_version)} className="underline underline-offset-2" style={{ color: GREEN }}>
+                  {contratoSnapshotDisponivel(info.contract_version)
+                    ? 'guardar contrato aceito'
+                    : 'solicitar cópia histórica'}
+                </a>
               </p>
             )}
           </div>
