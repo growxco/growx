@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
@@ -11,11 +12,15 @@ import {
 import { contratoPath, contratoSnapshotDisponivel } from '../../src/lib/oferta.js';
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+const canonicalText = (value) => Buffer.from(
+  value.toString('utf8').replace(/\r\n?/g, '\n'),
+  'utf8',
+);
 
 test('manifesto está ligado ao snapshot publicado e à decisão técnica aceita', async () => {
   const snapshotUrl = new URL(`../../public${PREVENDA_RELEASE.contractPath}`, import.meta.url);
   const snapshot = await readFile(fileURLToPath(snapshotUrl));
-  assert.equal(sha256(snapshot), PREVENDA_RELEASE.contractSha256);
+  assert.equal(sha256(canonicalText(snapshot)), PREVENDA_RELEASE.contractSha256);
   assert.equal(sha256(canonicalReleaseManifest()), PREVENDA_RELEASE.manifestSha256);
   assert.equal(
     PREVENDA_RELEASE.technicalDecisionRef,
@@ -38,7 +43,7 @@ test('release aprovado precisa publicar artefato cujo conteúdo tenha o hash dec
   }
   const artifactUrl = new URL(`../../public${PREVENDA_RELEASE.disclosuresPath}`, import.meta.url);
   const artifact = await readFile(fileURLToPath(artifactUrl));
-  assert.equal(sha256(artifact), PREVENDA_RELEASE.disclosuresSha256);
+  assert.equal(sha256(canonicalText(artifact)), PREVENDA_RELEASE.disclosuresSha256);
 });
 
 test('versão histórica sem snapshot cai em página explícita, nunca em 404 fabricado', async () => {

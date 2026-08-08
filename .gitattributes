@@ -1,0 +1,3 @@
+# Contractual artifacts have a published SHA-256 and must remain byte-stable.
+public/contratos/*.html text eol=lf
+public/divulgacoes/*.html text eol=lf
