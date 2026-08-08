@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { brl } from '../../src/lib/oferta.js';
+import { MP_ORDER_ID_PATTERN, REQUEST_ID_PATTERN } from '../../shared/provider-identifiers.js';
 import { reservationCode } from '../../shared/reservation-code.js';
 import {
   buildStripeFinancialSnapshot,
@@ -23,10 +24,8 @@ import {
 
 const SOURCE = 'growx.com.br/prevenda';
 const PROVIDER_TIMEOUT_MS = 7_000;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLOT = /^SLOT#(?:0(?:0[1-9]|[1-9]\d)|100)$/;
 const HASH = /^[a-f0-9]{64}$/;
-const MP_ORDER_ID = /^ORD[A-Z0-9]{20,40}$/;
 
 const INTERNAL_CHANNELS = new Set([
   'internal_email',
@@ -122,7 +121,7 @@ function reservationMetadata(metadata, expected = {}) {
   if (expected.contractVersion) {
     unsafe(metadata.contract_version === expected.contractVersion, 'provider_contract_mismatch');
   }
-  unsafe(UUID.test(String(metadata?.request_id || '')), 'provider_request_id_missing');
+  unsafe(REQUEST_ID_PATTERN.test(String(metadata?.request_id || '')), 'provider_request_id_missing');
   unsafe(SLOT.test(String(metadata?.slot_id || '')), 'provider_slot_missing');
   unsafe(HASH.test(String(metadata?.buyer_hash || '')), 'provider_buyer_hash_missing');
   return {
@@ -452,7 +451,7 @@ async function fetchMercadoPagoCanonical(reference, record, options) {
 async function fetchMercadoPagoOrderCanonical(reference, record, options) {
   const token = process.env.MP_ACCESS_TOKEN;
   if (!token) throw new WebhookRedriveProviderError('mp_not_configured');
-  unsafe(MP_ORDER_ID.test(reference), 'mp_order_reference_unsupported');
+  unsafe(MP_ORDER_ID_PATTERN.test(reference), 'mp_order_reference_unsupported');
   let order;
   let boundReservation;
   let normalized;
@@ -770,7 +769,7 @@ export function createWebhookRedriveDispatcher({
     const options = { fetchImpl, deadlineAt, getReservationImpl };
     const mercadoPagoOrder = record.provider === 'mercadopago'
       && (record.providerProtocol === 'mp_orders_v1'
-        || MP_ORDER_ID.test(String(record.providerReference || '')));
+        || MP_ORDER_ID_PATTERN.test(String(record.providerReference || '')));
     const canonical = record.provider === 'stripe'
       ? await fetchStripeCanonical(record.providerReference, record, options)
       : (record.provider === 'mercadopago'

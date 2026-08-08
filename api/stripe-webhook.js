@@ -25,6 +25,7 @@ import {
   withWebhookReservationLock,
   WebhookOutboxBusyError,
 } from './_lib/webhook-outbox.js';
+import { REQUEST_ID_PATTERN } from '../shared/provider-identifiers.js';
 import { OFERTA, brl } from '../src/lib/oferta.js';
 import { reservationCode } from '../shared/reservation-code.js';
 
@@ -37,7 +38,6 @@ const PROVIDER_TIMEOUT_MS = 5_000;
 const PROVIDER_DEADLINE_MS = 45_000;
 const MAX_WEBHOOK_BYTES = 64 * 1024;
 const STRIPE_SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH = /^[0-9a-f]{64}$/i;
 const SLOT = /^SLOT#(?:0(?:0[1-9]|[1-9]\d)|100)$/;
 const REFUND_STATUSES = new Set(['pending', 'requires_action', 'succeeded', 'failed', 'canceled']);
@@ -176,7 +176,7 @@ function reservationMetadata(metadata) {
   const requestId = String(metadata?.request_id || '');
   const slot = String(metadata?.slot_id || '');
   const buyerHash = String(metadata?.buyer_hash || '');
-  integrity(UUID.test(requestId), 'invalid_reservation_id');
+  integrity(REQUEST_ID_PATTERN.test(requestId), 'invalid_reservation_id');
   integrity(SLOT.test(slot), 'invalid_reservation_slot');
   integrity(HASH.test(buyerHash), 'invalid_buyer_hash');
   return { requestId, slot, buyerHash: buyerHash.toLowerCase() };
@@ -1261,7 +1261,7 @@ export default async function handler(req, res) {
   if (!rawBody) return res.status(400).json({ error: 'raw_body_required' });
   const signature = String(req.headers?.['stripe-signature'] || '');
   if (!verifyStripeSignature({ rawBody, signature, secret: webhookSecret })) {
-    return res.status(401).json({ error: 'invalid_signature' });
+    return res.status(400).json({ error: 'invalid_signature' });
   }
   let body;
   try { body = JSON.parse(rawBody); }

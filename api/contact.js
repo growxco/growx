@@ -15,9 +15,26 @@
  *
  * Sem qualquer config externa: cai pro FormSubmit.co automaticamente (zero downtime).
  */
+import { randomUUID } from 'node:crypto';
+
 import { chatComplete, rateLimit, clientIp } from './_lib/ai.js';
 
 export const config = { runtime: 'nodejs' };
+
+const LOGGABLE_FORMS = new Set([
+  'contact',
+  'demo-b2b',
+  'newsletter',
+  'partner-application',
+  'prevenda-lista',
+  'spi-enterprise-contact',
+  'waitlist-app',
+]);
+
+const safeFormForLog = (value) => {
+  const candidate = String(value || '').trim().toLowerCase();
+  return LOGGABLE_FORMS.has(candidate) ? candidate : 'unknown';
+};
 
 const ENRICH_PROMPT = `Você é SDR sênior B2B/B2C agro. Recebe lead via formulário site Grow-X.
 Retorne SOMENTE JSON válido (sem markdown, sem fences):
@@ -149,6 +166,8 @@ function buildSlackBlock(lead, enrichment) {
 }
 
 export default async function handler(req, res) {
+  const correlationId = randomUUID();
+  res.setHeader('X-Correlation-Id', correlationId);
   res.setHeader('Access-Control-Allow-Origin', 'https://www.growx.com.br');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -234,7 +253,11 @@ export default async function handler(req, res) {
   // aqui faria o site dizer "recebemos" pra alguém que sumiu — o formulário
   // precisa saber pra pedir o WhatsApp como alternativa.
   if (okCount === 0) {
-    console.error('[contact] lead perdido — nenhum destino aceitou:', lead._form, lead.email);
+    console.error('[contact] nenhum destino aceitou:', {
+      form: safeFormForLog(lead._form),
+      correlation_id: correlationId,
+      status: 'all_destinations_failed',
+    });
     return res.status(502).json({
       ok: false,
       received: false,

@@ -15,10 +15,14 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { createHmac, randomUUID } from 'node:crypto';
 
+import {
+  MP_ORDER_EXTERNAL_REFERENCE_PATTERN,
+  MP_ORDER_ID_PATTERN,
+  REQUEST_ID_PATTERN,
+} from '../../shared/provider-identifiers.js';
 import { OFERTA } from '../../src/lib/oferta.js';
 import { getDynamoClient } from './dynamo-client.js';
 
-const VALID_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VALID_HASH = /^[0-9a-f]{64}$/i;
 const VALID_CONTRACT_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const VALID_OFFER_CURRENCY = /^[A-Z]{3}$/;
@@ -112,7 +116,7 @@ export function providerProtocolFor({ provider, providerRef, providerProtocol } 
   const explicit = String(providerProtocol || '').trim();
   const inferred = provider === 'stripe'
     ? 'stripe_checkout_v1'
-    : (/^ORD[A-Z0-9]+$/i.test(String(providerRef || ''))
+    : (MP_ORDER_ID_PATTERN.test(String(providerRef || ''))
         ? 'mp_orders_v1'
         : 'mp_checkout_pro_v1');
   const protocol = explicit || inferred;
@@ -124,6 +128,10 @@ export function providerProtocolFor({ provider, providerRef, providerProtocol } 
   }
   if (provider === 'mercadopago' && protocol === 'stripe_checkout_v1') {
     throw new InventoryConflictError('invalid_provider_protocol');
+  }
+  if (provider === 'mercadopago' && protocol === 'mp_orders_v1'
+      && !MP_ORDER_ID_PATTERN.test(String(providerRef || ''))) {
+    throw new InventoryConflictError('invalid_provider_reference');
   }
   return protocol;
 }
@@ -156,6 +164,8 @@ function decode(item) {
     slot: attrS(item, 'slot'),
     provider: attrS(item, 'provider'),
     providerProtocol: attrS(item, 'provider_protocol') || null,
+    providerExternalReference: attrS(item, 'provider_external_reference') || null,
+    providerIdempotencyKey: attrS(item, 'provider_idempotency_key') || null,
     state: attrS(item, 'state'),
     providerRef: attrS(item, 'provider_ref') || null,
     lastProviderRef: attrS(item, 'last_provider_ref') || null,
@@ -186,7 +196,56 @@ function decode(item) {
     buyerPk: attrS(item, 'buyer_pk') || null,
     emailHash: attrS(item, 'email_hash') || null,
     ratePk: attrS(item, 'rate_pk') || null,
+    providerSearchNegativeCount: attrN(item, 'provider_search_negative_count') || 0,
+    providerSearchFirstAt: attrS(item, 'provider_search_first_at') || null,
+    providerSearchLastAt: attrS(item, 'provider_search_last_at') || null,
   };
+}
+
+function normalizeProviderIntent({
+  requestId,
+  provider,
+  providerProtocol,
+  providerExternalReference,
+  providerIdempotencyKey,
+} = {}, errorClass = InventoryConflictError) {
+  const protocol = String(providerProtocol || '').trim();
+  const externalReference = String(providerExternalReference || '').trim();
+  const idempotencyKey = String(providerIdempotencyKey || '').trim();
+  const hasIntent = Boolean(protocol || externalReference || idempotencyKey);
+  if (!hasIntent) return null;
+  const match = externalReference.match(MP_ORDER_EXTERNAL_REFERENCE_PATTERN);
+  if (provider !== 'mercadopago'
+      || protocol !== 'mp_orders_v1'
+      || !match
+      || match[1].toLowerCase() !== String(requestId || '').toLowerCase()
+      || idempotencyKey !== String(requestId || '')) {
+    throw new errorClass('invalid_provider_intent');
+  }
+  return {
+    requestId: String(requestId),
+    provider,
+    providerProtocol: protocol,
+    providerExternalReference: externalReference,
+    providerIdempotencyKey: idempotencyKey,
+  };
+}
+
+function providerIntentFromRecord(record, errorClass = InventoryUnavailableError) {
+  const hasDurableIntent = Boolean(
+    record?.providerExternalReference || record?.providerIdempotencyKey,
+  );
+  if (!hasDurableIntent) return null;
+  return normalizeProviderIntent(record, errorClass);
+}
+
+function sameProviderIntent(left, right) {
+  const leftIntent = providerIntentFromRecord(left);
+  const rightIntent = providerIntentFromRecord(right);
+  if (!leftIntent || !rightIntent) return leftIntent === rightIntent;
+  return leftIntent.providerProtocol === rightIntent.providerProtocol
+    && leftIntent.providerExternalReference === rightIntent.providerExternalReference
+    && leftIntent.providerIdempotencyKey === rightIntent.providerIdempotencyKey;
 }
 
 function currentOfferSnapshot(provider) {
@@ -329,7 +388,7 @@ export function financialEventCursor({
 }
 
 function validateRequest(requestId, provider) {
-  if (!VALID_UUID.test(String(requestId || ''))) {
+  if (!REQUEST_ID_PATTERN.test(String(requestId || ''))) {
     throw new InventoryConflictError('invalid_request_id');
   }
   if (!VALID_PROVIDER.has(provider)) {
@@ -376,6 +435,7 @@ async function sameRequestOrThrow(
   options = {},
   ownerToken = null,
   emailHash = null,
+  expectedIntent = undefined,
 ) {
   if (!record) return null;
   if (!VALID_STATES.has(record.state) || !record.slot || !record.reservationId) {
@@ -389,6 +449,12 @@ async function sameRequestOrThrow(
   }
   if (emailHash && record.emailHash !== emailHash) {
     throw new InventoryConflictError('request_email_mismatch');
+  }
+  const durableIntent = providerIntentFromRecord(record);
+  if (expectedIntent !== undefined
+      && (Boolean(expectedIntent) !== Boolean(durableIntent)
+        || (expectedIntent && !sameProviderIntent(record, expectedIntent)))) {
+    throw new InventoryConflictError('request_provider_intent_mismatch');
   }
   validateOfferSnapshot(record, InventoryUnavailableError);
 
@@ -408,11 +474,19 @@ async function sameRequestOrThrow(
         && candidate.provider === record.provider
         && candidate.state === record.state
         && (!emailHash || candidate.emailHash === emailHash)
+        && sameProviderIntent(candidate, record)
+        && candidate.providerSearchNegativeCount === record.providerSearchNegativeCount
+        && candidate.providerSearchFirstAt === record.providerSearchFirstAt
+        && candidate.providerSearchLastAt === record.providerSearchLastAt
         && sameOfferSnapshot(candidate, record))) {
       throw new InventoryUnavailableError('inventory_reservation_snapshot_mismatch');
     }
   }
-  return { ...record, created: Boolean(ownerToken && record.ownerToken === ownerToken) };
+  return {
+    ...record,
+    ...(durableIntent || {}),
+    created: Boolean(ownerToken && record.ownerToken === ownerToken),
+  };
 }
 
 async function getItem(pk, options = {}) {
@@ -629,12 +703,22 @@ export async function acquireReservation({
   offerCurrency,
   offerSku,
   contractVersion,
+  providerProtocol,
+  providerExternalReference,
+  providerIdempotencyKey,
   providerExpiresAt,
   now = new Date(),
   client,
   tableName,
 }) {
   validateRequest(requestId, provider);
+  const providerIntent = normalizeProviderIntent({
+    requestId,
+    provider,
+    providerProtocol,
+    providerExternalReference,
+    providerIdempotencyKey,
+  });
   const normalizedEmailHash = emailHash == null ? null : String(emailHash).toLowerCase();
   validateReservationKeys(buyerKey, riskKey, normalizedEmailHash);
   const options = { client, tableName };
@@ -642,7 +726,15 @@ export async function acquireReservation({
 
   const existing = await getReservation(requestId, options);
   if (existing) {
-    return sameRequestOrThrow(existing, provider, buyerKey, options, null, normalizedEmailHash);
+    return sameRequestOrThrow(
+      existing,
+      provider,
+      buyerKey,
+      options,
+      null,
+      normalizedEmailHash,
+      providerIntent,
+    );
   }
 
   const defaults = currentOfferSnapshot(provider);
@@ -678,6 +770,11 @@ export async function acquireReservation({
       reservation_id: s(reservationId),
       slot: s(slot),
       provider: s(provider),
+      ...(providerIntent ? {
+        provider_protocol: s(providerIntent.providerProtocol),
+        provider_external_reference: s(providerIntent.providerExternalReference),
+        provider_idempotency_key: s(providerIntent.providerIdempotencyKey),
+      } : {}),
       state: s('held'),
       provider_expires_at: s(expiresAt.toISOString()),
       hold_expires_at: n(holdExpiresAt),
@@ -699,6 +796,11 @@ export async function acquireReservation({
       reservation_id: s(reservationId),
       slot: s(slot),
       provider: s(provider),
+      ...(providerIntent ? {
+        provider_protocol: s(providerIntent.providerProtocol),
+        provider_external_reference: s(providerIntent.providerExternalReference),
+        provider_idempotency_key: s(providerIntent.providerIdempotencyKey),
+      } : {}),
       state: s('held'),
       provider_expires_at: s(expiresAt.toISOString()),
       hold_expires_at: n(holdExpiresAt),
@@ -718,6 +820,11 @@ export async function acquireReservation({
       reservation_id: s(reservationId),
       slot: s(slot),
       provider: s(provider),
+      ...(providerIntent ? {
+        provider_protocol: s(providerIntent.providerProtocol),
+        provider_external_reference: s(providerIntent.providerExternalReference),
+        provider_idempotency_key: s(providerIntent.providerIdempotencyKey),
+      } : {}),
       state: s('held'),
       created_at: s(createdAt),
       updated_at: s(createdAt),
@@ -793,6 +900,7 @@ export async function acquireReservation({
               options,
               ownerToken,
               normalizedEmailHash,
+              providerIntent,
             );
           }
         } catch {
@@ -811,6 +919,7 @@ export async function acquireReservation({
           options,
           ownerToken,
           normalizedEmailHash,
+          providerIntent,
         );
       }
 
@@ -883,6 +992,10 @@ export async function attachProvider({
     current.buyerPk.slice('BUYER#'.length),
     options,
   );
+  const providerIntent = providerIntentFromRecord(verified);
+  if (providerIntent && providerIntent.providerProtocol !== protocol) {
+    throw new InventoryConflictError('provider_intent_protocol_mismatch');
+  }
   const offer = validateOfferSnapshot(verified, InventoryUnavailableError);
   const { client: db, table } = requireConfig({ client, tableName });
   const commonValues = {
@@ -894,12 +1007,19 @@ export async function attachProvider({
     ':offerCurrency': s(offer.offerCurrency),
     ':offerSku': s(offer.offerSku),
     ':contractVersion': s(offer.contractVersion),
+    ...(providerIntent ? {
+      ':externalReference': s(providerIntent.providerExternalReference),
+      ':idempotencyKey': s(providerIntent.providerIdempotencyKey),
+    } : {}),
   };
   const requestValues = redirectUrl
     ? { ...commonValues, ':url': s(redirectUrl) }
     : commonValues;
   const ownership = 'reservation_id = :rid AND #state = :held AND #provider = :provider AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion';
   const sameReference = ' AND (attribute_not_exists(provider_ref) OR provider_ref = :ref) AND (attribute_not_exists(provider_protocol) OR provider_protocol = :protocol)';
+  const sameIntent = providerIntent
+    ? ' AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey'
+    : '';
   const requestSet = redirectUrl
     ? 'SET provider_ref = :ref, provider_protocol = :protocol, provider_url = :url, provider_expires_at = :expires, updated_at = :now'
     : 'SET provider_ref = :ref, provider_protocol = :protocol, provider_expires_at = :expires, updated_at = :now';
@@ -914,7 +1034,7 @@ export async function attachProvider({
             // O SLOT guarda a referência canônica necessária para binding, sem
             // reter um bearer-like checkout URL nem mesmo em dados legados.
             UpdateExpression: 'SET provider_ref = :ref, provider_protocol = :protocol, provider_expires_at = :expires, updated_at = :now REMOVE provider_url',
-            ConditionExpression: `${ownership}${sameReference}`,
+            ConditionExpression: `${ownership}${sameReference}${sameIntent}`,
             ExpressionAttributeNames: { '#state': 'state', '#provider': 'provider' },
             ExpressionAttributeValues: commonValues,
           },
@@ -924,7 +1044,7 @@ export async function attachProvider({
             TableName: table,
             Key: { pk: s(requestPk(requestId)) },
             UpdateExpression: requestSet,
-            ConditionExpression: `${ownership}${sameReference}`,
+            ConditionExpression: `${ownership}${sameReference}${sameIntent}`,
             ExpressionAttributeNames: { '#state': 'state', '#provider': 'provider' },
             ExpressionAttributeValues: requestValues,
           },
@@ -935,6 +1055,99 @@ export async function attachProvider({
     if (conditionalFailure(error)) throw new InventoryConflictError('reservation_not_held');
     throw wrapUnavailable(error);
   }
+}
+
+/**
+ * Registra uma busca Orders completa e negativa sem abrir uma janela de
+ * liberação contra um attach concorrente. O contador vive nos três guardas e
+ * só avança se o intent original continuar exatamente igual e unattached.
+ */
+export async function recordUnattachedProviderSearchNegative({
+  requestId,
+  slot,
+  now = new Date(),
+  client,
+  tableName,
+}) {
+  validateRequest(requestId, 'mercadopago');
+  if (!SLOT_KEYS.includes(slot) || !Number.isFinite(now.getTime())) {
+    throw new InventoryConflictError('invalid_provider_search_record');
+  }
+  const options = { client, tableName };
+  const current = await getReservation(requestId, options);
+  if (!current || current.slot !== slot || current.provider !== 'mercadopago'
+      || current.state !== 'held' || !current.buyerPk?.startsWith('BUYER#')) {
+    throw new InventoryConflictError('provider_search_reservation_mismatch');
+  }
+  if (current.providerRef) return current;
+  const verified = await sameRequestOrThrow(
+    current,
+    'mercadopago',
+    current.buyerPk.slice('BUYER#'.length),
+    options,
+  );
+  const providerIntent = providerIntentFromRecord(verified);
+  if (!providerIntent || providerIntent.providerProtocol !== 'mp_orders_v1') {
+    throw new InventoryConflictError('provider_search_intent_missing');
+  }
+  const previousCount = Number(verified.providerSearchNegativeCount || 0);
+  if (!Number.isInteger(previousCount) || previousCount < 0 || previousCount > 10_000) {
+    throw new InventoryUnavailableError('provider_search_counter_corrupt');
+  }
+  const nowIso = now.toISOString();
+  const firstAt = previousCount === 0 ? nowIso : verified.providerSearchFirstAt;
+  if (!firstAt || !Number.isFinite(Date.parse(firstAt))) {
+    throw new InventoryUnavailableError('provider_search_history_corrupt');
+  }
+  const nextCount = previousCount + 1;
+  const { client: db, table } = requireConfig(options);
+  const values = {
+    ':held': s('held'),
+    ':rid': s(requestId),
+    ':provider': s('mercadopago'),
+    ':protocol': s(providerIntent.providerProtocol),
+    ':externalReference': s(providerIntent.providerExternalReference),
+    ':idempotencyKey': s(providerIntent.providerIdempotencyKey),
+    ':offerAmountCents': n(verified.offerAmountCents),
+    ':offerCurrency': s(verified.offerCurrency),
+    ':offerSku': s(verified.offerSku),
+    ':contractVersion': s(verified.contractVersion),
+    ':previousNegativeCount': n(previousCount),
+    ':nextNegativeCount': n(nextCount),
+    ':firstAt': s(firstAt),
+    ':now': s(nowIso),
+  };
+  const names = { '#state': 'state', '#provider': 'provider' };
+  const ownership = 'reservation_id = :rid AND #state = :held AND #provider = :provider AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion';
+  const unattached = ' AND attribute_not_exists(provider_ref) AND attribute_not_exists(provider_url)';
+  const sameCounter = ' AND (attribute_not_exists(provider_search_negative_count) OR provider_search_negative_count = :previousNegativeCount)';
+  const updateExpression = 'SET provider_search_negative_count = :nextNegativeCount, provider_search_first_at = :firstAt, provider_search_last_at = :now, updated_at = :now';
+  try {
+    await db.send(new TransactWriteItemsCommand({
+      TransactItems: [slot, requestPk(requestId), current.buyerPk].map((pk) => ({
+        Update: {
+          TableName: table,
+          Key: { pk: s(pk) },
+          UpdateExpression: updateExpression,
+          ConditionExpression: `${ownership}${unattached}${sameCounter}`,
+          ExpressionAttributeNames: names,
+          ExpressionAttributeValues: values,
+        },
+      })),
+    }));
+  } catch (error) {
+    if (!conditionalFailure(error)) throw wrapUnavailable(error);
+    const after = await getReservation(requestId, options);
+    if (after?.providerRef || after?.state !== 'held'
+        || Number(after?.providerSearchNegativeCount || 0) > previousCount) return after;
+    throw new InventoryConflictError('provider_search_negative_conflict');
+  }
+  return {
+    ...verified,
+    providerSearchNegativeCount: nextCount,
+    providerSearchFirstAt: firstAt,
+    providerSearchLastAt: nowIso,
+  };
 }
 
 /**
@@ -968,6 +1181,7 @@ export async function releaseUnattachedReservation({
     { client, tableName },
   );
   const offer = validateOfferSnapshot(verified, InventoryUnavailableError);
+  const providerIntent = providerIntentFromRecord(verified);
 
   const { client: db, table } = requireConfig({ client, tableName });
   const slotValues = {
@@ -981,13 +1195,18 @@ export async function releaseUnattachedReservation({
     ':contractVersion': s(offer.contractVersion),
     ':now': s(now.toISOString()),
     ':reason': s(reason || 'provider_rejected_before_creation'),
+    ...(providerIntent ? {
+      ':protocol': s(providerIntent.providerProtocol),
+      ':externalReference': s(providerIntent.providerExternalReference),
+      ':idempotencyKey': s(providerIntent.providerIdempotencyKey),
+    } : {}),
   };
   const guardValues = {
     ...slotValues,
     ':ttl': n(Math.floor(now.getTime() / 1000) + RELEASED_GUARD_RETENTION_SECONDS),
   };
   const names = { '#state': 'state', '#provider': 'provider', '#ttl': 'ttl' };
-  const ownership = 'reservation_id = :rid AND #provider = :provider AND #state = :held AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion';
+  const ownership = `reservation_id = :rid AND #provider = :provider AND #state = :held AND offer_amount_cents = :offerAmountCents AND offer_currency = :offerCurrency AND offer_sku = :offerSku AND contract_version = :contractVersion${providerIntent ? ' AND provider_protocol = :protocol AND provider_external_reference = :externalReference AND provider_idempotency_key = :idempotencyKey' : ''}`;
   const unattached = ' AND attribute_not_exists(provider_ref) AND attribute_not_exists(provider_url)';
   const slotSet = 'SET #state = :released, updated_at = :now, release_reason = :reason REMOVE buyer_pk, provider_url';
   const requestSet = 'SET #state = :released, updated_at = :now, release_reason = :reason, #ttl = :ttl REMOVE provider_url';

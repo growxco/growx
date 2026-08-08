@@ -84,6 +84,10 @@ jobs:
                           return [item for item in value if isinstance(item, dict)]
               return []
 
+          def safe_cell(value, *, fallback="-") -> str:
+              text = str(value or "").replace("|", "\\|").replace("\r", " ").replace("\n", " ").strip()
+              return text[:160] if text else fallback
+
           def main() -> int:
               client_id = os.environ.get("AIKIDO_CLIENT_ID", "").strip()
               secret = os.environ.get("AIKIDO_CLIENT_SECRET", "").strip()
@@ -120,6 +124,7 @@ jobs:
 
               seen = set()
               counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+              details = []
               total = 0
               for item in issue_items(raw):
                   if (item.get("code_repo_name") or "").lower() != repo:
@@ -132,8 +137,31 @@ jobs:
                   severity = (item.get("severity") or "unknown").lower()
                   counts[severity] = counts.get(severity, 0) + 1
 
-              summary = "\n".join(
-                  [
+                  # Somente metadados operacionais seguros. Nunca publicar snippets,
+                  # evidências, payloads ou campos de segredo do export do provedor.
+                  details.append(
+                      {
+                          "id": safe_cell(issue_id),
+                          "severity": safe_cell(severity),
+                          "type": safe_cell(item.get("issue_type") or item.get("type")),
+                          "title": safe_cell(
+                              item.get("issue_title")
+                              or item.get("title")
+                              or item.get("rule_name")
+                              or item.get("name")
+                          ),
+                          "file": safe_cell(
+                              item.get("issue_file")
+                              or item.get("code_repo_file_path")
+                              or item.get("file_path")
+                              or item.get("path")
+                          ),
+                      }
+                  )
+
+              severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+              details.sort(key=lambda row: (severity_order.get(row["severity"], 9), row["id"]))
+              summary_lines = [
                       "## Aikido gate",
                       "",
                       f"Repo: `{repo}` - Total open: **{total}**",
@@ -144,8 +172,17 @@ jobs:
                       f"| high | {counts.get('high', 0)} | {high_baseline} | {'OK' if counts.get('high', 0) <= high_baseline else 'FAIL'} |",
                       f"| medium | {counts.get('medium', 0)} | (not gated) | -- |",
                       f"| low | {counts.get('low', 0)} | (not gated) | -- |",
-                  ]
+                      "",
+                      "### Open findings (sanitized)",
+                      "",
+                      "| ID | Severity | Type | Finding | File |",
+                      "| --- | --- | --- | --- | --- |",
+              ]
+              summary_lines.extend(
+                  f"| {row['id']} | {row['severity']} | {row['type']} | {row['title']} | {row['file']} |"
+                  for row in details
               )
+              summary = "\n".join(summary_lines)
               print(summary, flush=True)
               if os.environ.get("GITHUB_STEP_SUMMARY"):
                   with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:

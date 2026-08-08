@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#080b09" />
     <meta name="color-scheme" content="dark light" />
+    <script>
+      (() => {
+        try {
+          const stored = window.localStorage.getItem('growx-theme');
+          const theme = stored === 'light' || stored === 'dark' ? stored : 'dark';
+          const root = document.documentElement;
+          root.classList.remove('dark', 'light');
+          root.classList.add(theme);
+          root.style.colorScheme = theme;
+          document.querySelector('meta[name="theme-color"]')
+            ?.setAttribute('content', theme === 'light' ? '#f7f6ef' : '#080b09');
+        } catch {
+          document.documentElement.style.colorScheme = 'dark';
+        }
+      })();
+    </script>
 
     <!-- Favicons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -15,27 +31,28 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="format-detection" content="telephone=no" />
 
-    <title>Módulo Grow-X — controlador, GXP e condições da pré-venda</title>
-    <meta name="description" content="Conheça o conceito do Módulo Grow-X, o controlador baseado no protótipo v0.6.0, telas reais do GXP e as condições previstas da pré-venda. O pagamento só abre após a validação final de Hardware e frete." data-rh="true" />
+    <title>Compre o Módulo Grow-X — pré-venda no cartão</title>
+    <meta name="description" content="Garanta o Módulo Grow-X na pré-venda por R$ 3.000 no cartão, em até 12x de R$ 250. O Pix permanece indisponível enquanto passa pela homologação final." data-rh="true" />
     <meta name="author" content="Grow-X Co." />
+    <meta name="growx-offer-pix" content="R$ 2.800" data-enabled="false" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="product" data-rh="true" />
     <meta property="og:site_name" content="Grow-X" data-rh="true" />
-    <meta property="og:title" content="Módulo Grow-X — controlador, GXP e pré-venda" data-rh="true" />
-    <meta property="og:description" content="Veja o conceito do produto, o controlador documentado e telas reais do GXP. A cobrança só abre depois da ficha elétrica e das condições de frete estarem confirmadas." data-rh="true" />
+    <meta property="og:title" content="Compre o Módulo Grow-X — pré-venda no cartão" data-rh="true" />
+    <meta property="og:description" content="Pré-venda por R$ 3.000 no cartão, em até 12x de R$ 250, com 3 meses de GXP Premium inclusos. Pix temporariamente indisponível." data-rh="true" />
     <meta property="og:url" content="https://www.growx.com.br/prevenda" data-rh="true" />
     <meta property="og:locale" content="pt_BR" data-rh="true" />
     <meta property="og:image" content="https://www.growx.com.br/og-prevenda-v2.jpg" data-rh="true" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:alt" content="Card da pré-venda em validação do Módulo Grow-X, com render conceitual do produto" />
+    <meta property="og:image:alt" content="Módulo Grow-X em pré-venda, com controlador e acesso ao GXP" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" data-rh="true" />
-    <meta name="twitter:title" content="Módulo Grow-X — controlador, GXP e pré-venda" data-rh="true" />
-    <meta name="twitter:description" content="Conceito do produto, controlador documentado e telas reais do GXP. Pagamento após validação final de Hardware e frete." data-rh="true" />
+    <meta name="twitter:title" content="Compre o Módulo Grow-X — pré-venda no cartão" data-rh="true" />
+    <meta name="twitter:description" content="R$ 3.000 no cartão, em até 12x de R$ 250, com 3 meses de GXP Premium inclusos. Pix temporariamente indisponível." data-rh="true" />
     <meta name="twitter:image" content="https://www.growx.com.br/og-prevenda-v2.jpg" data-rh="true" />
 
     <link rel="canonical" href="https://www.growx.com.br/prevenda" data-rh="true" />
@@ -62,6 +79,10 @@
       .static-fallback h1 { margin: 0; font-size: clamp(2rem, 7vw, 4rem); line-height: 1.05; }
       .static-fallback p { max-width: 720px; color: #b8c8bd; font-size: 1.05rem; line-height: 1.7; }
       .static-fallback a { color: #7ef0a0; }
+      html.light body { background: #f7f6ef; }
+      html.light .static-fallback { color: #15231a; }
+      html.light .static-fallback p { color: #526158; }
+      html.light .static-fallback a { color: #176b37; }
     </style>
   </head>
   <body>
@@ -73,16 +94,16 @@
           leitura de sensores compatíveis e acompanhamento pelo GXP, com 3 meses de Premium inclusos.
         </p>
         <p>
-          <strong>R$ 2.800 no Pix</strong> ou 12x de R$ 250 no cartão (R$ 3.000).
-          Condições planejadas para a pré-venda até 15/11/2026 ou enquanto durar o lote. Preço público previsto: R$ 5.500.
+          <strong>R$ 3.000 no cartão</strong>, em até 12x de R$ 250.
+          Pré-venda até 15/11/2026 ou enquanto durar o lote. Preço público previsto: R$ 5.500.
           Entrega a partir de 20/11/2026 — ExpoCannabis Brasil 2026.
           Reembolso integral até o envio e garantia de 12 meses conforme o contrato.
         </p>
         <p>
-          O pagamento só será aberto depois da publicação da ficha elétrica, da composição final do kit
-          e das condições de frete. As imagens do produto são renders conceituais.
+          A compra no cartão está disponível conforme a capacidade indicada na página. O Pix permanece
+          indisponível enquanto passa pela homologação final. As imagens do produto são renders conceituais.
         </p>
-        <p><a href="/prevenda">Acompanhar a abertura</a> · <a href="/contato">Falar com o time</a></p>
+        <p><a href="/prevenda#reservar">Comprar no cartão</a> · <a href="/prevenda/pedido">Consultar pedido</a> · <a href="/contato">Falar com o time</a></p>
       </main>
     </div>
     <noscript>O checkout usa JavaScript. Se preferir, chame a gente no WhatsApp: +55 41 99549-4343.</noscript>

@@ -153,7 +153,7 @@ const s = (value) => ({ S: String(value) });
 const n = (value) => ({ N: String(value) });
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-function ledgerItem(record, pk, { buyerGuard = false } = {}) {
+function ledgerItem(record, pk, { buyerGuard = false, slot = false } = {}) {
   const item = {
     pk: s(pk),
     request_id: s(record.requestId),
@@ -172,7 +172,8 @@ function ledgerItem(record, pk, { buyerGuard = false } = {}) {
   if (!buyerGuard) {
     item.provider_protocol = s(record.providerProtocol);
     item.provider_ref = s(record.providerRef);
-    item.buyer_pk = s(record.buyerPk);
+    // transitionReservation remove buyer_pk do SLOT ao marcar paid/released.
+    if (!slot || record.state === 'held') item.buyer_pk = s(record.buyerPk);
     item.payment_status = s(record.paymentStatus);
     item.provider_event_created_at = s(record.providerEventCreatedAt);
   }
@@ -183,11 +184,12 @@ function orderLookupContext(record = mpReservation(), order = mpOrder()) {
   const items = new Map([
     [record.buyerPk, ledgerItem(record, record.buyerPk, { buyerGuard: true })],
     [`REQUEST#${record.requestId}`, ledgerItem(record, `REQUEST#${record.requestId}`)],
-    [record.slot, ledgerItem(record, record.slot)],
+    [record.slot, ledgerItem(record, record.slot, { slot: true })],
   ]);
   const reads = [];
   const calls = [];
   return {
+    items,
     reads,
     calls,
     context: {
@@ -224,6 +226,7 @@ test('Orders valida envelope, ORD/PAY, Pix, valor, moeda, pagador e binding do l
     ['external_reference', (order) => { order.external_reference = `gx-modulo-prevenda-${requestId}`; }],
     ['order_id', (order) => { order.id = 'ORDINVALID'; }],
     ['payment_id', (order) => { order.transactions.payments[0].id = '12345'; }],
+    ['payment_id_case', (order) => { order.transactions.payments[0].id = mpPaymentId.toLowerCase(); }],
     ['method', (order) => { order.transactions.payments[0].payment_method.id = 'visa'; }],
     ['amount', (order) => { order.total_amount = '2799.99'; }],
     ['currency', (order) => { order.currency = 'USD'; }],
@@ -267,6 +270,7 @@ test('Orders aceita GET oficial sem payer/moeda porque e-mail e CPF já estão v
 
 test('Orders usa três leituras fortes e um GET por ORD; status e código vêm do ledger', async () => {
   const harness = orderLookupContext();
+  assert.equal(harness.items.get('SLOT#002').buyer_pk, undefined);
   const result = await buscarMercadoPagoOrders(
     email,
     cpf,
@@ -325,6 +329,17 @@ test('Orders falha fechada antes do provider quando SLOT diverge do REQUEST', as
     }
     return response;
   };
+  await assert.rejects(
+    buscarMercadoPagoOrders(email, cpf, mpBuyerHash, mpEmailHash, harness.context),
+    /pedido_order_ledger_binding_mismatch/,
+  );
+  assert.equal(harness.calls.length, 0);
+});
+
+test('Orders paid rejeita buyer_pk divergente quando um SLOT legado ainda o contém', async () => {
+  const harness = orderLookupContext();
+  harness.items.get('SLOT#002').buyer_pk = s(`BUYER#${'d'.repeat(64)}`);
+
   await assert.rejects(
     buscarMercadoPagoOrders(email, cpf, mpBuyerHash, mpEmailHash, harness.context),
     /pedido_order_ledger_binding_mismatch/,

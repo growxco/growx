@@ -24,6 +24,11 @@ import {
   PEDIDO_CODE_TTL_SECONDS,
   PedidoAuthUnavailableError,
 } from './_lib/pedido-auth.js';
+import {
+  MP_ORDER_ID_PATTERN,
+  MP_ORDER_PAYMENT_ID_PATTERN,
+  REQUEST_ID_PATTERN,
+} from '../shared/provider-identifiers.js';
 import { OFERTA } from '../src/lib/oferta.js';
 import { reservationCode } from '../shared/reservation-code.js';
 
@@ -33,11 +38,8 @@ const STRIPE_API = 'https://api.stripe.com/v1';
 const MP_API = 'https://api.mercadopago.com';
 const MP_REF = 'gx-modulo-prevenda';
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLOT = /^SLOT#(?:0(?:0[1-9]|[1-9]\d)|100)$/;
 const HASH = /^[a-f0-9]{64}$/;
-const MP_ORDER_ID = /^ORD[A-Z0-9]{20,64}$/;
-const MP_ORDER_PAYMENT_ID = /^PAY[A-Z0-9]{20,64}$/;
 const LEDGER_STATES = new Set(['held', 'paid', 'released']);
 export const PEDIDO_PROVIDER_DEADLINE_MS = 8_000;
 
@@ -174,7 +176,7 @@ async function localizarReservaMpOrders(buyerHash, context) {
   const buyerPk = `BUYER#${buyerHash}`;
   const buyer = decodePedidoLedger(await boundedDynamoGet(buyerPk, context));
   if (!buyer) return { applicable: false, reservation: null };
-  if (!UUID.test(buyer.requestId)
+  if (!REQUEST_ID_PATTERN.test(buyer.requestId)
       || buyer.reservationId !== buyer.requestId
       || !SLOT.test(buyer.slot)
       || !LEDGER_STATES.has(buyer.state)) {
@@ -190,22 +192,28 @@ async function localizarReservaMpOrders(buyerHash, context) {
   ]);
   const reservation = decodePedidoLedger(requestItem);
   const slot = decodePedidoLedger(slotItem);
+  // O SLOT minimiza o vínculo reverso ao sair de held. REQUEST e BUYER
+  // continuam provando a identidade; se um registro legado ainda trouxer o
+  // campo, ele só é aceito quando aponta para o mesmo guarda.
+  const slotBuyerBindingValid = slot?.state === 'held'
+    ? slot.buyerPk === buyerPk
+    : (!slot?.buyerPk || slot.buyerPk === buyerPk);
   if (!sameOrderLedgerSnapshot(reservation, buyer)
       || !sameOrderLedgerSnapshot(slot, buyer)
       || reservation?.buyerPk !== buyerPk
-      || (slot.state !== 'released' && slot.buyerPk !== buyerPk)) {
+      || !slotBuyerBindingValid) {
     throw new Error('pedido_order_ledger_binding_mismatch');
   }
 
   if (reservation.providerProtocol !== 'mp_orders_v1') {
     if (reservation.providerProtocol === 'mp_checkout_pro_v1'
-        || (!reservation.providerProtocol && !MP_ORDER_ID.test(String(reservation.providerRef || '')))) {
+        || (!reservation.providerProtocol && !MP_ORDER_ID_PATTERN.test(String(reservation.providerRef || '')))) {
       return { applicable: false, reservation: null };
     }
     throw new Error('pedido_order_protocol_mismatch');
   }
   if (slot.providerProtocol !== 'mp_orders_v1'
-      || !MP_ORDER_ID.test(String(reservation.providerRef || ''))
+      || !MP_ORDER_ID_PATTERN.test(String(reservation.providerRef || ''))
       || slot.providerRef !== reservation.providerRef
       || reservation.offerCurrency !== 'BRL'
       || !Number.isInteger(reservation.offerAmountCents)
@@ -243,7 +251,7 @@ export function validarMercadoPagoOrderPedido(
   const requestId = String(reservation?.requestId || '').toLowerCase();
   const payments = order?.transactions?.payments;
   const payment = Array.isArray(payments) && payments.length === 1 ? payments[0] : null;
-  const paymentId = String(payment?.id || '').toUpperCase();
+  const paymentId = String(payment?.id || '');
   const expectedCurrency = String(reservation?.offerCurrency || '').toUpperCase();
   const currencyValues = [order?.currency, order?.currency_id, payment?.currency, payment?.currency_id]
     .filter((value) => value !== undefined && value !== null && String(value).trim())
@@ -255,7 +263,7 @@ export function validarMercadoPagoOrderPedido(
   const payerDocument = digitos(payer.identification?.number);
   const payerDocumentType = String(payer.identification?.type || '').trim().toUpperCase();
 
-  if (!UUID.test(requestId)
+  if (!REQUEST_ID_PATTERN.test(requestId)
       || reservation?.reservationId !== requestId
       || reservation?.provider !== 'mercadopago'
       || reservation?.providerProtocol !== 'mp_orders_v1'
@@ -266,8 +274,8 @@ export function validarMercadoPagoOrderPedido(
       || !SLOT.test(String(reservation?.slot || ''))
       || !LEDGER_STATES.has(reservation?.state)
       || orderId !== String(order?.id || '')
-      || !MP_ORDER_ID.test(orderId)
-      || !MP_ORDER_PAYMENT_ID.test(paymentId)
+      || !MP_ORDER_ID_PATTERN.test(orderId)
+      || !MP_ORDER_PAYMENT_ID_PATTERN.test(paymentId)
       || order?.type !== 'online'
       || order?.processing_mode !== 'automatic'
       || (order?.capture_mode != null && order.capture_mode !== 'automatic')
@@ -419,7 +427,7 @@ async function consultarLedger({
 }) {
   const requestId = String(metadata?.request_id || metadata?.reservation_id || '');
   const slot = String(metadata?.slot_id || metadata?.slot || '');
-  if (!UUID.test(requestId) || !SLOT.test(slot)) {
+  if (!REQUEST_ID_PATTERN.test(requestId) || !SLOT.test(slot)) {
     return { ok: false, reason: 'legacy_without_ledger' };
   }
   try {

@@ -25,7 +25,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --legacy-peer-deps
+      - run: npm audit --package-lock-only --audit-level=high
       - run: node --test tests/config/*.test.mjs
       - run: npm run lint
       - run: npm run test:backend
+      - run: npm run test:frontend
+      - run: npm run test:sales-gate
       - run: npm run build

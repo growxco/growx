@@ -11,7 +11,12 @@
  *
  * Called from LeadForm AFTER submit (non-blocking) — augments the CRM record.
  */
-import { chatComplete, rateLimit, clientIp } from './_lib/ai.js';
+import {
+  aiErrorLogFields,
+  chatComplete,
+  rateLimit,
+  clientIp,
+} from './_lib/ai.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -81,8 +86,10 @@ export default async function handler(req, res) {
     const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
     if (!parsed) throw new Error('no_json');
     return res.status(200).json({ ok: true, ...parsed, _provider: r.provider, _model: r.model });
-  } catch (e) {
-    console.error('[/api/enrich-lead]', e?.message || e);
+  } catch (error) {
+    // O corpo de erro do provider pode repetir dados do lead. O log recebe
+    // somente campos fechados e sanitizados produzidos pelo cliente de IA.
+    console.error('[/api/enrich-lead] indisponível:', aiErrorLogFields(error));
     // Fail-soft: lead já foi salvo no CRM pela LeadForm. Aqui só enriquece.
     return res.status(200).json({
       ok: false,

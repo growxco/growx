@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import process from 'node:process';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import {
   acquireReservation,
@@ -21,6 +22,7 @@ import {
   releaseUnattachedReservation,
 } from '../../api/_lib/inventory.js';
 import { estadoDoLote, reconcileExpiredHolds } from '../../api/_lib/lote.js';
+import { verifyMercadoPagoOrderBinding } from '../../api/mp-webhook.js';
 
 const TABLE = 'growx-prevenda-test';
 const clone = (input) => JSON.parse(JSON.stringify(input));
@@ -28,6 +30,11 @@ const clone = (input) => JSON.parse(JSON.stringify(input));
 const value = (item, key) => item?.[key]?.S ?? item?.[key]?.N;
 const hash = (label) => createHash('sha256').update(label).digest('hex');
 const guards = (label) => ({ buyerKey: hash(`buyer:${label}`), riskKey: hash(`risk:${label}`) });
+const mpOrderIntent = (requestId) => ({
+  providerProtocol: 'mp_orders_v1',
+  providerExternalReference: `gx-modulo-prevenda-${requestId}`,
+  providerIdempotencyKey: requestId,
+});
 const providerMetadata = (reservation, overrides = {}) => ({
   source: 'growx.com.br/prevenda',
   request_id: reservation.requestId,
@@ -182,6 +189,23 @@ class MemoryDynamo {
         throw new Error(`${field}_mismatch`);
       }
     }
+    if (update.ConditionExpression.includes('provider_external_reference = :externalReference')) {
+      for (const [field, token] of [
+        ['provider_protocol', ':protocol'],
+        ['provider_external_reference', ':externalReference'],
+        ['provider_idempotency_key', ':idempotencyKey'],
+      ]) {
+        if (value(current, field) !== value(values, token)) {
+          throw new Error(`${field}_mismatch`);
+        }
+      }
+    }
+    if (update.ConditionExpression.includes('provider_search_negative_count = :previousNegativeCount')) {
+      const currentCount = Number(value(current, 'provider_search_negative_count') || 0);
+      if (currentCount !== Number(value(values, ':previousNegativeCount'))) {
+        throw new Error('provider_search_negative_count_mismatch');
+      }
+    }
     if (update.ConditionExpression.includes('OR #state = :released')) {
       const allowed = update.ConditionExpression.includes('OR #state = :paid')
         ? ['held', 'released', 'paid']
@@ -286,6 +310,21 @@ const response = (body, status = 200) => ({
   ok: status >= 200 && status < 300,
   status,
   json: async () => body,
+});
+const orderSearchResponse = (data, {
+  page = 1,
+  total = data.length,
+  pageSize = 50,
+  totalPages = Math.ceil(total / pageSize),
+  offset = (page - 1) * pageSize,
+} = {}) => response({
+  data,
+  paging: {
+    total: String(total),
+    total_pages: String(totalPages),
+    offset: String(offset),
+    limit: String(pageSize),
+  },
 });
 
 const reconcileAndRead = async (options) => {
@@ -496,6 +535,53 @@ test('REQUEST uuid é idempotente e nunca ganha um segundo slot', async () => {
     error instanceof InventoryUnavailableError
       && error.message === 'inventory_reservation_snapshot_mismatch'
   ));
+});
+
+test('intent MP Orders nasce atomicamente em REQUEST SLOT BUYER e replay exige a mesma chave', async () => {
+  const client = new MemoryDynamo();
+  const requestId = randomUUID();
+  const intent = mpOrderIntent(requestId);
+  const args = {
+    requestId,
+    provider: 'mercadopago',
+    ...guards('mp-order-intent'),
+    emailHash: hash('email:mp-order-intent'),
+    ...intent,
+    now: new Date('2026-08-05T12:00:00.000Z'),
+    providerExpiresAt: new Date('2026-08-05T12:30:00.000Z'),
+    client,
+    tableName: TABLE,
+  };
+  const [first, replay] = await Promise.all([
+    acquireReservation(args),
+    acquireReservation(args),
+  ]);
+  assert.equal(first.slot, replay.slot);
+  assert.equal([first, replay].filter((entry) => entry.created).length, 1);
+  for (const pk of [first.slot, `REQUEST#${requestId}`, `BUYER#${args.buyerKey}`]) {
+    const item = client.items.get(pk);
+    assert.equal(value(item, 'provider_protocol'), 'mp_orders_v1');
+    assert.equal(value(item, 'provider_external_reference'), intent.providerExternalReference);
+    assert.equal(value(item, 'provider_idempotency_key'), requestId);
+  }
+  await assert.rejects(
+    acquireReservation({
+      ...args,
+      providerExternalReference: `gx-modulo-prevenda-${randomUUID()}`,
+    }),
+    (error) => error instanceof InventoryConflictError
+      && error.message === 'invalid_provider_intent',
+  );
+  await assert.rejects(
+    acquireReservation({
+      ...args,
+      providerProtocol: undefined,
+      providerExternalReference: undefined,
+      providerIdempotencyKey: undefined,
+    }),
+    (error) => error instanceof InventoryConflictError
+      && error.message === 'request_provider_intent_mismatch',
+  );
 });
 
 test('claim do cron permite um único reconciliador por minuto', async () => {
@@ -910,38 +996,228 @@ test('binding divergente da Order falha fechado sem chamar callback ou liberar s
   assert.equal(value(client.items.get(reservation.slot), 'state'), 'held');
 });
 
-test('reserva Orders unattached permanece fail-closed sem search ou release inferido', async () => {
+test('cron recupera Order paga unattached por busca oficial e webhook anterior continua fail-closed', async () => {
   const client = new MemoryDynamo();
   const requestId = randomUUID();
   const reservation = await acquireReservation({
     requestId,
     provider: 'mercadopago',
-    ...guards('mp-order-unattached'),
+    ...guards('mp-order-unattached-paid'),
+    ...mpOrderIntent(requestId),
     now: new Date('2026-08-05T12:00:00.000Z'),
     providerExpiresAt: new Date('2026-08-05T12:30:00.000Z'),
     client,
     tableName: TABLE,
   });
-  for (const pk of [reservation.slot, `REQUEST#${requestId}`]) {
-    client.items.get(pk).provider_protocol = { S: 'mp_orders_v1' };
-  }
-  process.env.MP_ACCESS_TOKEN = 'APP_USR_order_unattached';
-  let fetches = 0;
-
-  const result = await reconcileExpiredHolds({
-    now: new Date('2026-08-06T15:31:00.000Z'),
+  const order = providerOrder(reservation);
+  await assert.rejects(
+    verifyMercadoPagoOrderBinding(order, { getReservationImpl: async () => reservation }),
+    /order_inventory_binding_mismatch/,
+  );
+  process.env.MP_ACCESS_TOKEN = 'APP_USR_order_unattached_paid';
+  const urls = [];
+  const lote = await reconcileAndRead({
+    now: new Date('2026-08-05T12:31:00.000Z'),
     client,
     tableName: TABLE,
-    fetchImpl: async () => {
-      fetches += 1;
-      throw new Error('must_not_search_unattached_order');
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      const parsed = new URL(String(url));
+      if (parsed.pathname === '/v1/orders') {
+        assert.equal(parsed.searchParams.get('external_reference'),
+          `gx-modulo-prevenda-${requestId}`);
+        assert.equal(parsed.searchParams.get('type'), 'online');
+        assert.equal(parsed.searchParams.get('page'), '1');
+        assert.equal(parsed.searchParams.get('page_size'), '50');
+        assert.ok(parsed.searchParams.get('begin_date'));
+        assert.ok(parsed.searchParams.get('end_date'));
+        return orderSearchResponse([{
+          id: order.id,
+          type: 'online',
+          external_reference: order.external_reference,
+        }]);
+      }
+      assert.equal(parsed.pathname, `/v1/orders/${order.id}`);
+      return response(order);
     },
   });
 
-  assert.equal(result.providerFailures, 0);
-  assert.equal(fetches, 0);
-  assert.equal(value(client.items.get(reservation.slot), 'state'), 'held');
+  assert.equal(urls.length, 2);
+  assert.equal(value(client.items.get(reservation.slot), 'provider_ref'), order.id);
+  assert.equal(value(client.items.get(`REQUEST#${requestId}`), 'provider_ref'), order.id);
+  assert.equal(value(client.items.get(reservation.slot), 'state'), 'paid');
+  assert.equal(lote.vendidas, 1);
+  assert.equal(lote.restantes, 99);
 });
+
+test('reconciliações concorrentes recuperam a mesma Order sem duplicar slot ou transição financeira', async () => {
+  const client = new MemoryDynamo();
+  const requestId = randomUUID();
+  const reservation = await acquireReservation({
+    requestId,
+    provider: 'mercadopago',
+    ...guards('mp-order-concurrent-recovery'),
+    ...mpOrderIntent(requestId),
+    now: new Date('2026-08-05T12:00:00.000Z'),
+    providerExpiresAt: new Date('2026-08-05T12:30:00.000Z'),
+    client,
+    tableName: TABLE,
+  });
+  const order = providerOrder(reservation);
+  process.env.MP_ACCESS_TOKEN = 'APP_USR_order_concurrent_recovery';
+  const fetchImpl = async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname === '/v1/orders') {
+      return orderSearchResponse([{
+        id: order.id,
+        type: 'online',
+        external_reference: order.external_reference,
+      }]);
+    }
+    assert.equal(parsed.pathname, `/v1/orders/${order.id}`);
+    return response(order);
+  };
+
+  const [first, second] = await Promise.all([
+    reconcileAndRead({
+      now: new Date('2026-08-05T12:31:00.000Z'), client, tableName: TABLE, fetchImpl,
+    }),
+    reconcileAndRead({
+      now: new Date('2026-08-05T12:31:00.000Z'), client, tableName: TABLE, fetchImpl,
+    }),
+  ]);
+
+  const slot = client.items.get(reservation.slot);
+  const request = client.items.get(`REQUEST#${requestId}`);
+  assert.equal(value(slot, 'provider_ref'), order.id);
+  assert.equal(value(request, 'provider_ref'), order.id);
+  assert.equal(value(slot, 'state'), 'paid');
+  assert.equal(value(request, 'state'), 'paid');
+  assert.equal(first.vendidas, 1);
+  assert.equal(second.vendidas, 1);
+  assert.equal(first.ocupadas, 1);
+  assert.equal(second.ocupadas, 1);
+});
+
+test('zero Orders preserva hold e só libera após graça e duas buscas negativas duráveis', async () => {
+  const client = new MemoryDynamo();
+  const requestId = randomUUID();
+  const buyerKey = guards('mp-order-negative').buyerKey;
+  const reservation = await acquireReservation({
+    requestId,
+    provider: 'mercadopago',
+    buyerKey,
+    riskKey: guards('mp-order-negative').riskKey,
+    ...mpOrderIntent(requestId),
+    now: new Date('2026-08-05T12:00:00.000Z'),
+    providerExpiresAt: new Date('2026-08-05T12:30:00.000Z'),
+    client,
+    tableName: TABLE,
+  });
+  const fetchImpl = async () => orderSearchResponse([]);
+
+  await reconcileExpiredHolds({
+    now: new Date('2026-08-05T12:31:00.000Z'), client, tableName: TABLE, fetchImpl,
+  });
+  assert.equal(value(client.items.get(`REQUEST#${requestId}`), 'provider_search_negative_count'), '1');
+  assert.equal(value(client.items.get(reservation.slot), 'state'), 'held');
+
+  await reconcileExpiredHolds({
+    now: new Date('2026-08-05T12:32:00.000Z'), client, tableName: TABLE, fetchImpl,
+  });
+  for (const pk of [reservation.slot, `REQUEST#${requestId}`, `BUYER#${buyerKey}`]) {
+    assert.equal(value(client.items.get(pk), 'provider_search_negative_count'), '2');
+    assert.equal(value(client.items.get(pk), 'state'), 'held');
+  }
+
+  await reconcileExpiredHolds({
+    now: new Date('2026-08-06T12:31:00.000Z'), client, tableName: TABLE, fetchImpl,
+  });
+  assert.equal(value(client.items.get(reservation.slot), 'state'), 'released');
+  assert.equal(value(client.items.get(`REQUEST#${requestId}`), 'release_reason'),
+    'mp_order_negative_after_recovery_grace');
+});
+
+test('busca Orders pagina completamente e múltiplas candidatas falham fechado', async () => {
+  const client = new MemoryDynamo();
+  const requestId = randomUUID();
+  const reservation = await acquireReservation({
+    requestId,
+    provider: 'mercadopago',
+    ...guards('mp-order-multiple'),
+    ...mpOrderIntent(requestId),
+    now: new Date('2026-08-05T12:00:00.000Z'),
+    providerExpiresAt: new Date('2026-08-05T12:30:00.000Z'),
+    client,
+    tableName: TABLE,
+  });
+  process.env.MP_ACCESS_TOKEN = 'APP_USR_order_multiple';
+  const externalReference = `gx-modulo-prevenda-${requestId}`;
+  const candidates = Array.from({ length: 51 }, (_, index) => ({
+    id: `ORD${String(index).padStart(21, '0')}`,
+    type: 'online',
+    external_reference: externalReference,
+  }));
+  const pages = [];
+  const result = await reconcileExpiredHolds({
+    now: new Date('2026-08-05T12:31:00.000Z'),
+    client,
+    tableName: TABLE,
+    fetchImpl: async (url) => {
+      const page = Number(new URL(String(url)).searchParams.get('page'));
+      pages.push(page);
+      return orderSearchResponse(page === 1 ? candidates.slice(0, 50) : candidates.slice(50), {
+        page, total: candidates.length,
+      });
+    },
+  });
+  assert.deepEqual(pages, [1, 2]);
+  assert.equal(result.providerFailures, 1);
+  assert.equal(value(client.items.get(reservation.slot), 'state'), 'held');
+  assert.equal(value(client.items.get(reservation.slot), 'provider_ref'), undefined);
+});
+
+for (const [label, fetchImpl] of [
+  ['pagina truncada', async () => orderSearchResponse([], { total: 1 })],
+  ['paginação vazia ou não canônica', async () => response({
+    data: [],
+    paging: { total: null, total_pages: '', offset: ' ', limit: '5e1' },
+  })],
+  ['total de paginas divergente', async () => orderSearchResponse([], { total: 0, totalPages: 1 })],
+  ['offset divergente', async () => orderSearchResponse([], { total: 0, offset: 50 })],
+  ['limite divergente', async () => orderSearchResponse([], { total: 0, pageSize: 20 })],
+  ['resultado divergente', async () => orderSearchResponse([{
+    id: MP_ORDER_ID,
+    type: 'online',
+    external_reference: `gx-modulo-prevenda-${randomUUID()}`,
+  }])],
+  ['timeout', async () => { throw new Error('provider_timeout'); }],
+]) {
+  test(`recuperação Orders ${label} mantém hold sem attach`, async () => {
+    const client = new MemoryDynamo();
+    const requestId = randomUUID();
+    const reservation = await acquireReservation({
+      requestId,
+      provider: 'mercadopago',
+      ...guards(`mp-order-${label}`),
+      ...mpOrderIntent(requestId),
+      now: new Date('2026-08-05T12:00:00.000Z'),
+      providerExpiresAt: new Date('2026-08-05T12:30:00.000Z'),
+      client,
+      tableName: TABLE,
+    });
+    process.env.MP_ACCESS_TOKEN = `APP_USR_order_${label}`;
+    const result = await reconcileExpiredHolds({
+      now: new Date('2026-08-05T12:31:00.000Z'),
+      client,
+      tableName: TABLE,
+      fetchImpl,
+    });
+    assert.equal(result.providerFailures, 1);
+    assert.equal(value(client.items.get(reservation.slot), 'state'), 'held');
+    assert.equal(value(client.items.get(reservation.slot), 'provider_ref'), undefined);
+  });
+}
 
 test('provider_url existe só no REQUEST held e transição paid limpa URL e vínculo reverso do SLOT', async () => {
   const client = new MemoryDynamo();

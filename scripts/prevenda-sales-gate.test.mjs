@@ -16,7 +16,7 @@ function mockRes() {
   };
 }
 
-test('sales gate defaults closed without breaking legacy payment status', async () => {
+test('sales gate defaults closed without breaking authenticated payment status', async () => {
   const previous = process.env.PREVENDA_SALES_ENABLED;
   delete process.env.PREVENDA_SALES_ENABLED;
 
@@ -27,7 +27,7 @@ test('sales gate defaults closed without breaking legacy payment status', async 
     assert.equal(res.body.error, 'vendas_pausadas');
 
     res = mockRes();
-    await checkout({ method: 'GET', headers: {}, query: {} }, res);
+    await checkout({ method: 'POST', headers: {}, body: { action: 'status' } }, res);
     assert.equal(res.statusCode, 404);
     assert.equal(res.body.error, 'pedido_nao_encontrado');
 

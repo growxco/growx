@@ -218,7 +218,8 @@ test('Stripe-Signature inválida é rejeitada antes de consumir quota da API', a
       body: rawBody,
       headers: { 'stripe-signature': 't=1786000000,v1=00' },
     }, res);
-    assert.equal(res.statusCode, 401);
+    assert.equal(res.statusCode, 400);
+    assert.deepEqual(res.body, { error: 'invalid_signature' });
     assert.equal(fetchCalls, 0);
   } finally {
     globalThis.fetch = previousFetch;
@@ -452,7 +453,7 @@ test('assinatura MP usa data.id, x-request-id e comparação HMAC', () => {
 
   const orderDataId = 'ORD01JQ4S4KY8HWQ6NA5PXB65B3D3';
   const orderDigest = createHmac('sha256', secret)
-    .update(`id:${orderDataId};request-id:${requestId};ts:${timestamp};`)
+    .update(`id:${orderDataId.toLowerCase()};request-id:${requestId};ts:${timestamp};`)
     .digest('hex');
   assert.equal(verifyMercadoPagoSignature({
     xSignature: `ts=${timestamp},v1=${orderDigest}`,
@@ -460,10 +461,25 @@ test('assinatura MP usa data.id, x-request-id e comparação HMAC', () => {
     dataId: orderDataId,
     secret,
   }), true);
+  const uppercaseOrderDigest = createHmac('sha256', secret)
+    .update(`id:${orderDataId};request-id:${requestId};ts:${timestamp};`)
+    .digest('hex');
+  assert.equal(verifyMercadoPagoSignature({
+    xSignature: `ts=${timestamp},v1=${uppercaseOrderDigest}`,
+    xRequestId: requestId,
+    dataId: orderDataId,
+    secret,
+  }), false);
   assert.equal(verifyMercadoPagoSignature({
     xSignature: `ts=${timestamp},v1=${orderDigest}`,
     xRequestId: requestId,
-    dataId: orderDataId.toLowerCase(),
+    dataId: orderDataId,
+    secret: 'segredo-incorreto',
+  }), false);
+  assert.equal(verifyMercadoPagoSignature({
+    xSignature: '',
+    xRequestId: requestId,
+    dataId: orderDataId,
     secret,
   }), false);
 });

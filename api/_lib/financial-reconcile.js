@@ -5,6 +5,7 @@ import {
 import { reconcileMercadoPagoPaymentById } from '../mp-webhook.js';
 import { reconcileMercadoPagoOrderById } from '../mp-webhook.js';
 import { reconcileStripeSessionById } from '../stripe-webhook.js';
+import { MP_ORDER_ID_PATTERN } from '../../shared/provider-identifiers.js';
 
 export const MAX_PAID_RECONCILIATIONS_PER_REQUEST = 2;
 export const FINANCIAL_RECONCILIATION_SLA_MS = 60 * 60 * 1000;
@@ -17,7 +18,7 @@ const safeErrorCode = (error) => {
 function paymentReference(reservation) {
   if (reservation.provider === 'mercadopago'
       && reservation.providerProtocol === 'mp_orders_v1'
-      && /^ORD[A-Z0-9]{20,40}$/.test(String(reservation.providerRef || ''))) {
+      && MP_ORDER_ID_PATTERN.test(String(reservation.providerRef || ''))) {
     return { reference: reservation.providerRef, protocol: 'mp_orders_v1' };
   }
   if (reservation.provider === 'mercadopago'
