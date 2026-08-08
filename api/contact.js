@@ -1,23 +1,22 @@
 /**
  * POST /api/contact
  * Endpoint dedicado de captura de lead (substitui formsubmit.co quando configurado).
- * Body: payload do LeadForm (name, email, phone, company, segment, message, _form, _segment)
+ * Body: payload do LeadForm (name, email, phone, company, segment, message,
+ * _form, _segment e consent para prevenda-lista)
  *
  * Comportamento:
  *  1. Valida e normaliza dados
  *  2. Faz lead enrichment via IA (Gemini → fallback OpenAI)
- *  3. Encaminha pra TODOS estes destinos (paralelo, fire-and-forget):
- *     a. Email (Resend / SendGrid via SMTP — se SMTP_* envs setadas)
- *     b. Webhook CRM externo (VITE_CRM_WEBHOOK_URL — se setado)
- *     c. Webhook Slack/Discord (CONTACT_WEBHOOK_URL — opcional)
- *     d. FormSubmit.co (fallback final, sempre tenta)
- *  4. Retorna JSON com status + lead score + roteamento sugerido
- *
- * Sem qualquer config externa: cai pro FormSubmit.co automaticamente (zero downtime).
+ *  3. Encaminha em paralelo para os destinos configurados. Resend é o canal
+ *     primário quando RESEND_API_KEY existe; CRM, Slack, FormSubmit e SPI são
+ *     redundâncias independentes.
+ *  4. Retorna apenas aceitação síncrona do destino. Não afirma entrega nem
+ *     persistência que a rota não consegue comprovar.
  */
 import { randomUUID } from 'node:crypto';
 
 import { chatComplete, rateLimit, clientIp } from './_lib/ai.js';
+import { buildInterestConsent, matchesInterestConsent } from '../shared/interest-consent.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -30,6 +29,12 @@ const LOGGABLE_FORMS = new Set([
   'spi-enterprise-contact',
   'waitlist-app',
 ]);
+
+const INTEREST_FORM = 'prevenda-lista';
+const POST_TIMEOUT_MS = 5_000;
+const DEFAULT_INBOX = 'growx@growx.com.br';
+const RESEND_FROM = 'Grow-X <no-reply@growx.com.br>';
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const safeFormForLog = (value) => {
   const candidate = String(value || '').trim().toLowerCase();
@@ -70,6 +75,7 @@ async function forwardToWebhook(url, payload) {
   try {
     const r = await fetch(url, {
       method: 'POST',
+      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
@@ -82,6 +88,7 @@ async function forwardToFormsubmit(email, payload) {
   try {
     const r = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(email)}`, {
       method: 'POST',
+      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -105,21 +112,71 @@ async function forwardToFormsubmit(email, payload) {
   } catch { return false; }
 }
 
+const line = (label, value) => `${label}: ${String(value || '—').replace(/[\r\n]+/g, ' ').trim()}`;
+
+function leadInboxText(lead) {
+  return [
+    line('Formulário', lead._form),
+    line('Nome', lead.name),
+    line('E-mail', lead.email),
+    line('WhatsApp', lead.phone),
+    line('Empresa', lead.company),
+    line('Segmento', lead.segment || lead._segment),
+    line('Mensagem', lead.message),
+    line('Origem', lead._path || lead._source),
+    line('Correlação', lead._correlation_id),
+    lead.consent && line('Consentimento', [
+      lead.consent.status,
+      lead.consent.purpose,
+      lead.consent.scope,
+      lead.consent.channels.join('+'),
+      lead.consent.notice_version,
+      lead.consent.captured_at,
+    ].join(' | ')),
+  ].filter(Boolean).join('\n');
+}
+
 /**
- * Forward to SPI backend (AWS SES via outreach.spi.ia.br DKIM-verified).
- * Independent + redundant path. Backend hits SES which is fully deliverable
- * once production access is approved (currently sandbox: only verified
- * recipients receive). Backend also writes revops_contacts + audit_log + signal
- * for downstream pipeline routing.
+ * Aceitação HTTP do Resend prova apenas que o provedor recebeu a solicitação.
+ * Entrega na caixa postal e persistência em CRM continuam fora desta resposta.
+ */
+async function forwardToResend(payload) {
+  const key = process.env.RESEND_API_KEY;
+  const inbox = String(
+    process.env.LEAD_INBOX_EMAIL || process.env.PREVENDA_ALERT_EMAIL || DEFAULT_INBOX,
+  ).trim();
+  if (!key || !EMAIL.test(inbox)) return false;
+
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: RESEND_FROM,
+        to: [inbox],
+        reply_to: payload.email,
+        subject: String(payload._subject || 'Novo interesse Grow-X').replace(/[\r\n]+/g, ' '),
+        text: leadInboxText(payload),
+      }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+/**
+ * SPI é uma redundância opt-in. Não existe fallback hardcoded: um endpoint
+ * legado ou não autenticado não pode ser tratado como captura confiável.
  */
 async function forwardToBackend(payload) {
-  const url = process.env.SPI_BACKEND_URL || 'https://c3lop8psfd.execute-api.sa-east-1.amazonaws.com/prod/api/v1/revops/leads/inbound';
+  const url = process.env.SPI_BACKEND_URL;
+  if (!url) return false;
   try {
     const r = await fetch(url, {
       method: 'POST',
+      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      // Don't block on backend latency
     });
     return r.ok || r.status === 202;
   } catch { return false; }
@@ -185,9 +242,20 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'missing_required_fields', required: ['name', 'email'] });
   }
 
+  const form = String(body._form || 'contact').slice(0, 50);
+  const normalizedEmail = String(body.email).trim().toLowerCase().slice(0, 200);
+  if (!EMAIL.test(normalizedEmail)) {
+    return res.status(400).json({ error: 'invalid_email' });
+  }
+  if (form === INTEREST_FORM && !matchesInterestConsent(body.consent)) {
+    return res.status(400).json({ error: 'invalid_interest_consent' });
+  }
+
+  const capturedAt = new Date().toISOString();
+
   const lead = {
-    name: String(body.name).slice(0, 200),
-    email: String(body.email).slice(0, 200),
+    name: String(body.name).trim().slice(0, 200),
+    email: normalizedEmail,
     phone: String(body.phone || '').slice(0, 50),
     company: String(body.company || '').slice(0, 200),
     role: String(body.role || '').slice(0, 200),
@@ -197,7 +265,7 @@ export default async function handler(req, res) {
     profile: String(body.profile || '').slice(0, 100),
     subject: String(body.subject || '').slice(0, 200),
     message: String(body.message || '').slice(0, 2000),
-    _form: String(body._form || 'contact').slice(0, 50),
+    _form: form,
     _segment: String(body._segment || '').slice(0, 50),
     _source: String(body._source || 'site').slice(0, 50),
     _path: String(body._path || '').slice(0, 200),
@@ -205,7 +273,11 @@ export default async function handler(req, res) {
     utm_source: String(body.utm_source || '').slice(0, 100),
     utm_medium: String(body.utm_medium || '').slice(0, 100),
     utm_campaign: String(body.utm_campaign || '').slice(0, 100),
-    _ts: new Date().toISOString(),
+    _ts: capturedAt,
+    _correlation_id: correlationId,
+    ...(form === INTEREST_FORM ? {
+      consent: { ...buildInterestConsent(), captured_at: capturedAt },
+    } : {}),
   };
 
   // Enrichment AI (não-bloqueante visualmente, mas await pra incluir no payload final)
@@ -232,21 +304,23 @@ export default async function handler(req, res) {
     _captcha: 'false',
   };
 
-  // Routing destinations (todos paralelos, fire-and-forget)
+  // Routing destinations (todos paralelos e aguardados até o timeout curto).
   // ORDER MATTERS in `results` array — used for the `forwarded_to` count.
   const destinations = [
+    forwardToResend(enriched),
     forwardToWebhook(process.env.CRM_WEBHOOK_URL, enriched),
     forwardToWebhook(process.env.SLACK_WEBHOOK_URL, buildSlackBlock(lead, enrichment)),
-    forwardToFormsubmit(process.env.LEAD_INBOX_EMAIL || 'growx@growx.com.br', enriched),
-    forwardToBackend(enriched),  // SPI backend → AWS SES (redundant primary path)
+    forwardToFormsubmit(process.env.LEAD_INBOX_EMAIL || DEFAULT_INBOX, enriched),
+    forwardToBackend(enriched),
   ];
   const results = await Promise.allSettled(destinations);
   const okCount = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
   const channels = {
-    crm_webhook: results[0]?.status === 'fulfilled' && results[0].value === true,
-    slack: results[1]?.status === 'fulfilled' && results[1].value === true,
-    formsubmit: results[2]?.status === 'fulfilled' && results[2].value === true,
-    backend_ses: results[3]?.status === 'fulfilled' && results[3].value === true,
+    resend_inbox: results[0]?.status === 'fulfilled' && results[0].value === true,
+    crm_webhook: results[1]?.status === 'fulfilled' && results[1].value === true,
+    slack: results[2]?.status === 'fulfilled' && results[2].value === true,
+    formsubmit: results[3]?.status === 'fulfilled' && results[3].value === true,
+    spi_backend: results[4]?.status === 'fulfilled' && results[4].value === true,
   };
 
   // Se NENHUM destino aceitou, o lead não existe em lugar nenhum. Responder 200
@@ -260,7 +334,8 @@ export default async function handler(req, res) {
     });
     return res.status(502).json({
       ok: false,
-      received: false,
+      accepted: false,
+      persistence_verified: false,
       forwarded_to: 0,
       channels,
       error: 'nenhum_destino_aceitou',
@@ -269,7 +344,8 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     ok: true,
-    received: true,
+    accepted: true,
+    persistence_verified: false,
     forwarded_to: okCount,
     channels,
     enrichment: enrichment ? {
