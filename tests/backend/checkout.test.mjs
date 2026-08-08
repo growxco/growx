@@ -3,9 +3,29 @@ import { randomUUID } from 'node:crypto';
 import process from 'node:process';
 import test from 'node:test';
 
-import checkoutHandler from '../../api/checkout.js';
+import checkoutHandlerBase from '../../api/checkout.js';
 import reconcileCronHandler from '../../api/cron/reconcile.js';
-import loteHandler from '../../api/lote.js';
+import loteHandlerBase from '../../api/lote.js';
+import { OFERTA } from '../../src/lib/oferta.js';
+import { PREVENDA_RELEASE } from '../../src/lib/prevendaRelease.js';
+
+process.env.PREVENDA_RELEASE_VERSION = OFERTA.contratoVersao;
+process.env.PREVENDA_APPROVAL_REF = 'legal:test-release-approval';
+process.env.PREVENDA_DISCLOSURES_SHA256 = 'a'.repeat(64);
+
+const TEST_RELEASE_MANIFEST = {
+  ...PREVENDA_RELEASE,
+  approved: true,
+  approvalRef: process.env.PREVENDA_APPROVAL_REF,
+  disclosuresPath: '/ofertas/test-release.html',
+  disclosuresSha256: process.env.PREVENDA_DISCLOSURES_SHA256,
+};
+const checkoutHandler = (req, res) => checkoutHandlerBase(req, res, {
+  releaseManifest: TEST_RELEASE_MANIFEST,
+});
+const loteHandler = (req, res) => loteHandlerBase(req, res, {
+  releaseManifest: TEST_RELEASE_MANIFEST,
+});
 
 function responseMock() {
   return {
@@ -208,6 +228,30 @@ test('gate desligado pausa checkout e mantém /api/lote acessível sem contagem 
   } finally {
     if (previousSales === undefined) delete process.env.PREVENDA_SALES_ENABLED;
     else process.env.PREVENDA_SALES_ENABLED = previousSales;
+  }
+});
+
+test('flag de vendas isolada não executa uma decisão sem approval_ref e artefato vinculados', async () => {
+  const previousSales = process.env.PREVENDA_SALES_ENABLED;
+  const previousApproval = process.env.PREVENDA_APPROVAL_REF;
+  process.env.PREVENDA_SALES_ENABLED = 'true';
+  delete process.env.PREVENDA_APPROVAL_REF;
+  try {
+    const checkoutRes = responseMock();
+    await checkoutHandler({ method: 'POST', headers: {}, body: {} }, checkoutRes);
+    assert.equal(checkoutRes.statusCode, 503);
+    assert.deepEqual(checkoutRes.body, { error: 'release_nao_aprovado' });
+
+    const loteRes = responseMock();
+    await loteHandler({ method: 'GET', headers: {} }, loteRes);
+    assert.equal(loteRes.statusCode, 200);
+    assert.equal(loteRes.body.confiavel, false);
+    assert.equal(loteRes.body.motivo, 'release_nao_aprovado');
+  } finally {
+    if (previousSales === undefined) delete process.env.PREVENDA_SALES_ENABLED;
+    else process.env.PREVENDA_SALES_ENABLED = previousSales;
+    if (previousApproval === undefined) delete process.env.PREVENDA_APPROVAL_REF;
+    else process.env.PREVENDA_APPROVAL_REF = previousApproval;
   }
 });
 

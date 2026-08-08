@@ -7,6 +7,7 @@ import { track } from '@/lib/analytics';
 import { clearCheckoutOutcome, readCheckoutOutcome } from '@/lib/checkoutReturn';
 import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
 import { OFERTA, brlCurto, parcelaCurta } from '@/lib/oferta';
+import { PREVENDA_RELEASE } from '@/lib/prevendaRelease';
 import { formataTelefoneBr, normalizaTelefoneBr, telefoneBrValido } from '../../shared/br-phone.js';
 import { safeCheckoutRedirectUrl } from '../../shared/checkout-redirect.js';
 import { createRequestId } from '../../shared/provider-identifiers.js';
@@ -24,7 +25,12 @@ const WHATSAPP = 'https://wa.me/5541995494343?text=Quero%20garantir%20meu%20M%C3
 const ENCERRAMENTO = new Date(OFERTA.checkoutFechamentoISO);
 const PRECO_PIX = brlCurto(OFERTA.pixCentavos);
 const PRECO_CARTAO = brlCurto(OFERTA.cartaoCentavos);
-const PIX_ENABLED = import.meta.env.VITE_PREVENDA_PIX_ENABLED === 'true';
+const PIX_ENABLED = PREVENDA_RELEASE.approved
+  && PREVENDA_RELEASE.paymentMethods.includes('pix')
+  && import.meta.env.VITE_PREVENDA_PIX_ENABLED === 'true';
+const DISCLOSURES_READY = PREVENDA_RELEASE.approved
+  && Boolean(PREVENDA_RELEASE.disclosuresPath)
+  && Boolean(PREVENDA_RELEASE.disclosuresSha256);
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 const PRECO_PUBLICO = brlCurto(OFERTA.publicoCentavos);
 const PARCELA = parcelaCurta();
@@ -83,7 +89,7 @@ const ESPECIFICACOES = [
   ['Sensores previstos', 'Solo, temperatura e umidade do ar'],
   ['Iluminação', 'Liga/desliga e DIM/PWM com driver compatível'],
   ['Sem nuvem', 'Executa localmente a última configuração'],
-  ['Antes do envio', 'Tensão, corrente, dimensões e composição final do kit serão confirmadas no manual'],
+  ['Gate de venda', 'Tensão, corrente, carga máxima, dimensões, kit e custo total precisam estar publicados antes do pagamento'],
 ];
 
 const INCLUSO = [
@@ -100,10 +106,10 @@ const FAQ = [
   ['Quais as formas de pagamento?', PIX_ENABLED
     ? `Pix (${PRECO_PIX}) ou cartão em até ${PARCELA} (${PRECO_CARTAO}), processados por Stripe e Mercado Pago.`
     : `Cartão por ${PRECO_CARTAO}, em até ${PARCELA}, processado pela Stripe. O Pix só ficará disponível depois da homologação do fluxo exclusivo.`],
-  ['Como funciona o frete?', 'O contrato permite envio ao endereço cadastrado ou retirada presencial na ExpoCannabis. Como custo e cobertura de frete não estão definidos nesta página, confirme as condições do seu CEP com o time antes de comprar.'],
+  ['Como funciona o frete?', 'O contrato permite envio ao endereço cadastrado ou retirada presencial na ExpoCannabis. O custo total da modalidade escolhida será informado antes da abertura do pagamento; nenhuma cobrança será criada enquanto essa condição não estiver publicada.'],
   ['Preciso entender de eletrônica e automação?', 'A configuração prevista é guiada e termina com as saídas desligadas. A instalação elétrica, a tensão e a carga de cada equipamento precisam respeitar o manual final.'],
   ['O que está pronto e o que é protótipo?', 'As capturas identificadas como GXP hoje são do sistema real. As telas do controlador vêm do protótipo UX/UI baseado no firmware v0.6.0; irrigação por agenda, push e atualização OTA aparecem no PDF como recursos futuros.'],
-  ['Serve para o meu setup?', 'A central prevê 6 tomadas, entradas para sensores e Wi‑Fi 2,4 GHz. Tensão, carga máxima por tomada, dimensões e composição final do kit ainda precisam ser conferidas no manual antes do envio; fale com o time para validar o seu equipamento.'],
+  ['Serve para o meu setup?', 'A central prevê 6 tomadas, entradas para sensores e Wi‑Fi 2,4 GHz. Tensão, carga máxima por tomada, dimensões e composição final do kit serão publicadas antes da abertura do pagamento, para você decidir com todas as características essenciais disponíveis.'],
 ];
 
 const PRODUCT_LD = {
@@ -191,7 +197,8 @@ function useCheckout() {
         pedido_ja_confirmado: 'Este pedido já foi confirmado. Consulte o status na área do cliente.',
         comprador_ja_reservado: 'Já existe uma reserva ativa ou paga para este CPF/CNPJ. Consulte a área do cliente ou fale com o atendimento.',
         muitas_reservas: 'O limite de reservas deste acesso foi atingido. Aguarde a janela atual terminar ou fale com o atendimento.',
-        vendas_pausadas: 'A cobrança está pausada até a publicação da ficha elétrica, composição do kit e condições de frete.',
+        vendas_pausadas: 'A cobrança está pausada até a publicação da ficha elétrica, composição do kit e custo total da modalidade de entrega.',
+        release_nao_aprovado: 'A versão final da oferta ainda não tem a aprovação auditável exigida para abrir cobranças.',
         pix_em_homologacao: 'O Pix permanece indisponível até o fluxo exclusivo ser homologado. Use cartão quando a pré-venda abrir.',
         verificacao_seguranca_invalida: 'A verificação de segurança expirou ou já foi usada. Conclua novamente e tente outra vez.',
         verificacao_seguranca_indisponivel: 'A verificação de segurança está indisponível. Nenhuma reserva será aberta agora.',
@@ -607,7 +614,9 @@ export default function PreVendaPage() {
         email: 'Confere o e-mail — é nele que chega a confirmação do pedido.',
         cpf: 'Documento inválido. Confere o CPF — ou informe o CNPJ, se a compra for pela empresa.',
         whatsapp: 'Informe um WhatsApp brasileiro válido, com DDD.',
-        ciencia: 'Confirme que você leu quais especificações ainda serão formalizadas antes do envio.',
+        ciencia: DISCLOSURES_READY
+          ? 'Confirme que você leu o pacote final de características essenciais e entrega.'
+          : 'Confirme que entendeu por que a cobrança permanece bloqueada.',
         aceite: 'Marque o aceite do contrato pra seguir pro pagamento.',
         verificacao: turnstileUnavailable
           ? 'A verificação de segurança está indisponível. Nenhuma reserva será aberta.'
@@ -668,7 +677,7 @@ export default function PreVendaPage() {
       ? `Módulo Grow-X — Pré-venda: ${PRECO_PIX} no Pix ou ${PARCELA} · entrega ${OFERTA.entregaBR.slice(0, 5)}`
       : `Módulo Grow-X — Pré-venda: ${PRECO_CARTAO} ou até ${PARCELA} no cartão · entrega ${OFERTA.entregaBR.slice(0, 5)}`;
   const seoDescription = aguardandoValidacao
-    ? 'Conheça o conceito do Módulo Grow-X, o controlador baseado no protótipo v0.6.0 e telas reais do GXP. Pagamento após validação final de Hardware e frete.'
+    ? 'Conheça o conceito do Módulo Grow-X, o controlador baseado no protótipo v0.6.0 e telas reais do GXP. Pagamento após a publicação das características essenciais e do custo total de entrega.'
     : PIX_ENABLED
       ? `O cérebro do seu grow: 6 tomadas, fotoperíodo, rega por umidade do solo e controlador documentado. Pré-venda ${PRECO_PIX} no Pix; preço público previsto de ${PRECO_PUBLICO}. Com 3 meses de GXP Premium.`
       : `O cérebro do seu grow: 6 tomadas, fotoperíodo, rega por umidade do solo e controlador documentado. Pré-venda no cartão por ${PRECO_CARTAO} ou até ${PARCELA}; preço público previsto de ${PRECO_PUBLICO}.`;
@@ -679,7 +688,7 @@ export default function PreVendaPage() {
       ? 'Pré-venda encerrada'
       : lote?.confiavel === false
         ? lote?.motivo === 'validacao_produto'
-          ? 'Pagamento aguardando validação final'
+          ? 'Pagamento aguardando oferta final'
           : 'Reservas temporariamente pausadas'
         : lote?.esgotado
           ? 'Lote esgotado'
@@ -1077,7 +1086,7 @@ export default function PreVendaPage() {
         </p>
         <h2 className="mt-5 max-w-2xl text-display-lg font-extrabold text-white">
           {lote?.motivo === 'validacao_produto'
-            ? 'O pagamento abre depois da ficha elétrica e do frete estarem confirmados.'
+            ? 'O pagamento abre quando as características essenciais e o custo total estiverem publicados.'
             : `${ECONOMIA} abaixo do preço público previsto.`}
         </h2>
 
@@ -1129,7 +1138,7 @@ export default function PreVendaPage() {
                     ? 'A compra é liberada somente depois que o servidor confirma uma vaga real.'
                     : lote?.confiavel === false && !encerrada
                       ? lote?.motivo === 'validacao_produto'
-                        ? 'Tensão, carga máxima, composição do kit e condições de frete precisam ser publicadas e aprovadas antes de qualquer cobrança. Entre na lista para receber a abertura.'
+                        ? 'Tensão, corrente, carga máxima, composição do kit e custo total da entrega precisam estar publicados e aprovados antes de qualquer cobrança. Entre na lista para receber a abertura.'
                         : 'Não conseguimos confirmar o inventário agora. Nenhuma cobrança será aberta enquanto essa verificação falhar.'
                       : 'Entre na lista do próximo lote e receba o aviso antes da divulgação.'}
                 </p>
@@ -1250,8 +1259,23 @@ export default function PreVendaPage() {
                     className="mt-0.5 size-4 shrink-0 accent-[#4ade80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
                   />
                   <span className="text-xs leading-relaxed text-white/85">
-                    Li a ficha elétrica e dimensional, a composição final do kit e as condições de frete publicadas
-                    nesta oferta. Posso cancelar com reembolso integral até o envio.
+                    {DISCLOSURES_READY ? (
+                      <>
+                        Li a{' '}
+                        <a
+                          href={PREVENDA_RELEASE.disclosuresPath}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="font-semibold underline underline-offset-2"
+                          style={{ color: GREEN }}
+                        >
+                          ficha elétrica, dimensional, kit e custo total da entrega
+                        </a>{' '}
+                        publicados nesta oferta. Posso cancelar com reembolso integral até o envio.
+                      </>
+                    ) : (
+                      'Entendo que a cobrança permanece bloqueada enquanto a ficha elétrica, dimensões, kit e custo total da entrega não estiverem publicados e aprovados em uma nova versão.'
+                    )}
                   </span>
                 </label>
 
@@ -1271,13 +1295,13 @@ export default function PreVendaPage() {
                   />
                   <span className="text-xs leading-relaxed text-white/85">
                     <label htmlFor="aceite-contrato" className="cursor-pointer">Li e aceito o</label>{' '}
-                    <Link
-                      to="/prevenda/contrato" target="_blank"
+                    <a
+                      href={OFERTA.contratoPath} target="_blank" rel="noreferrer noopener"
                       onClick={() => track('contract_open', { page: '/prevenda', version: OFERTA.contratoVersao })}
                       className="font-semibold underline underline-offset-2" style={{ color: GREEN }}
                     >
                       contrato de pré-venda
-                    </Link>{' '}
+                    </a>{' '}
                     — entrega a partir de {OFERTA.entregaBR}, reembolso integral até o envio e garantia de 12 meses conforme o contrato.
                   </span>
                 </div>
@@ -1432,7 +1456,7 @@ export default function PreVendaPage() {
           <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-sm" style={{ color: MUTED }}>
             <a href={WHATSAPP} target="_blank" rel="noreferrer noopener" className="transition hover:text-white">WhatsApp +55 41 99549-4343</a>
             <Link to="/" className="transition hover:text-white">growx.com.br</Link>
-            <Link to="/prevenda/contrato" className="transition hover:text-white">Contrato</Link>
+            <a href={OFERTA.contratoPath} className="transition hover:text-white">Contrato</a>
             <Link to="/prevenda/pedido" className="transition hover:text-white">Meu pedido</Link>
             <span>© 2026 Grow-X Co.</span>
           </div>

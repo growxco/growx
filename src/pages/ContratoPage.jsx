@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { SEO } from '@/components/visual';
@@ -10,19 +9,12 @@ const LINE = 'var(--prevenda-line)';
 const GREEN = 'var(--prevenda-green)';
 const MUTED = 'var(--prevenda-muted)';
 const CTA_TEXT = 'var(--prevenda-cta-foreground)';
-const PIX_ENABLED = import.meta.env.VITE_PREVENDA_PIX_ENABLED === 'true';
 
 /** Fonte única: a mesma constante usada pela cobrança em api/checkout.js. */
 const CONTRATO_VERSAO = OFERTA.contratoVersao;
-const PRECO_E_PAGAMENTO = PIX_ENABLED
-  ? 'R$ 2.800,00 (dois mil e oitocentos reais) à vista via Pix; ou R$ 3.000,00 (três mil reais) no cartão de crédito, em até 12 (doze) parcelas de R$ 250,00, sujeitas às condições do emissor do cartão.'
-  : 'R$ 3.000,00 (três mil reais) no cartão de crédito, em até 12 (doze) parcelas de R$ 250,00, sujeitas às condições do emissor do cartão. O Pix não integra a oferta atual e somente poderá ser disponibilizado depois da homologação do fluxo exclusivo.';
-const PROCESSAMENTO_PAGAMENTO = PIX_ENABLED
-  ? 'Os pagamentos são processados pela Stripe (cartão) e pelo Mercado Pago (Pix). A CONTRATADA não coleta, não processa e não armazena dados de cartão de crédito.'
-  : 'O pagamento é processado pela Stripe (cartão). A CONTRATADA não coleta, não processa e não armazena dados de cartão de crédito. Caso o Pix seja homologado e passe a integrar a oferta, seu processamento será feito pelo Mercado Pago.';
-const DADOS_NO_PROCESSADOR = PIX_ENABLED
-  ? 'Nome, documento, contato, endereço de entrega e dados do pagamento ficam armazenados nos campos próprios da Stripe ou do Mercado Pago, que podem realizar transferência internacional de dados com as salvaguardas do art. 33 da LGPD.'
-  : 'Nome, documento, contato, endereço de entrega e dados do pagamento ficam armazenados nos campos próprios da Stripe, que pode realizar transferência internacional de dados com as salvaguardas do art. 33 da LGPD. Se o Pix for homologado e utilizado, esses dados também poderão ser tratados pelo Mercado Pago.';
+const PRECO_E_PAGAMENTO = 'R$ 3.000,00 (três mil reais) no cartão de crédito, em até 12 (doze) parcelas de R$ 250,00, sujeitas às condições do emissor do cartão. O Pix não integra esta versão e exigirá uma nova versão contratual depois da homologação do fluxo exclusivo.';
+const PROCESSAMENTO_PAGAMENTO = 'O pagamento desta versão somente poderá ser processado pela Stripe (cartão). A CONTRATADA não coleta, não processa e não armazena dados de cartão de crédito.';
+const DADOS_NO_PROCESSADOR = 'Nome, documento, contato, endereço de entrega e dados do pagamento ficam armazenados nos campos próprios da Stripe, que pode realizar transferência internacional de dados com as salvaguardas do art. 33 da LGPD.';
 
 const CLAUSULAS = [
   {
@@ -58,7 +50,7 @@ const CLAUSULAS = [
     p: [
       `A pré-venda é limitada a ${OFERTA.loteTotal} (cem) unidades e encerra-se em ${OFERTA.encerramentoBR} ou quando esgotado o lote, o que ocorrer primeiro.`,
       `As entregas iniciam-se em ${OFERTA.entregaBR}, data do lançamento oficial do produto na ${OFERTA.evento}. Para contratações feitas a partir de ${OFERTA.entregaBR}, o prazo de entrega é de até 30 (trinta) dias corridos contados da confirmação do pagamento.`,
-      'A entrega ocorre por envio ao endereço informado pelo CONTRATANTE ou, por opção dele, por retirada presencial durante o evento. Custo, cobertura e eventual gratuidade do frete serão informados antes da abertura da cobrança e integrarão a oferta aceita pelo CONTRATANTE.',
+      'A entrega ocorre por envio ao endereço informado pelo CONTRATANTE ou, por opção dele, por retirada presencial durante o evento. O custo total, a cobertura e eventual gratuidade do frete serão informados antes da abertura da cobrança e integrarão a oferta aceita pelo CONTRATANTE.',
       `Havendo atraso superior a 30 (trinta) dias corridos contados do prazo aplicável ao pedido — ${OFERTA.entregaBR} para as contratações feitas até essa data, ou o prazo de 30 dias do parágrafo anterior para as posteriores — por causa imputável à CONTRATADA, o CONTRATANTE poderá, a seu exclusivo critério, exigir o cumprimento do contrato, aceitar produto equivalente ou rescindir o contrato com restituição integral e imediata dos valores pagos, monetariamente atualizados.`,
       'A CONTRATADA informará por e-mail qualquer alteração relevante do cronograma, com a nova previsão, tão logo dela tenha conhecimento.',
     ],
@@ -67,7 +59,7 @@ const CLAUSULAS = [
     n: '5',
     t: 'Direito de arrependimento',
     p: [
-      'Por se tratar de contratação fora do estabelecimento comercial, o CONTRATANTE pode desistir da compra em até 7 (sete) dias corridos contados da contratação, nos termos do art. 49 do Código de Defesa do Consumidor, com devolução integral dos valores pagos.',
+      'Por se tratar de contratação fora do estabelecimento comercial, o CONTRATANTE pode desistir da compra em até 7 (sete) dias corridos contados da assinatura ou do recebimento do produto, o que ocorrer por último, nos termos do art. 49 do Código de Defesa do Consumidor, com devolução integral dos valores pagos.',
     ],
   },
   {
@@ -119,7 +111,7 @@ const CLAUSULAS = [
     n: '11',
     t: 'Disposições finais',
     p: [
-      'Este instrumento é aceito eletronicamente no ato do pagamento; o aceite, a data e a versão do contrato ficam registrados no processador de pagamento e no livro técnico pseudonimizado da CONTRATADA.',
+      'Uma futura versão comercial, com as características essenciais e o custo total de entrega publicados e aprovados, será aceita eletronicamente no ato do pagamento; o aceite, a data, a versão e o manifesto do release ficarão registrados no processador de pagamento e no livro técnico pseudonimizado da CONTRATADA. Esta minuta v3 não recebe aceite de pagamento.',
       'A eventual invalidade de qualquer cláusula não prejudica as demais.',
       'Fica eleito o foro do domicílio do CONTRATANTE para dirimir controvérsias, na forma do art. 101, I, do Código de Defesa do Consumidor.',
     ],
@@ -127,25 +119,11 @@ const CLAUSULAS = [
 ];
 
 export default function ContratoPage() {
-  const [lote, setLote] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    fetch('/api/lote')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => { if (active && data) setLote(data); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, []);
-
-  const cobrancaAberta = Boolean(lote?.confiavel && !lote?.esgotado)
-    && Date.now() < new Date(OFERTA.checkoutFechamentoISO).getTime();
-
   return (
     <div style={{ background: BG }} className="prevenda-shell min-h-screen text-white">
       <SEO
         title="Contrato de pré-venda — Módulo Grow-X"
-        description={`Minuta da pré-venda do Módulo Grow-X: ${PIX_ENABLED ? 'R$ 2.800 no Pix ou R$ 3.000 no cartão em até 12x' : 'R$ 3.000 no cartão em até 12x de R$ 250'}, entrega a partir de 20/11/2026, reembolso integral até o envio e garantia de 12 meses.`}
+        description="Minuta da pré-venda do Módulo Grow-X: R$ 3.000 no cartão em até 12x de R$ 250, entrega a partir de 20/11/2026, reembolso integral até o envio e garantia de 12 meses."
         path="/prevenda/contrato"
       />
 
@@ -159,12 +137,18 @@ export default function ContratoPage() {
 
         <h1 className="mt-8 text-display-lg font-extrabold text-white">Minuta do contrato de pré-venda</h1>
         <p className="mt-4 text-lg" style={{ color: MUTED }}>
-          Módulo Grow-X · versão <strong className="text-white">{CONTRATO_VERSAO}</strong> · atualizada em 5 de agosto de 2026
+          Módulo Grow-X · versão <strong className="text-white">{CONTRATO_VERSAO}</strong> · atualizada em 8 de agosto de 2026
         </p>
+        <a
+          href={OFERTA.contratoPath}
+          className="mt-3 inline-flex text-sm font-semibold underline underline-offset-4"
+          style={{ color: GREEN }}
+        >
+          Abrir e guardar o snapshot imutável desta minuta
+        </a>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
-          {cobrancaAberta
-            ? 'Cobrança aberta para o lote disponível. O aceite desta versão é registrado no pagamento.'
-            : 'Compra ainda não aberta. A ficha técnica, a composição do kit e as condições de frete precisam estar publicadas e aprovadas antes de qualquer cobrança.'}
+          Esta v3 não poderá ser aceita nem paga. A abertura comercial exige uma nova versão com ficha técnica,
+          composição do kit e custo total da modalidade de entrega publicados e aprovados.
         </p>
 
         <a
@@ -173,7 +157,7 @@ export default function ContratoPage() {
           style={{ background: GREEN, color: CTA_TEXT }}
         >
           <ShoppingCart aria-hidden="true" size={16} />
-          Voltar e comprar
+          Voltar para a pré-venda
         </a>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -206,8 +190,9 @@ export default function ContratoPage() {
 
         <div className="mt-14 rounded-2xl border p-6" style={{ borderColor: LINE, background: 'var(--prevenda-surface)' }}>
           <p className="text-sm leading-relaxed" style={{ color: MUTED }}>
-            Quando a cobrança for aberta, o aceite deste contrato será registrado no momento do pagamento, junto ao seu pedido, com data e versão.
-            Para consultar o seu pedido e o aceite, acesse a{' '}
+            Quando uma nova versão comercial for aprovada, o aceite daquela versão será registrado no pagamento,
+            junto ao pedido, com data e manifesto. Esta v3 permanece apenas como minuta conservável. Para consultar
+            um pedido e o respectivo aceite, acesse a{' '}
             <Link to="/prevenda/pedido" className="font-semibold underline underline-offset-2" style={{ color: GREEN }}>
               área do cliente
             </Link>{' '}

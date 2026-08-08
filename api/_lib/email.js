@@ -64,7 +64,7 @@ function corpo({ nome, referencia, valorCentavos, forma, cpf, endereco }) {
       <p style="margin:16px 0 0;color:#7d8f84;font-size:13px;line-height:1.6">
         Você pode cancelar com <strong>reembolso integral até o envio</strong>, sem justificativa.
         Depois da entrega, <strong>garantia de 12 meses</strong> conforme o contrato.
-        <a href="${SITE}/prevenda/contrato" style="color:#1f9d55">Ver contrato (${esc(OFERTA.contratoVersao)})</a>.
+        <a href="${SITE}${esc(OFERTA.contratoPath)}" style="color:#1f9d55">Guardar contrato aceito (${esc(OFERTA.contratoVersao)})</a>.
       </p>
     </div>
 
