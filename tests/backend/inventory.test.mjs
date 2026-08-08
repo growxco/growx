@@ -259,6 +259,30 @@ class MemoryDynamo {
   }
 }
 
+class StrictExpressionDynamo extends MemoryDynamo {
+  async send(command) {
+    if (command.constructor.name === 'TransactWriteItemsCommand') {
+      for (const operation of command.input.TransactItems) {
+        const update = operation.Update;
+        if (!update) continue;
+        const expressions = [update.UpdateExpression, update.ConditionExpression]
+          .filter(Boolean)
+          .join(' ');
+        const unusedNames = Object.keys(update.ExpressionAttributeNames || {})
+          .filter((name) => !expressions.includes(name));
+        if (unusedNames.length) {
+          const error = new Error(
+            `Value provided in ExpressionAttributeNames unused in expressions: keys: {${unusedNames.join(', ')}}`,
+          );
+          error.name = 'ValidationException';
+          throw error;
+        }
+      }
+    }
+    return super.send(command);
+  }
+}
+
 class UnprocessedOnceDynamo extends MemoryDynamo {
   constructor() {
     super();
@@ -656,8 +680,8 @@ test('IP pode adquirir no máximo três reservas bem-sucedidas por janela de 31 
   assert.ok(Number(value(rateItem, 'ttl')) > 0);
 });
 
-test('liberação real solta BUYER atomicamente e permite nova reserva', async () => {
-  const client = new MemoryDynamo();
+test('liberação real usa aliases Dynamo válidos, solta BUYER e permite nova reserva', async () => {
+  const client = new StrictExpressionDynamo();
   const buyerKey = hash('buyer:reusable');
   const firstRequest = randomUUID();
   const first = await acquireReservation({
