@@ -44,9 +44,18 @@ Resources:
                 Action:
                   - dynamodb:BatchGetItem
                   - dynamodb:GetItem
-                  - dynamodb:TransactWriteItems
                   - dynamodb:UpdateItem
                 Resource: !Ref InventoryTableArn
+              - Sid: TransactionalLedgerPutDelete
+                Effect: Allow
+                Action:
+                  - dynamodb:DeleteItem
+                  - dynamodb:PutItem
+                Resource: !Ref InventoryTableArn
+                Condition:
+                  ForAnyValue:StringEquals:
+                    dynamodb:EnclosingOperation:
+                      - TransactWriteItems
               - Sid: WebhookOutboxDueIndex
                 Effect: Allow
                 Action:

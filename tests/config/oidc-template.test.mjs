@@ -14,9 +14,16 @@ test('role OIDC confia apenas no projeto growx em production e na audiencia STS'
 
 test('role OIDC limita escrita ao ledger e Query ao GSI exato', () => {
   assert.match(template, /dynamodb:GetItem/);
-  assert.match(template, /dynamodb:TransactWriteItems/);
   assert.match(template, /dynamodb:Query/);
   assert.match(template, /dynamodb:UpdateItem/);
+  assert.match(template, /dynamodb:PutItem/);
+  assert.match(template, /dynamodb:DeleteItem/);
+  assert.match(
+    template,
+    /TransactionalLedgerPutDelete[\s\S]*ForAnyValue:StringEquals:[\s\S]*dynamodb:EnclosingOperation:[\s\S]*- TransactWriteItems/,
+  );
+  assert.doesNotMatch(template, /- dynamodb:TransactWriteItems/);
+  assert.doesNotMatch(template, /dynamodb:ConditionCheckItem/);
   assert.match(template, /Resource: !Ref InventoryTableArn/);
   assert.match(template, /Resource: !Sub '\$\{InventoryTableArn\}\/index\/webhook-outbox-due'/);
   assert.doesNotMatch(template, /\/index\/\*/);
