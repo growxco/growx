@@ -19,6 +19,7 @@ const ROUTE_NAMES = {
   contato: 'Contato',
   obrigado: 'Obrigado',
 };
+const NON_LINKABLE_PARENTS = new Set(['/solucoes', '/sobre']);
 
 export default function Breadcrumbs() {
   const location = useLocation();
@@ -33,20 +34,21 @@ export default function Breadcrumbs() {
       name: ROUTE_NAMES[p] ?? decodeURIComponent(p),
       href: path,
       isLast: i === parts.length - 1,
+      isLinkable: !NON_LINKABLE_PARENTS.has(path),
     });
   });
 
   return (
     <div className="border-b border-white/[0.06] bg-background/40">
       <Container>
-        <nav className="flex flex-wrap items-center gap-2 py-4 text-xs text-muted-foreground">
+        <nav aria-label="Navegação estrutural" className="flex flex-wrap items-center gap-2 py-4 text-xs text-muted-foreground">
           {items.map((item, idx) => {
             const Icon = item.icon;
             return (
               <span key={item.href} className="flex items-center gap-2">
                 {idx > 0 && <ChevronRight className="size-3 text-foreground/30" />}
-                {item.isLast ? (
-                  <span className="inline-flex items-center gap-1.5 font-medium text-emerald-glow">
+                {item.isLast || item.isLinkable === false ? (
+                  <span className={item.isLast ? 'inline-flex items-center gap-1.5 font-medium text-emerald-glow' : 'inline-flex items-center gap-1.5'}>
                     {Icon && <Icon className="size-3.5" />}
                     {item.name}
                   </span>
