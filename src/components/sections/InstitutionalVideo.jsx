@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowUpRight, Play } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
+import YouTubePlayer from '@/components/visual/YouTubePlayer';
 import { Container, Eyebrow } from '@/components/visual';
 import { useI18n } from '@/i18n/I18nProvider';
 
@@ -8,8 +8,7 @@ const DEFAULT_COPY = {
   EN: { eyebrow: 'Our story', title: 'Meet Grow-X.', description: 'Watch our institutional video.', videoTitle: 'Grow-X institutional video' },
 };
 
-export default function InstitutionalVideo({ videoId = 'q94q18hYyvw', sectionId = 'institucional', copy = DEFAULT_COPY }) {
-  const [playing, setPlaying] = useState(false);
+export default function InstitutionalVideo({ videoId = 'q94q18hYyvw', sectionId = 'institucional', copy = DEFAULT_COPY, portrait = false }) {
   const { lang } = useI18n();
   const english = lang === 'EN';
   const content = copy[english ? 'EN' : 'PT'];
@@ -31,26 +30,7 @@ export default function InstitutionalVideo({ videoId = 'q94q18hYyvw', sectionId 
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </a>
         </div>
-        <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-black sm:rounded-3xl">
-          {playing ? (
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`}
-              title={content.videoTitle}
-              className="absolute inset-0 h-full w-full border-0"
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
-          ) : (
-            <button type="button" onClick={() => setPlaying(true)} aria-label={playLabel} className="group absolute inset-0 flex h-full w-full items-center justify-center focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-emerald-glow">
-              <img src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`} alt="" width="480" height="360" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity group-hover:opacity-100" />
-              <span className="absolute inset-0 bg-black/20" />
-              <span className="relative flex size-16 items-center justify-center rounded-full bg-white text-black shadow-xl transition-transform group-hover:scale-105 sm:size-20">
-                <Play className="ml-1 size-7 sm:size-9" fill="currentColor" aria-hidden="true" />
-              </span>
-            </button>
-          )}
-        </div>
+        <YouTubePlayer key={videoId} videoId={videoId} title={content.videoTitle} playLabel={playLabel} portrait={portrait} />
       </Container>
     </section>
   );
