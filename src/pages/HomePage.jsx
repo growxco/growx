@@ -1,5 +1,6 @@
 import { SEO } from '@/components/visual';
 import Hero from '@/components/sections/Hero';
+import InstitutionalVideo from '@/components/sections/InstitutionalVideo';
 import LiveTicker from '@/components/sections/LiveTicker';
 import ChoosePath from '@/components/sections/ChoosePath';
 import TrustStrip from '@/components/sections/TrustStrip';
@@ -54,6 +55,7 @@ export default function HomePage() {
         path="/"
       />
       <Hero />
+      <InstitutionalVideo />
       <LiveTicker />
       <ChoosePath />
       <TrustStrip />

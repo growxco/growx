@@ -30,6 +30,9 @@ pnpm-debug.log*
 
 # local QA artifacts
 tmp-screens/
+test-results/
+tmp/
+.codex-worktrees/
 
 # OS
 .DS_Store

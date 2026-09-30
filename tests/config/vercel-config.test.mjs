@@ -26,6 +26,14 @@ test('cron de reconciliacao permanece configurado a cada minuto', () => {
   )));
 });
 
+test('CSP permite o player institucional somente no domínio de privacidade do YouTube', () => {
+  const csp = config.headers.flatMap((entry) => entry.headers || [])
+    .find((entry) => entry.key.toLowerCase() === 'content-security-policy').value;
+  const frames = csp.split(';').find((directive) => directive.trim().startsWith('frame-src '));
+  assert.ok(frames.split(/\s+/).includes('https://www.youtube-nocookie.com'));
+  assert.ok(!frames.includes('*'));
+});
+
 test('cron de redrive do outbox permanece configurado a cada minuto', () => {
   assert.ok(config.crons?.some((cron) => (
     cron.path === '/api/cron/webhook-redrive' && cron.schedule === '* * * * *'
