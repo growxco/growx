@@ -1,16 +1,23 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { Aurora, Container, Eyebrow, GradientText, Reveal, StatusDot, GridPattern } from '@/components/visual';
+import { Aurora, Container, Eyebrow, GradientText, Reveal, GridPattern } from '@/components/visual';
 import { useI18n } from '@/i18n/I18nProvider';
-import LiveKPIPanel from './LiveKPIPanel';
+import spiScreen from '@/assets/real-spi-app.webp';
+import sppScreen from '@/assets/real-spp-app.webp';
+import gxpScreen from '@/assets/real-gxp-app.webp';
 
 const EASE = [0.16, 1, 0.3, 1];
+const PORTALS = [
+  { name: 'SPI', image: spiScreen, href: '/solucoes/spi', description: 'Indústria' },
+  { name: 'SPP', image: sppScreen, href: '/solucoes/spp', description: 'Produtores' },
+  { name: 'GXP', image: gxpScreen, href: '/solucoes/growx-app', description: 'Cultivo' },
+];
 
 export default function Hero() {
   const { lang, t } = useI18n();
   return (
-    <section className="relative isolate overflow-hidden pt-24 pb-20 sm:pt-32 lg:pt-40 lg:pb-28">
+    <section className="relative isolate overflow-hidden pt-24 pb-20 sm:pt-28 lg:pt-20 lg:pb-24">
       <Aurora intensity="lg" />
       <GridPattern fine mask="bottom" />
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-emerald/40 to-transparent" />
@@ -23,7 +30,7 @@ export default function Hero() {
             </Reveal>
 
             <Reveal delay={0.06}>
-              <h1 className="mt-6 text-display-2xl text-foreground">
+              <h1 className="mt-6 text-display-lg text-foreground">
                 <span className="sm:hidden">
                   {lang === 'EN' ? (
                     <>
@@ -61,24 +68,11 @@ export default function Hero() {
                 <Link to="/contato-corporativo-spi" className="btn-ghost justify-center sm:justify-start">
                   Contato corporativo SPI
                 </Link>
-                <StatusDot label={t('common.operationActive')} className="ml-1 hidden sm:inline-flex" />
               </div>
             </Reveal>
 
             <Reveal delay={0.32}>
-              <dl className="mt-12 grid max-w-xl grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
-                {[
-                  { k: 'IoT', v: 'Sensores LoRa' },
-                  { k: 'IA', v: 'Decisão em campo' },
-                  { k: 'BR', v: 'Engenharia local' },
-                  { k: '24/7', v: 'Operação ativa' },
-                ].map((s) => (
-                  <div key={s.k}>
-                    <dt className="font-display text-2xl font-bold text-emerald-glow">{s.k}</dt>
-                    <dd className="mt-1 text-xs text-muted-foreground">{s.v}</dd>
-                  </div>
-                ))}
-              </dl>
+              <p className="mt-10 text-sm text-muted-foreground">Conheça as plataformas e escolha a operação ideal para você.</p>
             </Reveal>
           </div>
 
@@ -88,7 +82,21 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, ease: EASE, delay: 0.2 }}
             >
-              <LiveKPIPanel />
+              <div className="overflow-hidden rounded-3xl border border-border bg-surface/80 p-4 shadow-elevated sm:p-5">
+                <p className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">Prévia dos nossos aplicativos</p>
+                <div className="space-y-3">
+                  {PORTALS.map((portal) => (
+                    <Link key={portal.name} to={portal.href} className="group flex items-center gap-4 rounded-xl border border-border bg-background/60 p-2 transition-colors hover:border-emerald/50 focus-visible:outline-2 focus-visible:outline-emerald-glow">
+                      <img src={portal.image} alt={`Tela do ${portal.name}`} className="h-20 w-28 shrink-0 rounded-lg object-cover object-top sm:h-24 sm:w-36" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-display text-xl font-bold text-foreground">{portal.name}</span>
+                        <span className="block text-sm text-muted-foreground">{portal.description}</span>
+                      </span>
+                      <ArrowRight className="mr-2 size-4 shrink-0 text-emerald-glow" aria-hidden="true" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
               <div className="pointer-events-none absolute inset-0 -z-10 rounded-3xl bg-emerald/15 blur-3xl" />
             </motion.div>
           </div>

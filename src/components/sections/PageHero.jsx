@@ -73,7 +73,7 @@ export default function PageHero({
                     <img src={image} alt={imageAlt} className="absolute inset-0 h-full w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-tr from-background/70 via-transparent to-background/30" />
                     <div className="absolute left-4 top-4">
-                      <StatusDot label="LIVE" />
+                      <span className="rounded-full border border-foreground/20 bg-background/80 px-3 py-1 text-xs font-medium text-foreground backdrop-blur-sm">Prévia do produto</span>
                     </div>
                   </div>
                 </GlassCard>
