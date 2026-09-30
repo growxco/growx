@@ -885,6 +885,51 @@ export default function PreVendaPage() {
         </div>
       </section>
 
+      {/* ---------- VÍDEO DE APRESENTAÇÃO ---------- */}
+      <section id="video" aria-labelledby="prevenda-video-titulo" className="scroll-mt-20" style={{ borderBottom: `1px solid ${LINE}`, background: SURFACE }}>
+        <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:items-center">
+          <div className="order-2 lg:order-1">
+            <p className={eyebrow} style={{ color: GREEN }}>O módulo em vídeo</p>
+            <h2 id="prevenda-video-titulo" className="mt-5 max-w-2xl text-display-lg font-extrabold text-white">
+              Veja o Módulo Grow-X em movimento.
+            </h2>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed" style={{ color: MUTED }}>
+              Assista à apresentação e conheça a proposta da central para luz, clima e rega.
+              As condições da pré-venda e os recursos previstos estão detalhados nesta página e no contrato.
+            </p>
+            <a
+              href={ctaHref}
+              onClick={() => track('click_cta_prevenda', { placement: 'video', page: '/prevenda' })}
+              className="mt-8 inline-flex items-center gap-2 rounded-xl px-7 py-4 text-[0.95rem] font-bold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]"
+              style={{ background: GREEN, color: CTA_TEXT }}
+            >
+              {compraDisponivel && <ShoppingCart aria-hidden="true" size={18} />}
+              {ctaLabel}
+            </a>
+          </div>
+
+          <figure className="order-1 mx-auto w-full max-w-[420px] lg:order-2">
+            <div className="overflow-hidden rounded-3xl border bg-black" style={{ borderColor: LINE }}>
+              <video
+                controls
+                playsInline
+                preload="none"
+                poster="/videos/gxp-video-01-cover.jpg"
+                aria-label="Vídeo de apresentação do Módulo Grow-X"
+                onPlay={() => track('video_play', { video: 'gxp-video-01', page: '/prevenda' })}
+                className="aspect-[9/16] w-full object-contain"
+              >
+                <source src="/videos/gxp-video-01.mp4" type="video/mp4" />
+                Seu navegador não reproduz este vídeo. <a href="/videos/gxp-video-01.mp4">Abrir o vídeo</a>.
+              </video>
+            </div>
+            <figcaption className="mt-3 text-xs leading-relaxed" style={{ color: MUTED }}>
+              Vídeo de apresentação do Módulo Grow-X. A imagem do gabinete é ilustrativa; confira as especificações e condições na oferta.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
       {/* ---------- O MÓDULO ---------- */}
       <section id="modulo" className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
         <p className={eyebrow} style={{ color: GREEN }}>O módulo — 6 tomadas, 1 central</p>
