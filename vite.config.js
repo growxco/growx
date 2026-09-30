@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
   build: {
@@ -16,10 +16,10 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html'),
+        main: path.resolve(import.meta.dirname, 'index.html'),
         // Entrada dedicada pro /prevenda: mesmas bundles, mas com Open Graph
         // próprio (crawlers de WhatsApp/Meta não executam JS).
-        prevenda: path.resolve(__dirname, 'prevenda.html'),
+        prevenda: path.resolve(import.meta.dirname, 'prevenda.html'),
       },
     },
   },
