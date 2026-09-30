@@ -6,6 +6,12 @@ import { SEO, softwareSchema } from '@/components/visual';
 import { PageHero, FeatureGrid, MetricStrip, UseCases, FinalCTA, LiveTicker } from '@/components/sections';
 import { APP_PORTAL_URLS } from '@/lib/portalLinks';
 import gxpScreen from '../assets/real-gxp-app.webp';
+import InstitutionalVideo from '@/components/sections/InstitutionalVideo';
+
+const GXP_VIDEO_COPY = {
+  PT: { eyebrow: 'Módulo + GXP', title: 'Automação e cultivo conectados.', description: 'Conheça o módulo de automação Grow-X e o GXP nesta apresentação.', videoTitle: 'Vídeo do módulo de automação e GXP' },
+  EN: { eyebrow: 'Module + GXP', title: 'Connected automation and cultivation.', description: 'Meet the Grow-X automation module and GXP in this presentation.', videoTitle: 'Grow-X automation module and GXP video' },
+};
 
 const MAIN_FEATURES = [
   { icon: Wifi, title: 'Controle remoto de estufas', description: 'Monitore e controle suas estufas de qualquer lugar via IoT.' },
@@ -57,6 +63,7 @@ export default function GrowXAppPage() {
         status="Clube e app Grow-X"
       />
 
+      <InstitutionalVideo videoId="9TTyJt6RfVA" sectionId="video-gxp" copy={GXP_VIDEO_COPY} portrait />
       <LiveTicker />
       <MetricStrip items={METRICS} />
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Plus, ShoppingCart } from 'lucide-react';
 import { SEO } from '@/components/visual';
+import YouTubePlayer from '@/components/visual/YouTubePlayer';
 import ThemeToggle from '@/components/visual/ThemeToggle';
 import { track } from '@/lib/analytics';
 import { clearCheckoutOutcome, readCheckoutOutcome } from '@/lib/checkoutReturn';
@@ -909,22 +910,16 @@ export default function PreVendaPage() {
           </div>
 
           <figure className="order-1 mx-auto w-full max-w-[420px] lg:order-2">
-            <div className="overflow-hidden rounded-3xl border bg-black" style={{ borderColor: LINE }}>
-              <video
-                controls
-                playsInline
-                preload="none"
-                poster="/videos/gxp-video-01-cover.jpg"
-                aria-label="Vídeo de apresentação do Módulo Grow-X"
-                onPlay={() => track('video_play', { video: 'gxp-video-01', page: '/prevenda' })}
-                className="aspect-[9/16] w-full object-contain"
-              >
-                <source src="/videos/gxp-video-01.mp4" type="video/mp4" />
-                Seu navegador não reproduz este vídeo. <a href="/videos/gxp-video-01.mp4">Abrir o vídeo</a>.
-              </video>
-            </div>
+            <YouTubePlayer
+              videoId="9TTyJt6RfVA"
+              title="Vídeo do módulo de automação e GXP"
+              playLabel="Reproduzir vídeo do módulo de automação e GXP"
+              portrait
+              onActivate={() => track('video_open', { video: '9TTyJt6RfVA', page: '/prevenda' })}
+            />
             <figcaption className="mt-3 text-xs leading-relaxed" style={{ color: MUTED }}>
               Vídeo de apresentação do Módulo Grow-X. A imagem do gabinete é ilustrativa; confira as especificações e condições na oferta.
+              {' '}<a href="https://www.youtube.com/shorts/9TTyJt6RfVA" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Assistir no YouTube</a>.
             </figcaption>
           </figure>
         </div>
