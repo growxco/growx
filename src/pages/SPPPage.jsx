@@ -3,7 +3,8 @@ import {
   FlaskConical, Leaf, Smartphone, Users,
 } from 'lucide-react';
 import { SEO } from '@/components/visual';
-import { PageHero, FeatureGrid, SplitFeature, MetricStrip, UseCases, Testimonials, FinalCTA, LiveTicker } from '@/components/sections';
+import { PageHero, FeatureGrid, SplitFeature, MetricStrip, UseCases, Testimonials, FinalCTA } from '@/components/sections';
+import SPPVideo from '@/components/sections/SPPVideo';
 import { APP_PORTAL_URLS } from '@/lib/portalLinks';
 import sppScreen from '../assets/real-spp-app.webp';
 
@@ -43,12 +44,13 @@ export default function SPPPage() {
         title={<>O app que <span className="text-emerald-glow">organiza</span> o produtor real.</>}
         intro="Plataforma agronômica que cobre todas as etapas do cultivo — do planejamento à colheita — com cálculo técnico e linguagem do campo."
         primaryCta={{ label: 'Assinar SPP', href: APP_PORTAL_URLS.spp, external: true }}
-        secondaryCta={{ label: 'Falar com suporte Grow-X', href: '/contato' }}
+        secondaryCta={{ label: 'Ver vídeo do SPP', href: '/solucoes/spp#video' }}
         image={sppScreen}
         imageAlt="Tela real do SPP App"
+        status={null}
       />
 
-      <LiveTicker />
+      <SPPVideo />
       <MetricStrip items={METRICS} />
 
       <UseCases

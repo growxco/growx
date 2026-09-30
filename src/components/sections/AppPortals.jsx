@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ExternalLink, Factory, Tractor, Sprout, ShieldCheck, ArrowRight } from 'lucide-react';
+import { ExternalLink, Factory, Tractor, Sprout, ShieldCheck, ArrowRight, Play } from 'lucide-react';
 import { Section, GlassCard, Reveal } from '@/components/visual';
 import { analytics } from '@/lib/analytics';
 import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
@@ -118,6 +118,12 @@ export default function AppPortals() {
                     <a href={portal.href} target="_blank" rel="noreferrer noopener" onClick={() => analytics.externalAppOpen(portal.key, '/')} className="btn-ghost w-full justify-center">
                       Abrir portal SPI
                     </a>
+                  )}
+                  {portal.key === 'spp' && (
+                    <Link to="/solucoes/spp#video" className="btn-ghost w-full justify-center">
+                      <Play className="size-4" aria-hidden="true" />
+                      Ver vídeo do SPP
+                    </Link>
                   )}
                 </div>
               </GlassCard>

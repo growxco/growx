@@ -45,7 +45,7 @@ export default function ChoosePath() {
   return (
     <Section
       eyebrow="Escolha seu caminho"
-      title={<>Duas operações. <span className="text-emerald-glow">Uma stack.</span></>}
+      title={<>Três caminhos. <span className="text-emerald-glow">Uma stack.</span></>}
       intro="Cada público entra pelo funil certo: assinatura SPP/GXP ou contato corporativo SPI."
     >
       <div className="grid gap-5 lg:grid-cols-3">

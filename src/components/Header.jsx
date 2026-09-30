@@ -117,15 +117,16 @@ export default function Header() {
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-1 lg:flex">
+          <nav className="hidden shrink-0 items-center gap-0.5 whitespace-nowrap xl:flex">
             {NAV.map((item) => {
+              if (item.name === 'Início' || item.name === 'Contato') return null;
               if (item.type === 'link') {
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
                     className={cn(
-                      'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      'rounded-lg px-2 py-2 text-sm font-medium transition-colors',
                       isActive(item.href) ? 'text-emerald-glow' : 'text-foreground/70 hover:text-foreground',
                     )}
                   >
@@ -141,7 +142,7 @@ export default function Header() {
                     onMouseEnter={() => setOpen(item.name)}
                     onClick={() => setOpen(isOpen ? null : item.name)}
                     className={cn(
-                      'inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      'inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium transition-colors',
                       isOpen ? 'text-foreground' : 'text-foreground/70 hover:text-foreground',
                     )}
                   >
@@ -221,8 +222,8 @@ export default function Header() {
 
             <ThemeToggle className="hidden sm:inline-flex" />
 
-            <div className="hidden lg:block">
-              <Link to={CORPORATE_CONTACT_PATH} className="btn-primary text-xs sm:text-sm">
+            <div className="hidden xl:block">
+              <Link to={CORPORATE_CONTACT_PATH} className="btn-primary whitespace-nowrap text-xs sm:text-sm">
                 Contato corporativo
                 <ArrowRight className="size-3.5" />
               </Link>
@@ -231,7 +232,7 @@ export default function Header() {
             <button
               type="button"
               onClick={() => setMobile(!mobile)}
-              className="fixed left-[min(calc(100dvw-56px),330px)] top-3.5 z-[60] inline-flex size-9 items-center justify-center rounded-lg border border-foreground/10 bg-foreground/5 text-foreground lg:static lg:hidden"
+              className="fixed left-[min(calc(100dvw-56px),330px)] top-3.5 z-[60] inline-flex size-9 items-center justify-center rounded-lg border border-foreground/10 bg-foreground/5 text-foreground xl:static xl:hidden"
               aria-label="Menu"
             >
               {mobile ? <X className="size-4" /> : <Menu className="size-4" />}
@@ -241,7 +242,7 @@ export default function Header() {
 
         {/* mobile drawer */}
         {mobile && (
-          <div className="lg:hidden">
+          <div className="xl:hidden">
             <div className="border-t border-foreground/[0.08] bg-background/95 backdrop-blur-xl">
               <Container className="py-5">
                 <nav className="flex flex-col gap-1">

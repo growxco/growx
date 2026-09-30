@@ -1,15 +1,12 @@
 import { SEO } from '@/components/visual';
 import Hero from '@/components/sections/Hero';
 import InstitutionalVideo from '@/components/sections/InstitutionalVideo';
-import LiveTicker from '@/components/sections/LiveTicker';
 import ChoosePath from '@/components/sections/ChoosePath';
 import TrustStrip from '@/components/sections/TrustStrip';
-import LogoCloud from '@/components/sections/LogoCloud';
 import ProblemSection from '@/components/sections/ProblemSection';
 import BentoSolutions from '@/components/sections/BentoSolutions';
 import AppPortals from '@/components/sections/AppPortals';
 import SensorRingSection from '@/components/sections/SensorRingSection';
-import LiveTerminal from '@/components/sections/LiveTerminal';
 import HardwareSVG from '@/components/sections/HardwareSVG';
 import Differentiators from '@/components/sections/Differentiators';
 import ByProfile from '@/components/sections/ByProfile';
@@ -56,21 +53,18 @@ export default function HomePage() {
       />
       <Hero />
       <InstitutionalVideo />
-      <LiveTicker />
       <ChoosePath />
-      <TrustStrip />
+      <TrustStrip mode="badges" />
       <ProblemSection />
       <BentoSolutions />
       <AppPortals />
       <SensorRingSection />
-      <LiveTerminal />
       <HardwareSVG />
       <Differentiators />
       <ByProfile />
       <GreenVeilSection />
       <Insights />
       <StorySection />
-      <LogoCloud />
       <FAQ
         title="Dúvidas que recebemos toda semana."
         intro="Resposta direta. Se ficou faltando, chama no WhatsApp."
