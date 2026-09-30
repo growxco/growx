@@ -3,6 +3,12 @@ import { SEO } from '@/components/visual';
 import { PageHero, FeatureGrid, SplitFeature, MetricStrip, UseCases, FinalCTA, LiveTicker } from '@/components/sections';
 import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 import spiScreen from '../assets/real-spi-app.webp';
+import InstitutionalVideo from '@/components/sections/InstitutionalVideo';
+
+const SPI_VIDEO_COPY = {
+  PT: { eyebrow: 'SPI em vídeo', title: 'Conheça o SPI.', description: 'Assista à apresentação do Supply-X para as indústrias.', videoTitle: 'Vídeo de apresentação do SPI' },
+  EN: { eyebrow: 'SPI video', title: 'Meet SPI.', description: 'Watch the Supply-X presentation for industries.', videoTitle: 'SPI presentation video' },
+};
 
 const FEATURES = [
   { icon: BarChart3, title: 'Dashboard operacional', description: 'Status logístico e indicadores de recebimento em uma só tela.' },
@@ -40,6 +46,7 @@ export default function SPIPage() {
         imageAlt="Tela real do portal SPI"
       />
 
+      <InstitutionalVideo videoId="NrIKQpXUyO8" sectionId="video-spi" copy={SPI_VIDEO_COPY} />
       <LiveTicker />
       <MetricStrip items={METRICS} />
 
