@@ -10,8 +10,8 @@ import {blank} from '../../src/agenda/model.js';
 import sessionHandler from '../../api/socios/session.js';
 import agendaHandler from '../../api/socios/agenda.js';
 const password='synthetic-test-password-only';
-const origin='https://www.growx.com.br';
-const headers={origin,'content-type':'application/json','x-vercel-forwarded-for':'192.0.2.30'};
+const origin='https://agenda.growx.com.br';
+const headers={host:'agenda.growx.com.br',origin,'content-type':'application/json','x-vercel-forwarded-for':'192.0.2.30'};
 async function call(handler,method,body,extra={}){const out={headers:{}};const response={setHeader(k,v){out.headers[k]=v},status(s){out.status=s;return this},json(v){out.body=v;return this}};await handler({method,body,headers:{...headers,...extra}},response);return out}
 
 test('HTTP route chain enforces authentication, origin, role, revision and logout over restricted database role',async()=>{

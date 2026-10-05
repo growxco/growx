@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/verifica-oferta.mjs && vite build",
+    "build": "node scripts/verifica-oferta.mjs && vite build && vite build --config vite.agenda.config.js",
     "verifica:oferta": "node scripts/verifica-oferta.mjs",
     "test:sales-gate": "node --test scripts/prevenda-sales-gate.test.mjs",
     "test:backend": "node --test tests/backend/*.test.mjs",
@@ -48,6 +48,7 @@
     "@radix-ui/react-tooltip": "^1.2.6",
     "@tailwindcss/vite": "^4.3.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/functions": "3.9.11",
     "@vercel/oidc-aws-credentials-provider": "3.3.2",
     "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",

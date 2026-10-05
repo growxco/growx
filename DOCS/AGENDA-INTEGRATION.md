@@ -39,3 +39,34 @@ Até a implantação de leituras e exportações paginadas, cada gravação resp
 6. Somente então publicar a rota na produção.
 
 Testes locais usam PGlite e dados sintéticos. Eles não substituem a verificação final no ambiente hospedado nem comprovam acesso com credenciais reais.
+
+## Isolated browser origin: agenda.growx.com.br
+
+The agenda is served only at `https://agenda.growx.com.br/`. The existing project,
+server environment and Argus schema are reused; this is browser-origin isolation,
+not isolation from project administrators or a server compromise. The three users
+can view and edit the shared calendar under their individual authenticated accounts.
+
+Root middleware runs before filesystem/cache. It exposes only the agenda document,
+its dedicated `/agenda-assets/` build output, favicon and two agenda APIs on that
+host. Marketing documents, financial APIs and marketing bundles receive an inert
+404. The API independently checks Host and exact matching Origin, so same-site
+requests from www/apex are refused. Cookies remain host-only, Secure, HttpOnly and
+SameSite=Strict. No credentialed CORS or client-controlled host flag is used.
+
+Only the `feat/partners-agenda` Preview deployment can additionally use its exact
+server-provided VERCEL_URL/VERCEL_BRANCH_URL. Those preview hosts have the same
+agenda-only routing policy. Other production deployment aliases cannot expose
+the agenda API. Legacy agenda document paths on marketing hosts redirect to the
+fixed agenda origin, without forwarding query parameters.
+
+The main Vite build and agenda Vite build must remain separate. Only trusted agenda
+build output may be emitted under `/agenda-assets/`; marketing output uses `/assets/`.
+The general SPA fallback excludes `/agenda-assets/`, and marketing rewrites exclude
+the production agenda hostname. Keep middleware enabled for all paths.
+
+DNS: the Vercel-confirmed CNAME target is
+`agenda → e8fdc969788fad97.vercel-dns-016.com`, DNS only (proxy disabled).
+Point DNS only after the host gate is deployed and tested. No other DNS records
+or nameservers need changes. The subdomain requires its own first login; the preview
+session is not copied or transferable by the application.

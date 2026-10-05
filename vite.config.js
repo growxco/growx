@@ -17,7 +17,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(import.meta.dirname, 'index.html'),
-        agenda: path.resolve(import.meta.dirname, 'socios-agenda.html'),
         // Entrada dedicada pro /prevenda: mesmas bundles, mas com Open Graph
         // próprio (crawlers de WhatsApp/Meta não executam JS).
         prevenda: path.resolve(import.meta.dirname, 'prevenda.html'),

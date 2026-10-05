@@ -49,13 +49,13 @@ export default [
     },
   },
   {
-    files: ['api/**/*.js', 'scripts/**/*.mjs'],
+    files: ['api/**/*.js', 'scripts/**/*.mjs', 'middleware.js', 'lib/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
         ...globals.node,
-        fetch: 'readonly',
+        fetch: 'readonly', Response: 'readonly',
       },
     },
     rules: {

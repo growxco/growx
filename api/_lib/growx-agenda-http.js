@@ -1,8 +1,15 @@
-export function privateHeaders(response){response.setHeader('Cache-Control','no-store, private');response.setHeader('Pragma','no-cache');response.setHeader('X-Content-Type-Options','nosniff');response.setHeader('Referrer-Policy','no-referrer');}
-export function allowedOrigins(env=process.env){return new Set(['https://www.growx.com.br','https://growx.com.br',...[env.VERCEL_URL,env.VERCEL_BRANCH_URL].filter(Boolean).map(h=>'https://'+h)]);}
-export function requireSameOrigin(request,origins=allowedOrigins()){
+import {AGENDA_HEADERS,isAgendaHost,parseHost} from '../../lib/agenda-host-policy.js';
+export function privateHeaders(response){for(const [key,value] of Object.entries(AGENDA_HEADERS))response.setHeader(key,value);response.setHeader('Pragma','no-cache');}
+export function requireAgendaHost(request,env=process.env){
+ const host=parseHost(request.headers?.host);
+ if(!host||!isAgendaHost(host,env))throw Object.assign(new Error('Endereço não autorizado.'),{status:403});
  const origin=request.headers?.origin;
- if(typeof origin!=='string'||!origins.has(origin))throw Object.assign(new Error('Origem não autorizada.'),{status:403});
+ if(origin!==undefined&&origin!==`https://${host}`)throw Object.assign(new Error('Origem não autorizada.'),{status:403});
+ return host;
+}
+export function requireSameOrigin(request){
+ const host=requireAgendaHost(request);
+ if(request.headers?.origin!==`https://${host}`)throw Object.assign(new Error('Origem não autorizada.'),{status:403});
  const ct=request.headers?.['content-type'];
  if(typeof ct!=='string'||ct.split(';')[0].trim().toLowerCase()!=='application/json')throw Object.assign(new Error('Use uma solicitação JSON.'),{status:415});
 }
