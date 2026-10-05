@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Agenda from './Agenda';
 import PasswordSetup from './PasswordSetup';
+import DatabaseSetup from './DatabaseSetup';
 import logo from '@/assets/logo-growx-oficial.png';
 import './agenda.css';
 
@@ -52,5 +53,5 @@ export function AgendaEntry() {
   if (session) return <Agenda onLogout={logout}/>;
   return <main className="agenda-gate"><section className="agenda-login"><img src={logo} alt="Grow-X"/><h1>Agenda dos Sócios</h1><p>Compromissos, prioridades e entregas em um só lugar.</p>{loading ? <p role="status">Verificando acesso…</p> : configured ? <form onSubmit={login}><label>Seu e-mail<input name="email" type="email" autoComplete="username" required maxLength={254}/></label><label>Sua senha<input name="password" type="password" autoComplete="current-password" required maxLength={256}/></label><button className="button primary" disabled={busy}>{busy ? 'Entrando…' : 'Entrar na agenda'}</button></form> : null}{error && <div className="agenda-gate-error" role="alert">{error}</div>}{!configured && !loading && <div className="agenda-reload"><button className="button" onClick={() => window.location.reload()}>Verificar novamente</button></div>}<div className="agenda-gate-note">Uma agenda compartilhada, com acesso individual para cada sócio. Use a senha criada para o seu e-mail.</div></section></main>;
 }
-const preparingPassword = new URLSearchParams(window.location.search).get('configurar') === 'senha';
-createRoot(document.getElementById('root')).render(<StrictMode>{preparingPassword ? <PasswordSetup/> : <AgendaEntry/>}</StrictMode>);
+const setupMode = new URLSearchParams(window.location.search).get('configurar');
+createRoot(document.getElementById('root')).render(<StrictMode>{setupMode === 'senha' ? <PasswordSetup/> : setupMode === 'banco' ? <DatabaseSetup/> : <AgendaEntry/>}</StrictMode>);
