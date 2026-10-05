@@ -1,0 +1,17 @@
+// Six uniformly sampled 8-bit words plus a five-digit number: about 64.6 bits.
+// These are vocabulary entries, never credentials. Generated values stay in the user's browser.
+export const WORDS = ["abacate", "abacaxi", "abelha", "abrigo", "acacia", "aceno", "aco", "acude", "adega", "agua", "agulha", "aguia", "alface", "algas", "alho", "alma", "almoco", "altura", "aluno", "amendoa", "amigo", "amor", "ancora", "anel", "anjo", "antena", "apito", "apoio", "aquario", "arara", "arco", "areia", "aroma", "arroz", "arvore", "asa", "asfalto", "astro", "atalho", "atlas", "ave", "avela", "aviso", "azul", "baba", "bagre", "baile", "bala", "baleia", "bambu", "banana", "banco", "banda", "banho", "barco", "barra", "barro", "base", "batata", "beco", "beija", "beijo", "beleza", "berco", "bicho", "bife", "bilhete", "biruta", "biscoito", "blusa", "boa", "boca", "bola", "bolha", "bolo", "bolsa", "bomba", "boneca", "bonde", "borboleta", "bosque", "bota", "botao", "brasa", "brisa", "broto", "bruxa", "bule", "buriti", "busca", "cabana", "cabide", "cabo", "cacau", "cacto", "cadeira", "cafe", "caixa", "caju", "calha", "calma", "calor", "cama", "camada", "camera", "caminho", "camisa", "campo", "cana", "caneca", "canela", "canoa", "canto", "capa", "capim", "capivara", "cara", "caramelo", "carbono", "cardume", "carinho", "carne", "carro", "carta", "casaco", "casa", "casco", "castelo", "cebola", "cedro", "celula", "cenario", "cera", "cereja", "cesta", "ceu", "chave", "cheiro", "chocolate", "chuva", "cidade", "cinto", "circo", "cisne", "claro", "clima", "cobra", "coco", "coelho", "colar", "colina", "cometa", "concha", "conto", "copa", "copo", "coral", "corda", "coreto", "coruja", "costa", "couro", "cova", "cravo", "creme", "crista", "cristal", "cruz", "cubo", "cultura", "cupim", "curva", "dado", "danca", "dedal", "dedo", "dente", "desenho", "deserto", "destino", "dia", "diamante", "dica", "disco", "divisa", "doce", "docura", "dono", "dragao", "dupla", "duque", "eco", "eixo", "elenco", "elo", "emblema", "ema", "empate", "encontro", "energia", "enseada", "entrega", "equipe", "escola", "escova", "esfera", "espelho", "esquina", "estante", "estrela", "estudo", "etapa", "fado", "faixa", "fala", "falcao", "familia", "farinha", "farol", "fato", "fauna", "fazenda", "febre", "feira", "feixe", "feno", "ferias", "ferro", "festa", "fita", "flecha", "flor", "flauta", "floco", "folha", "fonte", "forma", "forno", "forro", "forte", "foto", "fragata", "frase", "freio", "frente", "frio", "fruta", "fuga", "fundo", "futuro", "galo", "gambiarra", "garfo", "garoa", "garrafa", "gato"];
+export function generateMemorablePassword(random=globalThis.crypto){
+ const bytes=random.getRandomValues(new Uint8Array(6));
+ const sample=new Uint32Array(1);
+ const ceiling=Math.floor(4294967296/100000)*100000;
+ do{random.getRandomValues(sample)}while(sample[0]>=ceiling);
+ return Array.from(bytes,b=>WORDS[b]).join('-')+'-'+String(sample[0]%100000).padStart(5,'0');
+}
+export async function browserPasswordHash(password,cryptoApi=globalThis.crypto){
+ const salt=cryptoApi.getRandomValues(new Uint8Array(16));
+ const key=await cryptoApi.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);
+ const derived=await cryptoApi.subtle.deriveBits({name:'PBKDF2',salt,iterations:600000,hash:'SHA-256'},key,256);
+ const hex=bytes=>Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
+ return `pbkdf2-sha256$600000$${hex(salt)}$${hex(new Uint8Array(derived))}`;
+}

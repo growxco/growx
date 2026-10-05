@@ -1,0 +1,18 @@
+import {useState} from 'react';
+import logo from '@/assets/logo-growx-oficial.png';
+import {browserPasswordHash,generateMemorablePassword} from './passphrases.js';
+const people=[['fernando','Fernando'],['jefferson','Jefferson'],['julio','Júlio']];
+export default function PasswordSetup(){
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[result,setResult]=useState(null),[notice,setNotice]=useState(''),[visible,setVisible]=useState(false);
+ async function prepare(event){
+  event.preventDefault();const fields=new FormData(event.currentTarget);setError('');setNotice('');setBusy(true);
+  try{
+   const accounts=people.map(([id,name])=>({id,name,email:String(fields.get(id)||'').trim().toLowerCase(),password:generateMemorablePassword()}));
+   if(new Set(accounts.map(a=>a.email)).size!==3)throw new Error('Informe um e-mail diferente para cada sócio.');
+   const config={};for(const account of accounts)config[account.id]={email:account.email,hash:await browserPasswordHash(account.password)};
+   setResult({accounts,config:JSON.stringify(config)});setVisible(false);
+  }catch(e){setError(e.message||'Não foi possível preparar o acesso. Tente novamente.')}finally{setBusy(false)}
+ }
+ async function copy(text,message){try{await navigator.clipboard.writeText(text);setNotice(message)}catch{setError('O navegador não permitiu copiar. Tente novamente pelo botão.')}}
+ return <main className="agenda-gate"><section className="agenda-login agenda-setup"><img src={logo} alt="Grow-X"/><h1>Preparar os três acessos</h1><p>Uma senha diferente para cada sócio, gerada somente neste navegador. Nenhum dado deste formulário é enviado ao servidor.</p>{!result?<form onSubmit={prepare} autoComplete="off">{people.map(([id,name])=><label key={id}>E-mail de {name}<input type="email" name={id} autoComplete="off" required maxLength={254}/></label>)}<button className="button primary" disabled={busy}>{busy?'Preparando os acessos…':'Gerar as três senhas'}</button><p className="agenda-gate-note">Cada senha combina seis palavras curtas e cinco números. Guarde as senhas em um gerenciador e entregue cada uma somente ao respectivo sócio.</p></form>:<><button className="button" onClick={()=>setVisible(!visible)}>{visible?'Ocultar senhas':'Mostrar senhas neste navegador'}</button><div className="setup-accounts">{result.accounts.map(a=><section key={a.id}><strong>{a.name}</strong><span>{a.email}</span><input aria-label={'Senha gerada para '+a.name} type={visible?'text':'password'} value={a.password} readOnly autoComplete="off"/><button className="button" onClick={()=>copy(a.password,'Senha de '+a.name+' copiada. Guarde-a em local seguro.')}>Copiar senha de {a.name}</button></section>)}</div><button className="button primary" onClick={()=>copy(result.config,'Configuração copiada. Cole somente no campo protegido AGENDA_ACCOUNTS_JSON do projeto growx no Vercel.')}>Copiar configuração para o Vercel</button><p className="agenda-gate-note">A configuração contém os e-mails e hashes com salt, sem as senhas em texto. Os acessos só passam a funcionar depois de salvar essa configuração no Vercel e aplicar o deploy.</p><button className="button" onClick={()=>{setResult(null);setVisible(false);setNotice('As informações foram removidas desta tela.');setError('')}}>Limpar esta tela</button></>}{error&&<p className="agenda-gate-error" role="alert">{error}</p>}{notice&&<p className="agenda-gate-note" role="status">{notice}</p>}<p className="agenda-gate-note">Não envie senhas ou a configuração pelo chat. Fechar ou atualizar esta página descarta os valores gerados. A senha técnica do banco é configurada separadamente.</p></section></main>;
+}
