@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
-import { createAgendaDataService } from '../../api/_lib/growx-agenda-data.js';
+import { createAgendaDataService, MAX_AGENDA_RESPONSE_BYTES } from '../../api/_lib/growx-agenda-data.js';
 
 const PEOPLE = [
   { person: 'fernando', actor: 'Fernando (declarado)' },
@@ -106,6 +107,28 @@ async function counts() {
     (SELECT count(*)::int FROM growx_agenda.requests) AS requests,
     (SELECT count(*)::int FROM growx_agenda.settings) AS settings`);
   return rows[0];
+}
+
+// Synthetic fixtures only: fill a precise conservative response budget without
+// hundreds of service round trips. Match documented allowances, but ask
+// PostgreSQL for the serialized payload size rather than estimating characters.
+async function seedCapacity(headroom) {
+  const payload = fixtureItem();
+  const size = await db.query('SELECT octet_length($1::jsonb::text)::int AS bytes', [JSON.stringify(payload)]);
+  const base = size.rows[0].bytes + 38 + 2048; // Quoted UUID plus metadata reserve.
+  const available = MAX_AGENDA_RESPONSE_BYTES - 262144 - headroom;
+  const count = Math.ceil(available / (base + 6000));
+  let notes = available - count * base;
+  const entries = Array.from({ length: count }, () => {
+    const length = Math.min(6000, notes);
+    notes -= length;
+    return { id: randomUUID(), payload: { ...payload, notes: 'x'.repeat(length) } };
+  });
+  assert.equal(notes, 0);
+  await db.query(`INSERT INTO growx_agenda.items (id,payload,revision,archived,updated_at,updated_by)
+    SELECT entry.id,entry.payload,1,false,now(),$2 FROM jsonb_to_recordset($1::jsonb) AS entry(id text,payload jsonb)`,
+  [JSON.stringify(entries), PEOPLE[0].actor]);
+  return entries;
 }
 
 test('agenda starts empty and concurrent initialize creates only empty settings', async () => {
@@ -365,6 +388,91 @@ test('import accepts 500 items but rejects empty, oversized, and partially inval
   assert.deepEqual(await counts(), { items: 0, history: 0, requests: 0, settings: 0 });
   assert.deepEqual(await service.mutate({ action: 'import', requestId: randomUUID(), items: Array.from({ length: 500 }, () => fixtureItem()) }, PEOPLE[0]), { ok: true, count: 500 });
   assert.deepEqual(await counts(), { items: 500, history: 1, requests: 1, settings: 0 });
+});
+
+test('cumulative imports stop below the response ceiling and roll back the entire rejected batch', async () => {
+  const items = Array.from({ length: 100 }, () => fixtureItem({ notes: 'x'.repeat(6000) }));
+  for (let i = 0; i < 3; i += 1) {
+    await service.mutate({ action: 'import', requestId: randomUUID(), items }, PEOPLE[0]);
+  }
+  const request = { action: 'import', requestId: randomUUID(), items };
+  const before = await counts();
+  await assert.rejects(service.mutate(request, PEOPLE[0]), expectStatus(413, /limite seguro.*Arquivar não libera espaço/));
+  assert.deepEqual(await counts(), before);
+  const response = await service.read(PEOPLE[0]);
+  assert.equal(response.items.length, 300);
+  assert.ok(Buffer.byteLength(JSON.stringify(response)) < MAX_AGENDA_RESPONSE_BYTES);
+  // A rejected reservation is rolled back, so a smaller retry can use its ID.
+  assert.deepEqual(await service.mutate({ ...request, items: [fixtureItem()] }, PEOPLE[0]), { ok: true, count: 1 });
+});
+
+test('archived items count toward capacity while archive, restore and shrinking edits remain usable', async () => {
+  const seeded = await seedCapacity(6000);
+  const item = seeded[0];
+  await service.mutate({ action: 'archive', id: item.id, revision: 1 }, PEOPLE[1]);
+  const request = createRequest({ item: fixtureItem({ notes: 'x'.repeat(5000) }) });
+  await assert.rejects(service.mutate(request, PEOPLE[0]), expectStatus(413));
+  await service.mutate({ action: 'restore', id: item.id, revision: 2 }, PEOPLE[2]);
+  await service.mutate({ action: 'save', id: item.id, revision: 3, item: { ...item.payload, notes: '' } }, PEOPLE[0]);
+  assert.equal((await service.mutate(request, PEOPLE[0])).ok, true);
+  assert.ok(Buffer.byteLength(JSON.stringify(await service.read(PEOPLE[0]))) < MAX_AGENDA_RESPONSE_BYTES);
+});
+
+test('concurrent creates acquire the write lock before budget checks and cannot share the same remaining capacity', async () => {
+  const seeded = await seedCapacity(6000);
+  pool.reset();
+  const results = await Promise.allSettled(PEOPLE.slice(0, 2).map((user) => service.mutate(
+    createRequest({ item: fixtureItem({ notes: 'x'.repeat(2000) }) }), user,
+  )));
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(results.find((result) => result.status === 'rejected').reason.status, 413);
+  assert.deepEqual(await counts(), { items: seeded.length + 1, history: 1, requests: 1, settings: 0 });
+  for (const { lease } of pool.releases) {
+    const queries = pool.queries.filter((query) => query.lease === lease);
+    assert.equal(queries[0].sql, 'BEGIN ISOLATION LEVEL READ COMMITTED');
+    assert.equal(queries[1].sql, 'LOCK TABLE growx_agenda.items IN SHARE ROW EXCLUSIVE MODE');
+    assert.match(queries[2].sql, /SUM\(octet_length\(payload::text\)/);
+  }
+});
+
+test('growing edits and recurrences fail atomically; existing oversized data can still be reduced', async () => {
+  const seeded = await seedCapacity(-10000);
+  const item = seeded[0];
+  const before = await counts();
+  await assert.rejects(service.mutate({ action: 'save', id: item.id, revision: 1,
+    item: { ...item.payload, checklist: [{ text: 'x'.repeat(300), done: false }] },
+  }, PEOPLE[0]), expectStatus(413));
+  await assert.rejects(service.mutate(createRequest({ repeat: 'daily', until: '2026-10-07' }), PEOPLE[0]), expectStatus(413));
+  assert.deepEqual(await counts(), before);
+  const prior = (await service.read(PEOPLE[0])).items.find((row) => row.id === item.id);
+  assert.equal(prior.revision, 1);
+  assert.deepEqual(prior.checklist, []);
+  // This edit frees 6,000 bytes but remains above the cap; it must be allowed.
+  await service.mutate({ action: 'save', id: item.id, revision: 1, item: { ...item.payload, notes: '' } }, PEOPLE[0]);
+  await service.mutate({ action: 'archive', id: item.id, revision: 2 }, PEOPLE[1]);
+  await service.mutate({ action: 'restore', id: item.id, revision: 3 }, PEOPLE[2]);
+  const current = (await service.read(PEOPLE[0])).items.find((row) => row.id === item.id);
+  assert.equal(current.notes, '');
+  assert.equal(current.revision, 4);
+  assert.equal(current.archived, false);
+});
+
+test('reserved metadata keeps exact-capacity reads safe after large actors and full history', async () => {
+  const seeded = await seedCapacity(0);
+  const escapedActor = { person: 'fernando', actor: '\u0001'.repeat(300) };
+  await service.mutate({ action: 'initialize' }, escapedActor);
+  for (let revision = 1; revision <= 31; revision += 1) {
+    await service.mutate({ action: 'settings', revision,
+      settings: { capacity: { fernando: 80, jefferson: 0, julio: null } },
+    }, escapedActor);
+  }
+  await service.mutate({ action: 'archive', id: seeded[0].id, revision: 1 }, escapedActor);
+  await service.mutate({ action: 'restore', id: seeded[0].id, revision: 2 }, escapedActor);
+  const response = await service.read(escapedActor);
+  assert.equal(response.history.length, 30);
+  assert.ok(Buffer.byteLength(JSON.stringify(response)) < MAX_AGENDA_RESPONSE_BYTES);
+  assert.equal(response.settings.revision, 32);
+  assert.equal(response.items.find((row) => row.id === seeded[0].id).updatedBy, escapedActor.actor);
 });
 
 test('an item insertion acknowledgement failure rolls back the import and leaves the request retryable', async () => {

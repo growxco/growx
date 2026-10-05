@@ -25,6 +25,8 @@ As APIs exigem sessão, gravações exigem origem autorizada e JSON, e tentativa
 
 Usar exportação/importação autenticada e privada. A inicialização cria somente configurações vazias; não há agenda ou dados de cliente embutidos no código. A importação padrão adiciona rascunhos para revisão, sem substituir registros já existentes.
 
+Até a implantação de leituras e exportações paginadas, cada gravação respeita um orçamento conservador de 3.500.000 bytes para a resposta completa, abaixo do limite de 4,5 MB do Vercel. O cálculo inclui todos os itens, inclusive arquivados, seu JSON/identificador em UTF-8, uma reserva de 2.048 bytes por item para metadados e 262.144 bytes para configurações, histórico e envelope. Não é um limite de tamanho do arquivo de backup: um arquivo permitido pode ultrapassar a capacidade restante. As gravações são serializadas no banco, e um lote que excederia o orçamento é revertido inteiro, incluindo histórico e idempotência. Lotes anteriores continuam salvos. Ler/exportar, arquivar/restaurar e edições que não aumentam o orçamento permanecem disponíveis; arquivar não libera espaço. Para liberar capacidade, reduza notas ou checklist existentes. Conteúdo que já ultrapassasse o orçamento antes desta proteção exige redução ou paginação antes de produção.
+
 ## Verificação antes de produção
 
 1. Confirmar banco, usuário restrito, TLS e permissões efetivas.

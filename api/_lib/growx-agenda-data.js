@@ -4,6 +4,15 @@ import { z } from 'zod';
 import { addDays, daySchema, itemSchema, occurrenceDates } from '../../src/agenda/model.js';
 
 const MAX_REQUEST_BYTES = 1_500_000;
+// Temporary whole-agenda read budget, below Vercel's 4.5 MB response ceiling.
+// Count JSONB's UTF-8 representation (including its extra whitespace), every ID,
+// 2 KiB per item for keys/revision/timestamps/archived/escaped 300-char actor,
+// and 256 KiB for settings, 30 bounded audit entries, user and envelope. Fixed
+// allowances keep archive/restore and actor changes safe even at capacity.
+export const MAX_AGENDA_RESPONSE_BYTES = 3_500_000;
+const RESPONSE_METADATA_BYTES = 262_144;
+const ITEM_METADATA_BYTES = 2_048;
+const CAPACITY_REACHED = 'A agenda atingiu o limite seguro de armazenamento desta versão. Este lote ou alteração não foi salvo; os demais dados foram mantidos. Reduza notas ou checklist de itens existentes antes de adicionar conteúdo. Arquivar não libera espaço.';
 const READ_FAILED = 'Não foi possível carregar a agenda. Tente novamente.';
 const WRITE_FAILED = 'Não foi possível salvar. Seus dados no formulário foram mantidos; tente novamente.';
 const INVALID_DATA = 'Os dados enviados são inválidos. Revise os campos; seu formulário foi preservado.';
@@ -212,6 +221,30 @@ export function createAgendaDataService({ pool } = {}) {
     return replayResult(rows[0], command, user);
   }
 
+  async function responseBudget(client) {
+    // Include archived rows: the read/backup contract returns those too.
+    const { rows } = await client.query(
+      `SELECT COALESCE(SUM(octet_length(payload::text) + octet_length(to_json(id)::text) + ${ITEM_METADATA_BYTES}), 0)::bigint AS item_bytes FROM growx_agenda.items`,
+    );
+    const bytes = Number(rows[0]?.item_bytes);
+    if (!Number.isSafeInteger(bytes) || bytes < 0) throw new AgendaDataError(503, WRITE_FAILED);
+    return bytes + RESPONSE_METADATA_BYTES;
+  }
+
+  async function boundedMutation(client, command, user) {
+    // A transaction-scoped write lock serializes every mutation across function
+    // instances; ordinary SELECTs remain available. Acquire before reading size
+    // or reserving IDs so concurrent batches cannot both consume the headroom.
+    await client.query('LOCK TABLE growx_agenda.items IN SHARE ROW EXCLUSIVE MODE');
+    const before = await responseBudget(client);
+    const result = await applyMutation(client, command, user);
+    const after = await responseBudget(client);
+    if (after > MAX_AGENDA_RESPONSE_BYTES && after > before) {
+      throw new AgendaDataError(413, CAPACITY_REACHED);
+    }
+    return result;
+  }
+
   async function applyMutation(client, command, user) {
     const at = new Date().toISOString();
     if (command.action === 'initialize') {
@@ -311,7 +344,7 @@ export function createAgendaDataService({ pool } = {}) {
       try {
         identity = authorizedUser(user);
         command = prepareMutation(data);
-        return await transaction((client) => applyMutation(client, command, identity));
+        return await transaction((client) => boundedMutation(client, command, identity));
       } catch (error) {
         // A COMMIT may succeed even when its acknowledgement is lost. Look up
         // the persisted request on a fresh connection, without repeating work.
