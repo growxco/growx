@@ -1,3 +1,4 @@
+import {shouldLockSession} from "./session-policy.js";
 import growxLogo from "@/assets/logo-growx-oficial.png";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ListTodo, Plus, ChevronLeft, ChevronRight, Search, Download, LockKeyhole, CircleCheck, Clock3, AlertTriangle, RefreshCw, Trash2, RotateCcw, CalendarCheck, History, Check, X, Flag, Repeat2, Settings2, LogOut, WifiOff, ChevronDown } from "lucide-react";
@@ -42,7 +43,7 @@ function saveFile(name, body, type) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1e3);
 }
-function Agenda({ onLogout }) {
+function Agenda({ onLogout, onSessionExpired }) {
   const [items, setItems] = useState([]), [loading, setLoading] = useState(true), [error, setError] = useState(""), [syncing, setSyncing] = useState(false), [synced, setSynced] = useState("");
   const [user, setUser] = useState(null), [settings, setSettings] = useState({ capacity: { fernando: null, jefferson: null, julio: null }, revision: 0 }), [history, setHistory] = useState([]);
   const [date, setDate] = useState(today()), [view, setView] = useState("month"), [page, setPage] = useState("calendar"), [query, setQuery] = useState(""), [owners, setOwners] = useState(PEOPLE.map((p) => p.id)), [product, setProduct] = useState("all"), [status, setStatus] = useState("all"), [area, setArea] = useState("all");
@@ -56,14 +57,16 @@ function Agenda({ onLogout }) {
   const [capacityRevision, setCapacityRevision] = useState(0);
   const api = useCallback(async (body) => {
     const r = await fetch("/api/socios/agenda", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (shouldLockSession(r.status)) onSessionExpired();
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || "Falha ao salvar");
     return d;
-  }, []);
+  }, [onSessionExpired]);
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setSyncing(true);
     try {
       const r = await fetch("/api/socios/agenda", { cache: "no-store" });
+      if (shouldLockSession(r.status)) onSessionExpired();
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
       if (!d.initialized && !initializing.current) {
@@ -85,7 +88,7 @@ function Agenda({ onLogout }) {
       setLoading(false);
       setSyncing(false);
     }
-  }, [api]);
+  }, [api,onSessionExpired]);
   useEffect(() => {
     try {
       const preferred = localStorage.getItem("growx-agenda-view");

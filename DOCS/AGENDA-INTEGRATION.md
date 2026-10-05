@@ -17,7 +17,9 @@ A migração cria apenas o schema privado growx_agenda e um papel sem LOGIN. Tod
 
 ## Segurança e uso
 
-Cada conta usa seu e-mail e uma senha própria, com acesso à mesma agenda compartilhada. O servidor determina a identidade pelo e-mail e senha, ignorando seletores de pessoa enviados pelo cliente. O histórico registra a conta autenticada, sem garantir a identidade física de quem usa a credencial. A sessão usa cookie Secure, HttpOnly e SameSite=Strict, vence em oito horas e pode ser encerrada. Trocar o hash ou e-mail de uma conta invalida as sessões dessa conta após a aplicação da configuração, preservando as sessões das demais.
+Cada conta usa seu e-mail e uma senha própria, com acesso à mesma agenda compartilhada. O servidor determina a identidade pelo e-mail e senha, ignorando seletores de pessoa enviados pelo cliente. O histórico registra a conta autenticada, sem garantir a identidade física de quem usa a credencial. A sessão usa cookie Secure, HttpOnly e SameSite=Strict, vence em oito horas e pode ser encerrada. Ao receber401 ou atingir a validade conhecida da sessão, a interface remove o calendário carregado e as opções de exportação. Sair também oculta imediatamente os dados, mesmo se a revogação no servidor falhar; nesse caso há aviso e nova tentativa. Alterações não salvas são descartadas ao bloquear a sessão. A revogação remota é percebida na próxima resposta autenticada (a agenda aberta consulta a cada30 segundos); não há promessa de revogação instantânea de dados já baixados ou de uma aba suspensa/offline.
+
+Trocar o hash ou e-mail de uma conta invalida as sessões dessa conta após a aplicação da configuração, preservando as sessões das demais.
 
 As APIs exigem sessão, gravações exigem origem autorizada e JSON, e tentativas de senha têm limite persistente por IP. Dados, histórico e idempotência são gravados em transações; revisões protegem contra sobrescrita. Registros são arquivados de forma recuperável.
 
