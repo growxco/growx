@@ -8,7 +8,7 @@ O backend permanece bloqueado até que o banco e as contas estejam configurados.
 
 Variáveis exclusivamente de servidor:
 - AGENDA_DATABASE_URL: conexão PostgreSQL com o usuário restrito growx_agenda_runtime, usando pooler apropriado para funções serverless. Não reutilizar postgres ou service_role.
-- AGENDA_DATABASE_CA: certificado público da autoridade do banco, se necessário para validar o TLS. A validação não deve ser desligada.
+- AGENDA_DATABASE_CA: substituição opcional do certificado público da autoridade do banco. Por padrão, o servidor inclui a Supabase Root2021 CA publicada no painel oficial (válida até26/04/2031; SHA-256807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa). A conexão exige validação do certificado e do hostname; nunca desligar a validação.
 - AGENDA_ACCOUNTS_JSON: objeto com exatamente fernando, jefferson e julio. Cada entrada possui email exclusivo e hash PBKDF2-SHA256 com600.000 iterações, salt aleatório de16 bytes e derivação de32 bytes. As senhas em texto não são armazenadas pelo aplicativo.
 
 A definição/entrada das credenciais é feita pelo proprietário em fluxo seguro. O formulário /socios/agenda?configurar=senha gera três senhas individuais com o gerador criptográfico do navegador e calcula os respectivos hashes. Os valores ficam somente na memória da página até ela ser fechada ou limpa. O proprietário copia cada senha para o seu gerenciador e copia uma configuração de hashes para o Vercel; a página não envia senhas nem aplica mudanças sozinha. O proprietário deve colar a configuração no campo protegido do Vercel. Não salvar senhas em snippets SQL ou enviá-las em mensagens.
