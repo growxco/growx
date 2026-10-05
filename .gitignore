@@ -52,3 +52,6 @@ src/assets/*.raw.png
 src/assets/*.tmp.*
 
 .vercel
+
+# Supabase CLI local state
+/supabase/.temp/

@@ -1,17 +1,48 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install --legacy-peer-deps",
-  "regions": ["gru1"],
+  "regions": [
+    "gru1"
+  ],
   "crons": [
-    { "path": "/api/cron/reconcile", "schedule": "* * * * *" },
-    { "path": "/api/cron/webhook-redrive", "schedule": "* * * * *" },
-    { "path": "/api/cron/financial-reconcile", "schedule": "* * * * *" }
+    {
+      "path": "/api/cron/reconcile",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/webhook-redrive",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/financial-reconcile",
+      "schedule": "* * * * *"
+    }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/prevenda", "destination": "/prevenda.html" },
-    { "source": "/modulo", "destination": "/prevenda.html" },
-    { "source": "/((?!api/).*)", "destination": "/" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/socios/agenda",
+      "destination": "/socios-agenda.html"
+    },
+    {
+      "source": "/socios/agenda/",
+      "destination": "/socios-agenda.html"
+    },
+    {
+      "source": "/prevenda",
+      "destination": "/prevenda.html"
+    },
+    {
+      "source": "/modulo",
+      "destination": "/prevenda.html"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/"
+    }
   ],
   "headers": [
     {
@@ -44,6 +75,69 @@
         {
           "key": "X-DNS-Prefetch-Control",
           "value": "on"
+        }
+      ]
+    },
+    {
+      "source": "/socios/agenda",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, private"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/socios/agenda/",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, private"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        }
+      ]
+    },
+    {
+      "source": "/socios-agenda.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, private"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
         }
       ]
     }
