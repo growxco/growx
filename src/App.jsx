@@ -10,6 +10,7 @@ import CookieBanner from './components/CookieBanner';
 import PageLoader from './components/PageLoader';
 import { SoundLab, ScrollProgress, PageTransition, WhatsAppFloat, StickyCTAMobile } from './components/visual';
 import { analytics, installAnalytics } from './lib/analytics';
+import { startMetricool } from './lib/metricoolMarketing';
 import { COOKIE_CONSENT, getCookieConsent, subscribeCookieConsent } from './lib/consent';
 
 // Eager: Home (LCP)
@@ -56,6 +57,8 @@ function useCookieConsentState() {
 
 function AnalyticsGate({ consent }) {
   const previousConsent = useRef(consent);
+  const { pathname, search, hash } = useLocation();
+  useEffect(() => { startMetricool(); }, [consent, pathname, search, hash]);
 
   useEffect(() => {
     if (
