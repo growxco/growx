@@ -1,3 +1,4 @@
+import CatalogEditorial from '@/components/sections/CatalogEditorial';
 import {
   Brain, Wifi, ShoppingCart, Camera, BarChart3, MessageCircle,
   Shield, Clock, Zap, Leaf, Users,
@@ -102,6 +103,8 @@ export default function GrowXAppPage() {
           { title: 'Crescimento colaborativo', description: 'Cultive melhor com apoio de quem já passou pelos mesmos desafios.', points: ['Fórum técnico', 'Eventos', 'Ranking'] },
         ]}
       />
+
+      <CatalogEditorial />
 
       <FinalCTA />
     </>
