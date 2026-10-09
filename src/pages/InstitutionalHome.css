@@ -1,0 +1,67 @@
+
+.institutional-home { --company-line: var(--border); }
+.company-intro { padding: 64px 0 32px; }
+.company-heading { display: grid; grid-template-columns: 1.6fr 1fr; gap: 48px; align-items: end; margin-bottom: 38px; }
+.company-heading h1 { margin: 18px 0 0; font-size: clamp(42px,5.3vw,76px); line-height: 1.04; letter-spacing: -.045em; font-weight: 650; }
+.company-heading h1 span { color: var(--primary); }
+.company-statement p { font-size: 20px; line-height: 1.55; margin: 0 0 22px; color: var(--muted-foreground); }
+.company-down,.company-text-link { display: inline-flex; align-items: center; gap: 10px; color: var(--primary); font-weight: 600; font-size: 15px; }
+.sector-panorama { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; scroll-margin-top: 100px; }
+.sector-entry { min-width: 0; }
+.sector-scene-link { display: block; position: relative; height: 410px; overflow: hidden; border-radius: 16px; background: #16231a; }
+.sector-scene-link img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }
+.sector-scene-link:hover img { transform: scale(1.035); }
+.sector-scene-link::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 25%,rgba(2,14,7,.88)); pointer-events: none; }
+.sector-image-label { position: absolute; z-index: 1; bottom: 26px; left: 24px; right: 16px; color: #fff; }
+.sector-image-label > span:first-child { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.sector-image-label h2 { font-size: clamp(24px,2.3vw,33px); line-height: 1.15; letter-spacing: -.025em; font-weight: 650; margin: 12px 0 18px; }
+.sector-view { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.sector-entry-footer { padding: 20px 3px 0; display: grid; gap: 10px; }
+.sector-entry-footer > span { font-size: 12px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .055em; }
+.sector-entry-footer a { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; color: var(--primary); }
+.acervo-note { font-size: 12px; line-height: 1.6; color: var(--muted-foreground); margin: 22px 0 0; }
+.company-purpose { padding: 80px 0; }
+.purpose-grid { border-top: 1px solid var(--company-line); padding-top: 36px; display: grid; grid-template-columns: 1fr 2fr; gap: 40px; }
+.purpose-grid h2,.company-conversation h2 { font-size: clamp(30px,3.4vw,46px); line-height: 1.13; letter-spacing: -.035em; font-weight: 650; margin: 0 0 22px; }
+.purpose-grid p,.story-copy p,.story-product p,.conversation-grid p { color: var(--muted-foreground); font-size: 17px; line-height: 1.75; max-width: 650px; margin: 18px 0; }
+.purpose-grid .purpose-boundary { font-size: 14px; border-left: 2px solid var(--primary); padding-left: 18px; }
+.sector-story { padding: 50px 0 74px; scroll-margin-top: 80px; }
+.story-heading { display: flex; justify-content: space-between; gap: 16px; border-top: 1px solid var(--company-line); padding-top: 24px; margin-bottom: 34px; }
+.story-heading > span { color: var(--muted-foreground); font-size: 13px; }
+.story-grid { display: grid; grid-template-columns: .85fr 1.15fr; align-items: center; gap: 54px; }
+.story-copy h2 { font-size: clamp(30px,3.1vw,44px); letter-spacing: -.035em; line-height: 1.14; font-weight: 650; }
+.story-copy .btn-primary { margin: 16px 0; display: inline-flex; align-items: center; gap: 10px; }
+.story-copy .company-text-link { display: flex; margin-top: 8px; }
+.story-context { margin: 0; }
+.story-context img { width: 100%; height: auto; border-radius: 16px; }
+.story-context figcaption,.story-product figcaption { font-size: 12px; color: var(--muted-foreground); line-height: 1.6; margin-top: 10px; }
+.story-product { display: grid; grid-template-columns: 1.1fr 1fr; gap: 54px; align-items: center; margin-top: 36px; background: rgba(119,160,122,.045); padding: 28px; border: 1px solid var(--company-line); border-radius: 16px; }
+.story-product figure { margin: 0; min-width: 0; }
+.story-product img { width: 100%; height: auto; max-height: 330px; object-fit: contain; border-radius: 8px; }
+.story-product h3,.conversation-grid h3 { font-size: 23px; font-weight: 600; line-height: 1.25; letter-spacing: -.015em; }
+.story-product p { font-size: 15px; }
+.story-product .story-destination { color: var(--primary); font-size: 13px; }
+.company-conversation { border-top: 1px solid var(--company-line); padding: 64px 0 70px; }
+.company-conversation h2 { margin-top: 18px; }
+.conversation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; }
+.company-conversation .btn-primary { display: inline-flex; align-items: center; gap: 10px; }
+.institutional-home a:focus-visible { outline: 3px solid var(--primary); outline-offset: 5px; }
+@media(max-width: 899px) {
+ .company-intro { padding-top: 38px; }
+ .company-heading { grid-template-columns: 1fr; gap: 24px; margin-bottom: 26px; }
+ .company-statement p { font-size: 18px; margin-bottom: 14px; }
+ .sector-panorama { grid-template-columns: 1fr; gap: 26px; }
+ .sector-scene-link { height: 330px; }
+ .sector-image-label h2 { font-size: 31px; }
+ .sector-entry-footer { gap: 8px; padding-top: 14px; }
+ .purpose-grid,.story-grid,.story-product,.conversation-grid { grid-template-columns: 1fr; gap: 26px; }
+ .company-purpose { padding: 48px 0; }
+ .purpose-grid { padding-top: 24px; }
+ .sector-story { padding: 30px 0 40px; }
+ .story-heading { flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+ .story-product { padding: 18px; margin-top: 24px; }
+ .story-context img { border-radius: 12px; }
+ .company-conversation { padding: 44px 0; }
+}
+@media(prefers-reduced-motion: reduce) { .sector-scene-link img { transition: none; } .sector-scene-link:hover img { transform: none; } }
+

@@ -1,8 +1,8 @@
 export const MARKETING_METADATA = {
   "/": {
     "file": "index.html",
-    "title": "GXP, Módulo Grow-X e parceiros",
-    "description": "Organize seus registros no GXP, conheça o módulo de seis saídas AC e converse sobre seu projeto. Supply-X conecta as jornadas de indústria e produtor."
+    "title": "Grow-X Co. — Agricultura, Indústria e Plantio Indoor",
+    "description": "Conheça os três núcleos da Grow-X Co.: Agricultura com SPP, Indústria com SPI e Plantio Indoor com GXP e Módulo Grow-X. Cada projeto começa no seu contexto."
   },
   "/solucoes/growx-app": {
     "file": "marketing/gxp.html",
