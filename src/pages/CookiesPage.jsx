@@ -25,6 +25,7 @@ const COOKIES = [
       { name: '_ga / _ga_*', purpose: 'Análise de tráfego e funil.', vendor: 'Google Analytics 4', duration: '14 meses' },
       { name: '_clck / _clsk', purpose: 'Heatmap e session replay.', vendor: 'Microsoft Clarity', duration: '12 meses' },
       { name: 'Web Analytics', purpose: 'Métricas agregadas de navegação.', vendor: 'Vercel', duration: 'Sem cookie próprio' },
+      { name: 'Metricool', purpose: 'Métricas agregadas de visitas nas páginas públicas, após aceite de analytics.', vendor: 'Metricool', duration: 'Sem cookies ou identificadores no dispositivo' },
       { name: 'Speed Insights', purpose: 'Medição de desempenho das páginas.', vendor: 'Vercel', duration: 'Sem cookie próprio' },
     ],
   },
