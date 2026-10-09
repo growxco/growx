@@ -104,6 +104,7 @@ export default function GrowXAppPage() {
         ]}
       />
 
+      <CatalogEditorial universe />
       <CatalogEditorial />
 
       <FinalCTA />
