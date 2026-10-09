@@ -1,3 +1,4 @@
+import CatalogEditorial from '@/components/sections/CatalogEditorial';
 import { Cpu, Wifi, Smartphone, Settings, Thermometer, Zap } from 'lucide-react';
 import { SEO, productSchema } from '@/components/visual';
 import { PageHero, FeatureGrid, SpecsTable, MetricStrip, UseCases, FinalCTA } from '@/components/sections';
@@ -80,6 +81,8 @@ export default function ModuloSemFioPage() {
         title="Especificações completas."
         specs={SPECS}
       />
+
+      <CatalogEditorial />
 
       <FinalCTA />
     </>
