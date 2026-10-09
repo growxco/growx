@@ -6,11 +6,11 @@ import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
 
 const ROUTE_CTA = [
   { match: /^\/solucoes\/(supply-x|spi)/, label: 'Contato corporativo SPI', to: CORPORATE_CONTACT_PATH, kind: 'spi' },
-  { match: /^\/solucoes\/spp/, label: 'Assinar SPP', to: APP_PORTAL_URLS.spp, kind: 'spp', external: true },
+  { match: /^\/solucoes\/spp/, label: 'Conhecer o SPP', to: 'https://www.supplyx.com.br/spp', kind: 'spp', external: true },
   { match: /^\/solucoes\/growx-app/, label: 'Assinar GXP', to: APP_PORTAL_URLS.gxp, kind: 'gxp', external: true },
   { match: /^\/cannabis-medicinal/, label: 'Assinar GXP', to: APP_PORTAL_URLS.gxp, kind: 'gxp', external: true },
   { match: /^\/produtos/, label: 'Solicitar orçamento', to: '/contato', kind: 'contact' },
-  { match: /^\/parceiros/, label: 'Quero ser parceiro', to: '/contato', kind: 'contact' },
+  { match: /^\/parceiros/, label: 'Conversar sobre parceria', to: '/parceiros', kind: 'contact' },
   { match: /^\/prevenda|^\/modulo/, label: null }, // página tem buy-bar própria
   { match: /^\/(demo|contato-corporativo-spi)/, label: null },
   { match: /^\/contato|^\/obrigado|^\/lista-espera-app/, label: null },

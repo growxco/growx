@@ -14,7 +14,7 @@ const PRODUCTS = [
     href: '/produtos/estacao-meteorologica',
     image: estacaoMeteorologica,
     desc: 'Sensores LoRa de alta precisão pra microclima local. Decisão agronômica baseada em dado real, não estimativa de satélite.',
-    chips: ['LoRa 915 MHz', 'IP67', 'Solar 24/7', 'Bateria 2+ anos'],
+    chips: ['Sensores compatíveis', 'Escopo a confirmar'],
   },
   {
     id: 'modulo-sem-fio',
@@ -22,8 +22,8 @@ const PRODUCTS = [
     icon: Cpu,
     href: '/produtos/modulo-sem-fio',
     image: iotImg,
-    desc: 'Controle wireless de até 4 estufas com 8 relés programáveis, sensores integrados e malha mesh.',
-    chips: ['4 zonas', 'WiFi + BT', '8 relés', 'OTA'],
+    desc: 'Módulo documentado com seis saídas AC, DHT22 e sensores compatíveis. Kit e atuação física em validação.',
+    chips: ['6 saídas AC', 'DHT22', 'Kit em validação'],
   },
   {
     id: 'estufa-automatizada',
@@ -32,15 +32,15 @@ const PRODUCTS = [
     href: '/produtos/estufa-automatizada',
     image: estufaAutomatizada,
     desc: 'Ambiente de cultivo completo: clima, iluminação programável e irrigação de precisão.',
-    chips: ['Climate ctrl', 'PPFD on-demand', 'Logger', 'WiFi + 4G'],
+    chips: ['Composição a confirmar', 'Projeto avaliado'],
   },
 ];
 
 const COMMON = [
-  { icon: Wifi, title: 'Conectividade IoT', description: 'LoRa, WiFi e 4G — pra rede precária e área remota.' },
-  { icon: Cloud, title: 'Dados na nuvem', description: 'Histórico completo, acessível de qualquer lugar.' },
-  { icon: Battery, title: 'Longa autonomia', description: 'Bateria de longa duração + painel solar opcional.' },
-  { icon: Shield, title: 'Resistência industrial', description: 'IP67, projetado pra calor, poeira e umidade.' },
+ {icon: Wifi, title:'Compatibilidade', description:'Sensores, equipamentos e conectividade são avaliados no projeto.'},
+ {icon: Cloud, title:'Informações disponíveis', description:'Confira recursos e permissões demonstrados antes de contratar.'},
+ {icon: Battery, title:'Composição do kit', description:'Acessórios, alimentação e instalação precisam constar da proposta.'},
+ {icon: Shield, title:'Instalação confirmada', description:'Características essenciais e condições de uso são verificadas antes da contratação.'},
 ];
 
 export default function ProductsPage() {
@@ -63,8 +63,7 @@ export default function ProductsPage() {
               Engenharia brasileira para <span className="text-emerald-glow">condições reais.</span>
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              Sensores, módulos e estufas projetados pra rede precária, calor de campo, poeira e umidade.
-              Atualizados over-the-air, integrados às nossas plataformas.
+              Conheça os percursos de avaliação de sensores, módulo e ambiente de cultivo. Composição, instalação e recursos são definidos na proposta.
             </p>
           </Reveal>
         </Container>

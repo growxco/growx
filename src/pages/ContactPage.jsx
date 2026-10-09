@@ -16,6 +16,9 @@ const FIELDS = [
     type: 'select',
     required: true,
     options: [
+      { value: 'gxp', label: 'GXP' },
+      { value: 'modulo', label: 'Módulo Grow-X' },
+      { value: 'spp', label: 'SPP / Produtores' },
       { value: 'spi-enterprise', label: 'Contato corporativo SPI / Supply-X' },
       { value: 'parceiro', label: 'Quero ser parceiro' },
       { value: 'imprensa', label: 'Imprensa / pauta' },
@@ -24,7 +27,7 @@ const FIELDS = [
       { value: 'outro', label: 'Outro' },
     ],
   },
-  { name: 'message', label: 'Mensagem', type: 'textarea', required: true, placeholder: 'Descreva seu cenário, dúvida ou projeto.' },
+  { name: 'message', label: 'Mensagem (opcional)', type: 'textarea', placeholder: 'Descreva seu cenário, dúvida ou projeto.' },
 ];
 
 const SOCIAL = [
@@ -34,6 +37,9 @@ const SOCIAL = [
 ];
 
 export default function ContactPage() {
+  const query = new URLSearchParams(window.location.search);
+  const product = ['gxp', 'modulo', 'spi', 'spp', 'supply-x'].includes(query.get('produto')) ? query.get('produto') : 'other';
+  const origin = query.get('origem') === 'supplyx' ? 'supplyx' : 'growx';
   const onWhatsApp = () => {
     analytics.ctaWhatsApp('/contato', 'generic');
     window.open(whatsappLink('Olá! Quero conversar sobre a Grow-X.'), '_blank', 'noopener');
@@ -114,12 +120,16 @@ export default function ContactPage() {
                 </p>
                 <div className="mt-7">
                   <LeadForm
+                    key={`contact-${product}`}
                     form="contact"
+                    initialValues={{subject: product === 'spi' || product === 'supply-x' ? 'spi-enterprise' : product === 'other' ? '' : product}}
                     segment="other"
                     fields={FIELDS}
+                    source={origin}
+                    extra={{ profile: product }}
                     submitLabel="Enviar mensagem"
                     successTitle="Mensagem recebida."
-                    successText="Em até 1 dia útil, alguém do time entra em contato."
+                    successText="O canal recebeu sua solicitação. O time combina o próximo passo."
                   />
                 </div>
               </GlassCard>

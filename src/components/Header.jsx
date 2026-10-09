@@ -11,7 +11,6 @@ import CommandPalette from './CommandPalette';
 import logoGrowX from '../assets/logo-growx-oficial.png';
 import { cn } from '@/lib/utils';
 import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
-import { OFERTA, brlCurto } from '@/lib/oferta';
 
 const NAV = [
   { name: 'Início', href: '/', type: 'link' },
@@ -21,7 +20,7 @@ const NAV = [
     type: 'mega',
     items: [
       { name: 'Supply-X', href: '/solucoes/supply-x', icon: Globe, desc: 'Plataforma completa SPI + SPP' },
-      { name: 'SPI — Indústria', href: '/solucoes/spi', icon: Factory, desc: 'Para grandes indústrias agroalimentares' },
+      { name: 'SPI — Indústria', href: '/solucoes/spi', icon: Factory, desc: 'Para pequenas, médias e grandes indústrias' },
       { name: 'SPP — Produtores', href: '/solucoes/spp', icon: Tractor, desc: 'O app que organiza o produtor real' },
       { name: 'Grow-X App', href: '/solucoes/growx-app', icon: Smartphone, desc: 'Cannabis medicinal & cultivo controlado' },
     ],
@@ -35,10 +34,10 @@ const NAV = [
         name: 'Módulo Grow-X · Pré-venda',
         href: '/prevenda',
         icon: Cpu,
-        desc: `Pré-venda ${brlCurto(OFERTA.pixCentavos)} no Pix · até ${OFERTA.encerramentoBR.slice(0, 5)}`,
+        desc: 'Pré-venda fechada · avaliação de compatibilidade',
       },
       { name: 'Estação Meteorológica', href: '/produtos/estacao-meteorologica', icon: CloudSun, desc: 'Sensores LoRa de alta precisão' },
-      { name: 'Módulo Sem Fio', href: '/produtos/modulo-sem-fio', icon: Cpu, desc: 'Controle de até 4 estufas' },
+      { name: 'Módulo Sem Fio', href: '/produtos/modulo-sem-fio', icon: Cpu, desc: '6 saídas AC · kit em validação' },
       { name: 'Estufa Automatizada', href: '/produtos/estufa-automatizada', icon: Sprout, desc: 'Cultivo controlado completo' },
     ],
   },

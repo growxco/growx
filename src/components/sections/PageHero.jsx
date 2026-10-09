@@ -15,6 +15,7 @@ export default function PageHero({
   secondaryCta,
   image,
   imageAlt = '',
+  imageFit = 'cover',
   status = 'Operação ativa',
   badge,
 }) {
@@ -70,7 +71,7 @@ export default function PageHero({
               <Reveal>
                 <GlassCard variant="strong" className="border-gradient-emerald shadow-elevated overflow-hidden">
                   <div className="relative aspect-[4/3] w-full">
-                    <img src={image} alt={imageAlt} className="absolute inset-0 h-full w-full object-cover" />
+                    <img src={image} alt={imageAlt} className={`absolute inset-0 h-full w-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'}`} />
                     <div className="absolute inset-0 bg-gradient-to-tr from-background/70 via-transparent to-background/30" />
                     <div className="absolute left-4 top-4">
                       <span className="rounded-full border border-foreground/20 bg-background/80 px-3 py-1 text-xs font-medium text-foreground backdrop-blur-sm">Prévia do produto</span>

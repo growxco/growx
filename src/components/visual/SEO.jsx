@@ -1,4 +1,5 @@
-import { Helmet } from 'react-helmet-async';
+import { useEffect } from 'react';
+import { MARKETING_METADATA } from '@/lib/marketingMetadata';
 import { breadcrumbSchemaForPath } from './StructuredData';
 
 const BASE = 'https://www.growx.com.br';
@@ -37,48 +38,36 @@ const WEBSITE_LD = {
   inLanguage: ['pt-BR', 'en'],
 };
 
-export default function SEO({
-  title,
-  description,
-  path = '/',
-  image,
-  type,
-  noIndex = false,
-  jsonLd,
-}) {
-  const fullTitle = title ? `${title} — Grow-X` : 'Grow-X — Inteligência operacional para o agro brasileiro';
+
+function upsert(selector, tag, attributes) {
+  const nodes = [...document.head.querySelectorAll(selector)];
+  const node = nodes.shift() || document.createElement(tag);
+  nodes.forEach(duplicate => duplicate.remove());
+  Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+  document.head.appendChild(node);
+}
+
+export default function SEO({ title, description, path = '/', image, type, noIndex = false, jsonLd }) {
+  const published = MARKETING_METADATA[path];
+  const fullTitle = `${published?.title || title || 'Grow-X Co.'} - Grow-X`;
+  const resolvedDescription = published?.description || description || 'Tecnologia e projetos Grow-X.';
   const url = `${BASE}${path}`;
+  const resolvedImage = image || DEFAULT_OG;
+  const resolvedType = type || 'website';
   const breadcrumb = breadcrumbSchemaForPath(path);
-  const isPreVenda = path === '/prevenda';
-  const resolvedImage = image || (isPreVenda ? `${BASE}/og-prevenda-v2.jpg` : DEFAULT_OG);
-  const resolvedType = type || (isPreVenda ? 'product' : 'website');
-
-  return (
-    <Helmet>
-      <title>{fullTitle}</title>
-      {description && <meta name="description" content={description} />}
-      <link rel="canonical" href={url} />
-      {noIndex && <meta name="robots" content="noindex, nofollow" />}
-
-      <meta property="og:type" content={resolvedType} />
-      <meta property="og:title" content={fullTitle} />
-      {description && <meta property="og:description" content={description} />}
-      <meta property="og:url" content={url} />
-      <meta property="og:image" content={resolvedImage} />
-      <meta property="og:locale" content="pt_BR" />
-      <meta property="og:site_name" content="Grow-X" />
-
-      <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={fullTitle} />
-      {description && <meta name="twitter:description" content={description} />}
-      <meta name="twitter:image" content={resolvedImage} />
-
-      <script type="application/ld+json">{JSON.stringify(ORG_LD)}</script>
-      <script type="application/ld+json">{JSON.stringify(WEBSITE_LD)}</script>
-      {breadcrumb && <script type="application/ld+json">{JSON.stringify(breadcrumb)}</script>}
-      {jsonLd && (Array.isArray(jsonLd) ? jsonLd : [jsonLd]).map((d, i) => (
-        <script key={i} type="application/ld+json">{JSON.stringify(d)}</script>
-      ))}
-    </Helmet>
-  );
+  const schemas = [ORG_LD, WEBSITE_LD, breadcrumb, ...(Array.isArray(jsonLd) ? jsonLd : [jsonLd])].filter(Boolean);
+  const schemaText = JSON.stringify(schemas);
+  useEffect(() => {
+    document.title = fullTitle;
+    upsert('link[rel="canonical"]', 'link', { rel: 'canonical', href: url });
+    const named = { description: resolvedDescription, robots: noIndex ? 'noindex, nofollow' : 'index, follow', 'twitter:card': 'summary_large_image', 'twitter:title': fullTitle, 'twitter:description': resolvedDescription, 'twitter:image': resolvedImage };
+    const properties = { 'og:type': resolvedType, 'og:title': fullTitle, 'og:description': resolvedDescription, 'og:url': url, 'og:image': resolvedImage, 'og:locale': 'pt_BR', 'og:site_name': 'Grow-X' };
+    Object.entries(named).forEach(([name, content]) => upsert(`meta[name="${name}"]`, 'meta', { name, content }));
+    Object.entries(properties).forEach(([property, content]) => upsert(`meta[property="${property}"]`, 'meta', { property, content }));
+    document.head.querySelectorAll('script[data-growx-seo]').forEach(node => node.remove());
+    const script = document.createElement('script');
+    script.type = 'application/ld+json'; script.dataset.growxSeo = 'true'; script.textContent = schemaText;
+    document.head.appendChild(script);
+  }, [fullTitle, resolvedDescription, url, resolvedImage, resolvedType, noIndex, schemaText]);
+  return null;
 }

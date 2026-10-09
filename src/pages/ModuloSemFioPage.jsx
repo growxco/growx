@@ -1,90 +1,11 @@
-import CatalogEditorial from '@/components/sections/CatalogEditorial';
-import { Cpu, Wifi, Smartphone, Settings, Thermometer, Zap } from 'lucide-react';
-import { SEO, productSchema } from '@/components/visual';
-import { PageHero, FeatureGrid, SpecsTable, MetricStrip, UseCases, FinalCTA } from '@/components/sections';
-import iotImg from '../assets/modulo-sem-fio-hero-v2.webp';
-
-const FEATURES = [
-  { icon: Wifi, title: 'Conectividade sem fio', description: 'WiFi 2.4GHz + Bluetooth 5.0 pra controle remoto total.' },
-  { icon: Cpu, title: 'Processamento embedded', description: 'Microcontrolador com firmware otimizado pra automação complexa.' },
-  { icon: Settings, title: 'Controle de equipamentos', description: 'Bombas, ventiladores, luzes, irrigação — 8 relés programáveis.' },
-  { icon: Smartphone, title: 'Integrado ao app', description: 'Controle direto via Grow-X App.' },
-  { icon: Thermometer, title: 'Sensores integrados', description: 'Temperatura, umidade, pH e EC.' },
-  { icon: Zap, title: 'Baixo consumo', description: 'Eficiência energética pra operação 24/7.' },
-];
-
-const SPECS = {
-  'Conectividade': 'WiFi 2.4 GHz + Bluetooth 5.0',
-  'Alimentação': '12V DC ou bateria 3500 mAh',
-  'Saídas': '8 relés programáveis (250V/10A)',
-  'Entradas': '6 analógicas/digitais',
-  'Sensores nativos': 'Temp · Umidade · pH · EC',
-  'Proteção': 'IP65 — resistente à água',
-  'Faixa térmica': '-20 °C a +70 °C',
-  'Atualização': 'OTA via WiFi',
-};
-
-const METRICS = [
-  { value: '4 zonas', label: 'Controle simultâneo de estufas' },
-  { value: '8 relés', label: 'Saídas programáveis' },
-  { value: 'WiFi + BT', label: 'Conectividade dual' },
-  { value: 'IP65', label: 'Proteção contra água' },
-];
+import { SEO } from '@/components/visual';
+import { PageHero, SpecsTable } from '@/components/sections';
+import { Journey, JourneyCards } from '@/components/sections/MarketingJourney';
 
 export default function ModuloSemFioPage() {
-  return (
-    <>
-      <SEO
-        title="Módulo Sem Fio — Controle inteligente de até 4 estufas"
-        description="Controle wireless de até 4 estufas com 8 relés programáveis, sensores integrados e malha mesh. Integrado ao Grow-X App."
-        path="/produtos/modulo-sem-fio"
-        jsonLd={productSchema({
-          name: 'Módulo Sem Fio Grow-X',
-          description: 'Controle wireless de até 4 estufas. WiFi + BT, 8 relés, sensores integrados (T/UR/pH/EC), OTA, IP65.',
-          image: '/og-image.svg',
-          sku: 'GX-MSF-V2',
-          category: 'Hardware agro · Automação de estufa',
-        })}
-      />
-
-      <PageHero
-        eyebrow="Hardware · Automação"
-        eyebrowIcon={Cpu}
-        title={<>Automação de estufas, <span className="text-emerald-glow">sem fio.</span></>}
-        intro="Sistema de controle inteligente pra automação completa de estufas e ambientes de cultivo. Plug, configure, opere."
-        primaryCta={{ label: 'Solicitar orçamento', href: '/contato' }}
-        secondaryCta={{ label: 'Ver todos os produtos', href: '/produtos' }}
-        image={iotImg}
-        imageAlt="Módulo sem fio Grow-X"
-      />
-
-      <MetricStrip items={METRICS} />
-
-      <FeatureGrid
-        eyebrow="Recursos avançados"
-        title="Automação de ponta — sem cabo passando lavoura."
-        items={FEATURES}
-      />
-
-      <UseCases
-        eyebrow="Aplicações"
-        title="Versátil pra cada cenário de cultivo."
-        items={[
-          { title: 'Cannabis medicinal', description: 'Controle preciso de clima e iluminação pra cultivo indoor de padrão farmacêutico.', points: ['Climate ctrl ±1°C', 'Iluminação por fase', 'Logger de eventos'] },
-          { title: 'Agricultura urbana', description: 'Automação de hidroponia e aeroponia em pequena escala.', points: ['pH/EC integrado', 'Irrigação por ciclo', 'Mobile-first'] },
-          { title: 'Estufas comerciais', description: 'Gestão automatizada de estruturas grandes de cultivo protegido.', points: ['Multi-zona', 'Integração ERP', 'Suporte técnico'] },
-        ]}
-      />
-
-      <SpecsTable
-        eyebrow="Ficha técnica"
-        title="Especificações completas."
-        specs={SPECS}
-      />
-
-      <CatalogEditorial />
-
-      <FinalCTA />
-    </>
-  );
+ return <><SEO title="Módulo Grow-X · seis saídas AC e compatibilidade" description="Conheça o módulo documentado com seis saídas AC, DHT22 e sensores compatíveis. Composição e instalação são avaliadas por projeto; pré-venda fechada." path="/produtos/modulo-sem-fio"/>
+ <PageHero eyebrow="Módulo Grow-X" title={<>O módulo no <span className="text-emerald-glow">seu projeto.</span></>} intro="Um controlador para integrar equipamentos compatíveis ao seu contexto. Seis saídas AC estão documentadas; a composição final do kit e os comandos físicos continuam em validação." primaryCta={{label:'Avaliar compatibilidade',href:'/contato?produto=modulo'}} secondaryCta={{label:'Ver situação da pré-venda',href:'/prevenda'}} imageFit="contain" image="/assets/module-render.webp" imageAlt="Render conceitual do Módulo Grow-X" status="Pré-venda fechada" badge={<p className="text-sm text-muted-foreground">Render oficial conceitual. Varejo: referência de R$ 5.000 por unidade; preço e condições finais na proposta. Esta referência não abre uma oferta de compra.</p>}/>
+ <Journey id="como-funciona" eyebrow="Medir, decidir, atuar" title="Leitura de sensor e comando são etapas diferentes." intro="Uma tela de demonstração apresenta informações; ela não comprova acionamento de equipamentos em produção."><JourneyCards items={[{title:'Medir o ambiente',text:'DHT22 para temperatura e umidade do ar; outros sensores precisam ter compatibilidade confirmada.'},{title:'Consultar no GXP',text:'Cadastro, contexto do equipamento e informações disponíveis no app. A interface demonstrada utiliza dados de demonstração.'},{title:'Avaliar a atuação',text:'Seis saídas AC documentadas. Carga, tensão, corrente, instalação e recursos de controle precisam ser validados no projeto.'}]}/></Journey>
+ <SpecsTable eyebrow="Base documentada" title="O que sabemos e o que precisa ser confirmado." specs={{'Saídas documentadas':'6 saídas AC','Sensor de referência':'DHT22 · temperatura e umidade do ar','Outros sensores':'Somente modelos compatíveis, definidos na proposta','Kit e acessórios':'Composição final em validação','Instalação elétrica':'Tensão, corrente e carga máxima a confirmar antes da contratação','Comandos físicos':'Em validação; demonstração web não comprova atuação em produção','Situação comercial':'Pré-venda fechada; referência de varejo R$ 5.000/unidade'}}/>
+ <Journey eyebrow="Antes da contratação" title="Da necessidade à proposta."><JourneyCards items={[{title:'Conte seu cenário',text:'Informe os equipamentos que deseja avaliar. A conversa inicial pode começar com nome e contato.',to:'/contato?produto=modulo',label:'Avaliar compatibilidade'},{title:'Conheça o GXP',text:'Veja o percurso de Jardim, Diário e informações do módulo. O acesso ao app é uma escolha separada.',to:'/solucoes/growx-app',label:'Explorar o GXP'},{title:'Growshop ou parceiro?',text:'Composição da oferta, suporte e responsabilidades são definidos na proposta.',to:'/parceiros',label:'Conhecer parceria'}]}/></Journey></>;
 }
