@@ -59,6 +59,11 @@ export default function ParceirosPage() {
       </section>
 
       <Journey eyebrow="Growshops e parceiros" title="Composição clara antes de vender." intro="Módulo: referência de R$ 5.000 no varejo e R$ 3.500 no atacado. Referências comerciais dependem da proposta; não constituem oferta de compra nem garantia de margem, giro ou exclusividade."><JourneyCards items={[{title:'Conhecer e demonstrar',text:'Entenda Jardim, Diário e informações dos equipamentos no GXP. Demonstração web e comandos físicos em validação são etapas diferentes.',to:'/solucoes/growx-app',label:'Conhecer o GXP'},{title:'Definir a composição',text:'Kit, acessórios externos, compatibilidade e instalação precisam estar descritos antes da contratação.',to:'/produtos/modulo-sem-fio',label:'Avaliar o módulo'},{title:'Combinar responsabilidades',text:'Defina quem demonstra, instala, orienta o cliente e responde pelo suporte. Condições ficam registradas na proposta.'}]}/></Journey>
+      <Journey id="catalogo-parceiros" eyebrow="Apresentação para parceiros" title="GXP e Módulo no seu growshop." intro="Catálogo visual para lojas e distribuidores — 12 páginas — PDF 2,96 MiB. Cenas ilustrativas, telas demonstradas e referências comerciais; composição final, disponibilidade e responsabilidades são confirmadas na proposta.">
+        <div className="flex flex-wrap gap-3"><a href="/catalogos/gxp-parceiros-visual.pdf" target="_blank" rel="noopener noreferrer" className="btn-primary">Abrir catálogo de parceiros</a><a href="/catalogos/gxp-parceiros-visual.pdf" download="GXP e Módulo - Parceiros.pdf" className="btn-ghost">Baixar catálogo de parceiros</a></div>
+        <p className="mt-5 text-sm leading-relaxed text-muted-foreground">Extra: catálogo editorial GXP e Módulo — 8 páginas — PDF 1,93 MiB. Arquivo editorial anterior; as especificações e condições atuais são confirmadas na proposta.</p>
+        <div className="mt-3 flex flex-wrap gap-3"><a href="/catalogos/gxp-editorial-a4.pdf" target="_blank" rel="noopener noreferrer" className="btn-ghost">Abrir editorial extra</a><a href="/catalogos/gxp-editorial-a4.pdf" download="GXP e Módulo - Editorial extra.pdf" className="btn-ghost">Baixar editorial extra</a></div>
+      </Journey>
       <FeatureGrid
         eyebrow="Tipos de parceria"
         title="Quatro caminhos. Mesma stack."
