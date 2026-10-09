@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { submitLead, scoreLead } from '@/lib/crm';
@@ -19,6 +19,9 @@ import { cn } from '@/lib/utils';
 export default function LeadForm({
   form,
   segment,
+  source = 'site',
+  enrich = true,
+  initialValues = {},
   fields,
   submitLabel = 'Enviar',
   successTitle = 'Mensagem recebida.',
@@ -26,7 +29,8 @@ export default function LeadForm({
   extra = {},
   onSuccess,
 }) {
-  const [data, setData] = useState({});
+  const formRef = useRef(null);
+  const [data, setData] = useState(() => initialValues);
   const [errors, setErrors] = useState({});
   const [state, setState] = useState('idle'); // idle | submitting | success | error
   const [touched, setTouched] = useState(false);
@@ -55,6 +59,7 @@ export default function LeadForm({
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       setState('idle');
+      requestAnimationFrame(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
       return;
     }
 
@@ -70,7 +75,7 @@ export default function LeadForm({
 
     const res = await submitLead(
       { ...data, ...extra, _score: score },
-      { form, segment, source: 'site' },
+      { form, segment, source },
     );
 
     if (res.ok) {
@@ -80,7 +85,7 @@ export default function LeadForm({
       onSuccess?.(res);
 
       // Fire-and-forget AI enrichment (server-side; never blocks UX)
-      try {
+      if (enrich) try {
         const enrichRes = await fetch('/api/enrich-lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -102,6 +107,7 @@ export default function LeadForm({
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        role="status"
         className="flex flex-col items-center gap-4 py-6 text-center"
       >
         <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-emerald/20 text-emerald-glow ring-hairline shadow-glow-md">
@@ -114,7 +120,7 @@ export default function LeadForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5" noValidate>
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-5" noValidate>
       <input type="hidden" name="_form" value={form} />
       <input type="hidden" name="_segment" value={segment} />
 
@@ -140,6 +146,7 @@ export default function LeadForm({
       <AnimatePresence>
         {state === 'error' && (
           <motion.div
+            role="alert"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}

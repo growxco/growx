@@ -24,6 +24,126 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/produtos/estufa-automatizada",
+      "destination": "/marketing/estufa.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/lista-espera-app",
+      "destination": "/marketing/interesse-gxp.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/casos",
+      "destination": "/marketing/casos.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/cannabis-medicinal",
+      "destination": "/marketing/cultivo.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/solucoes/growx-app",
+      "destination": "/marketing/gxp.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/produtos/modulo-sem-fio",
+      "destination": "/marketing/modulo.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/solucoes/supply-x",
+      "destination": "/marketing/supplyx.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/solucoes/spi",
+      "destination": "/marketing/spi.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/solucoes/spp",
+      "destination": "/marketing/spp.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/parceiros",
+      "destination": "/marketing/parceiros.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/contato-corporativo-spi",
+      "destination": "/marketing/contato-spi.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
+      "source": "/contato",
+      "destination": "/marketing/contato.html",
+      "missing": [
+        {
+          "type": "host",
+          "value": "agenda.growx.com.br"
+        }
+      ]
+    },
+    {
       "source": "/socios/agenda",
       "destination": "/socios-agenda.html"
     },

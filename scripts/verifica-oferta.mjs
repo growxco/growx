@@ -7,10 +7,23 @@
  */
 import { readFile } from 'node:fs/promises';
 import { OFERTA, brlCurto } from '../src/lib/oferta.js';
+import { PREVENDA_RELEASE } from '../src/lib/prevendaRelease.js';
 
 const pix = brlCurto(OFERTA.pixCentavos);        // "R$ 2.800"
 const cartao = brlCurto(OFERTA.cartaoCentavos);  // "R$ 3.000"
 const publico = brlCurto(OFERTA.publicoCentavos);// "R$ 5.500"
+
+// Closed releases must publish an honest closed state; approved releases retain the original offer guard.
+if (!PREVENDA_RELEASE.approved) {
+  const html = await readFile('prevenda.html', 'utf8');
+  const required = ['Pré-venda do Módulo Grow-X fechada', 'R$ 5.000', 'Nenhum pagamento ou reserva'];
+  const forbidden = ['R$ 3.000', 'R$ 5.500', '12x de', '3 meses de Premium', '20/11/2026'];
+  if (required.some(value => !html.includes(value)) || forbidden.some(value => html.includes(value))) {
+    throw new Error('Closed pre-sale HTML must not advertise an unapproved purchase or delivery.');
+  }
+  console.log('Closed pre-sale verified; immutable release remains unapproved.');
+  process.exit(0);
+}
 
 const ALVOS = [
   {

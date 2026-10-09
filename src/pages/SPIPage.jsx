@@ -1,100 +1,10 @@
-import { Factory, BarChart3, Cog, AlertTriangle, Shield, Clock, Zap } from 'lucide-react';
-import { SEO } from '@/components/visual';
-import { PageHero, FeatureGrid, SplitFeature, MetricStrip, UseCases, FinalCTA, LiveTicker } from '@/components/sections';
-import { APP_PORTAL_URLS, CORPORATE_CONTACT_PATH } from '@/lib/portalLinks';
-import spiScreen from '../assets/real-spi-app.webp';
 import InstitutionalVideo from '@/components/sections/InstitutionalVideo';
-
-const SPI_VIDEO_COPY = {
-  PT: { eyebrow: 'SPI em vídeo', title: 'Conheça o SPI.', description: 'Assista à apresentação do Supply-X para as indústrias.', videoTitle: 'Vídeo de apresentação do SPI' },
-  EN: { eyebrow: 'SPI video', title: 'Meet SPI.', description: 'Watch the Supply-X presentation for industries.', videoTitle: 'SPI presentation video' },
-};
-
-const FEATURES = [
-  { icon: BarChart3, title: 'Dashboard operacional', description: 'Status logístico e indicadores de recebimento em uma só tela.' },
-  { icon: Cog, title: 'Automação de agendamentos', description: 'Fluxo digital com notificações e confirmação por etapa.' },
-  { icon: AlertTriangle, title: 'Alertas antecipados', description: 'Problemas detectados antes de virar parada de fábrica.' },
-  { icon: Shield, title: 'Rastreabilidade de qualidade', description: 'Documentos e laudos amarrados a carga, lote e fornecedor.' },
-  { icon: Clock, title: 'Tempo de resposta', description: 'Decisão em minutos com dados antecipados da produção.' },
-  { icon: Zap, title: 'Integração com ERP', description: 'Exportação ou conexão via API com qualquer sistema.' },
-];
-
-const METRICS = [
-  { value: 'Recebimento', label: 'Digital, sem caminhão parado' },
-  { value: 'Qualidade', label: 'Trilha completa de documentos' },
-  { value: 'Logística', label: 'Slot booking e prioridades' },
-  { value: 'ERP-ready', label: 'Conexão por API ou arquivo' },
-];
-
+import { SEO } from '@/components/visual';
+import { PageHero } from '@/components/sections';
+import { Journey, JourneyCards } from '@/components/sections/MarketingJourney';
 export default function SPIPage() {
-  return (
-    <>
-      <SEO
-        title="SPI — Plataforma agroindustrial de recebimento e governança"
-        description="Recebimento agrícola digital, rastreabilidade ponta-a-ponta e governança pra indústria. Reduza paradas e ganhe controle."
-        path="/solucoes/spi"
-      />
-
-      <PageHero
-        eyebrow="Solução · Indústria"
-        eyebrowIcon={Factory}
-        title={<>Indústria <span className="text-emerald-glow">conectada</span> à originação.</>}
-        intro="Sistema completo que automatiza o recebimento de cargas agrícolas, assegura rastreabilidade ponta-a-ponta e eleva o controle de qualidade com monitoramento em tempo real."
-        primaryCta={{ label: 'Solicitar acesso corporativo', href: CORPORATE_CONTACT_PATH }}
-        secondaryCta={{ label: 'Abrir portal SPI', href: APP_PORTAL_URLS.spi, external: true }}
-        image={spiScreen}
-        imageAlt="Tela real do portal SPI"
-      />
-
-      <InstitutionalVideo videoId="NrIKQpXUyO8" sectionId="video-spi" copy={SPI_VIDEO_COPY} />
-      <LiveTicker />
-      <MetricStrip items={METRICS} />
-
-      <UseCases
-        eyebrow="Benefícios potenciais"
-        title="Indicadores que impactam o bottom line."
-        intro="Quatro frentes onde a SPI reduz custo, aumenta previsibilidade e aperta a malha operacional."
-        items={[
-          { title: 'Reduza insumos com inteligência', description: 'Planeje com dados reais e elimine desperdícios operacionais de forma progressiva.', points: ['Histórico por lote', 'Decisão logística com dado', 'Menos retrabalho'] },
-          { title: 'Logística em tempo real', description: 'Mais fluidez no fluxo entre campo, transporte, armazenagem e indústria.', points: ['Agendamento digital', 'Antecipação de falhas', 'API para sistemas'] },
-          { title: 'Estabilidade operacional', description: 'Detecte atrasos e riscos antes que impactem o processo industrial.', points: ['Notificações em tempo real', 'Comunicação proativa', 'Relatórios automáticos'] },
-        ]}
-      />
-
-      <FeatureGrid
-        eyebrow="Recursos avançados"
-        title="Tecnologia industrial de ponta."
-        intro="Stack desenhado pra cooperar com seus sistemas, não disputar com eles."
-        items={FEATURES}
-      />
-
-      <SplitFeature
-        eyebrow="Dashboard industrial"
-        title="Métricas, alertas e controles num só lugar."
-        intro="Interface centralizada com indicadores em tempo real, alertas inteligentes e controles operacionais — feita pra time técnico."
-        bullets={[
-          'Métricas de produção ao vivo',
-          'Alertas preventivos e preditivos',
-          'Controles operacionais centralizados',
-          'Relatórios automatizados',
-        ]}
-        cta={{ label: 'Falar com a Grow-X', href: CORPORATE_CONTACT_PATH }}
-        image={spiScreen}
-        imageAlt="Portal corporativo SPI"
-      />
-
-      <UseCases
-        eyebrow="Casos de uso"
-        title="Soluções por segmento."
-        intro="Diferentes fases da cadeia, mesmo padrão de excelência operacional."
-        items={[
-          { title: 'Agroindústrias', description: 'Recebimento de cargas e comunicação entre armazenagem e processamento.', points: ['Controle de agendamentos', 'Rastreamento de carregamentos', 'Qualidade conectada'] },
-          { title: 'Produtores integrados', description: 'Digitalização da comunicação campo↔indústria com planejamento ao vivo.', points: ['Informações antecipadas', 'Menos conflito logístico', 'Planejamento seguro'] },
-          { title: 'Centros de distribuição', description: 'Sincronização com fábricas e transportadoras, status em tempo real.', points: ['Monitoramento de entrega', 'Conferência por carga', 'Redução de incertezas'] },
-        ]}
-      />
-
-      <FinalCTA />
-    </>
-  );
+ return <><SEO title="SPI · operação industrial" description="Remessas, qualidade, armazenagem e responsabilidades conforme o escopo da sua operação. Confira os percursos e converse sobre o projeto no Supply-X." path="/solucoes/spi"/>
+ <PageHero eyebrow="Grow-X · Supply-X" title="SPI · operação industrial" intro="Remessas, qualidade, armazenagem e responsabilidades conforme o escopo da sua operação. Confira os percursos e converse sobre o projeto no Supply-X." primaryCta={{label:'Conhecer no Supply-X',href:'https://www.supplyx.com.br/spi',external:true}} secondaryCta={{label:'Conversar com o time',href:'/contato?produto=spi'}} status="Integração contratada por projeto"/>
+ <InstitutionalVideo videoId="NrIKQpXUyO8" sectionId="video-spi" copy={{PT:{eyebrow:'Apresentação SPI',title:'Conheça o SPI.',description:'Apresentação existente. Escopo e integrações dependem da proposta confirmada.',videoTitle:'Apresentação SPI'},EN:{eyebrow:'SPI presentation',title:'Meet SPI.',description:'Existing presentation. Scope and integrations depend on the confirmed proposal.',videoTitle:'SPI presentation'}}}/>
+ <Journey eyebrow="Próximo passo" title="Conheça o percurso que corresponde à sua necessidade."><JourneyCards items={[{title:'SPI · Indústria',text:'Pequenas, médias e grandes operações: entenda o que precisa organizar antes de definir a implantação.',href:'https://www.supplyx.com.br/spi',label:'Explorar o SPI'},{title:'SPP · Produtores',text:'Agricultura familiar, orgânicos e cooperativas têm percursos distintos. O SPP pode ser avaliado de forma independente do SPI.',href:'https://www.supplyx.com.br/spp',label:'Explorar o SPP'},{title:'Escopo confirmado',text:'Integrações, permissões, conectividade e recursos disponíveis precisam ser confirmados na demonstração e na proposta.',to:'/contato?produto=spi',label:'Conversar sobre o projeto'}]}/></Journey></>;
 }

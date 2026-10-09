@@ -1,19 +1,20 @@
 import { Handshake, Code, Truck, Users, Award } from 'lucide-react';
 import { SEO, Container, Eyebrow, Reveal, GlassCard, Aurora, GridPattern, LeadForm } from '@/components/visual';
 import { FeatureGrid, FinalCTA } from '@/components/sections';
+import { Journey, JourneyCards } from '@/components/sections/MarketingJourney';
 
 const TIPOS = [
-  { icon: Code, title: 'Integradores e consultorias agtech', desc: 'Recomende e implemente Grow-X em clientes B2B. Comissão recorrente + treinamento técnico.' },
-  { icon: Truck, title: 'Revendedores hardware', desc: 'Distribua Estação, Módulo e Estufa em sua região. Margem por unidade + suporte centralizado.' },
-  { icon: Users, title: 'Embaixadores cultivo', desc: 'Cultivadores referência: hardware grátis em troca de diário público + 1 conteúdo/mês.' },
-  { icon: Award, title: 'Co-marketing', desc: 'Parceria com cooperativas, associações, mídia setorial. Conteúdo conjunto e eventos.' },
+  { icon: Code, title: 'Integradores e consultorias agtech', desc: 'Avalie o escopo de integração, implantação e suporte. Responsabilidades e condições dependem da proposta.' },
+  { icon: Truck, title: 'Revendedores hardware', desc: 'Para growshops e revendedores: conheça o módulo, o GXP e a composição da oferta antes de definir o projeto.' },
+  { icon: Users, title: 'Embaixadores cultivo', desc: 'Converse sobre demonstração e colaboração. Equipamentos, conteúdo e condições são definidos na proposta.' },
+  { icon: Award, title: 'Co-marketing', desc: 'Parceria com cooperativas, associações, mídia setorial. Ações e responsabilidades são definidas em conjunto.' },
 ];
 
 const FIELDS = [
   { name: 'name', label: 'Nome completo', required: true },
   { name: 'email', label: 'E-mail corporativo', type: 'email', required: true },
-  { name: 'phone', label: 'WhatsApp', type: 'tel', required: true },
-  { name: 'company', label: 'Empresa / projeto', required: true },
+  { name: 'phone', label: 'WhatsApp (opcional)', type: 'tel' },
+  { name: 'company', label: 'Loja / empresa / projeto (opcional)' },
   {
     name: 'partnerType',
     label: 'Tipo de parceria',
@@ -47,7 +48,7 @@ export default function ParceirosPage() {
           <Reveal className="max-w-3xl">
             <Eyebrow icon={Handshake}>Parceiros</Eyebrow>
             <h1 className="mt-6 text-display-xl text-foreground">
-              Construímos a stack agro <span className="text-emerald-glow">juntos.</span>
+              GXP e Módulo para sua loja: <span className="text-emerald-glow">vamos conversar.</span>
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
               A Grow-X cresce melhor com integradores, revendedores e cultivadores referência. Aqui é onde quem
@@ -57,10 +58,11 @@ export default function ParceirosPage() {
         </Container>
       </section>
 
+      <Journey eyebrow="Growshops e parceiros" title="Composição clara antes de vender." intro="Módulo: referência de R$ 5.000 no varejo e R$ 3.500 no atacado. Referências comerciais dependem da proposta; não constituem oferta de compra nem garantia de margem, giro ou exclusividade."><JourneyCards items={[{title:'Conhecer e demonstrar',text:'Entenda Jardim, Diário e informações dos equipamentos no GXP. Demonstração web e comandos físicos em validação são etapas diferentes.',to:'/solucoes/growx-app',label:'Conhecer o GXP'},{title:'Definir a composição',text:'Kit, acessórios externos, compatibilidade e instalação precisam estar descritos antes da contratação.',to:'/produtos/modulo-sem-fio',label:'Avaliar o módulo'},{title:'Combinar responsabilidades',text:'Defina quem demonstra, instala, orienta o cliente e responde pelo suporte. Condições ficam registradas na proposta.'}]}/></Journey>
       <FeatureGrid
         eyebrow="Tipos de parceria"
         title="Quatro caminhos. Mesma stack."
-        items={TIPOS}
+        items={TIPOS.map(item => ({ ...item, description: item.desc }))}
         columns={4}
       />
 

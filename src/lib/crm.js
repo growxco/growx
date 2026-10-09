@@ -116,17 +116,7 @@ export async function submitLead(payload, meta = {}) {
     } catch { /* fall through */ }
   }
 
-  // Mode 4: mailto (degraded fallback)
-  if (isBrowser) {
-    const subject = encodeURIComponent(`[Grow-X · ${meta.form ?? 'form'}] novo lead`);
-    const body = encodeURIComponent(
-      Object.entries(enriched)
-        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
-        .join('\n'),
-    );
-    window.location.href = `mailto:growx@growx.com.br?subject=${subject}&body=${body}`;
-    return { ok: true, mode: 'mailto' };
-  }
+  // Explicit email/WhatsApp links remain available; failed delivery must not report a captured lead.
   return { ok: false, mode: 'none' };
 }
 

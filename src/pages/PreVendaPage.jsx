@@ -9,6 +9,7 @@ import { clearCheckoutOutcome, readCheckoutOutcome } from '@/lib/checkoutReturn'
 import { documentoValido, emailValido, formataDocumento, nomeCompleto } from '@/lib/cpf';
 import { OFERTA, brlCurto, parcelaCurta } from '@/lib/oferta';
 import { PREVENDA_RELEASE } from '@/lib/prevendaRelease';
+import ClosedPreSalePage from './ClosedPreSalePage';
 import { formataTelefoneBr, normalizaTelefoneBr, telefoneBrValido } from '../../shared/br-phone.js';
 import { safeCheckoutRedirectUrl } from '../../shared/checkout-redirect.js';
 import { createRequestId } from '../../shared/provider-identifiers.js';
@@ -557,6 +558,10 @@ function ListaEspera({ purchaseHref = '#reservar', purchaseLabel = 'Voltar à co
 /* ---------------- página ---------------- */
 
 export default function PreVendaPage() {
+  return PREVENDA_RELEASE.approved ? <ApprovedPreSalePage /> : <ClosedPreSalePage />;
+}
+
+function ApprovedPreSalePage() {
   const { loading, erro, pagar } = useCheckout();
   const dias = useDiasRestantes();
   const eyebrow = useMemo(() => 'font-mono text-[0.7rem] uppercase tracking-[0.18em]', []);

@@ -1,113 +1,19 @@
 import CatalogEditorial from '@/components/sections/CatalogEditorial';
-import {
-  Brain, Wifi, ShoppingCart, Camera, BarChart3, MessageCircle,
-  Shield, Clock, Zap, Leaf, Users,
-} from 'lucide-react';
-import { SEO, softwareSchema } from '@/components/visual';
-import { PageHero, FeatureGrid, MetricStrip, UseCases, FinalCTA, LiveTicker } from '@/components/sections';
-import { APP_PORTAL_URLS } from '@/lib/portalLinks';
-import gxpScreen from '../assets/real-gxp-app.webp';
 import InstitutionalVideo from '@/components/sections/InstitutionalVideo';
-
-const GXP_VIDEO_COPY = {
-  PT: { eyebrow: 'Módulo + GXP', title: 'Automação e cultivo conectados.', description: 'Conheça o módulo de automação Grow-X e o GXP nesta apresentação.', videoTitle: 'Vídeo do módulo de automação e GXP' },
-  EN: { eyebrow: 'Module + GXP', title: 'Connected automation and cultivation.', description: 'Meet the Grow-X automation module and GXP in this presentation.', videoTitle: 'Grow-X automation module and GXP video' },
-};
-
-const MAIN_FEATURES = [
-  { icon: Wifi, title: 'Controle remoto de estufas', description: 'Monitore e controle suas estufas de qualquer lugar via IoT.' },
-  { icon: Brain, title: 'IA pra otimização', description: 'Inteligência que aprende com seu cultivo e sugere melhorias.' },
-  { icon: Users, title: 'Rede social pra growers', description: 'Comunidade exclusiva pra trocar experiência e aprender.' },
-  { icon: ShoppingCart, title: 'Marketplace integrado', description: 'Compre e venda genética, equipamentos e insumos no app.' },
-];
-
-const APP_FEATURES = [
-  { icon: Camera, title: 'Diário de cultivo', description: 'Registre o progresso com fotos, anotações e marcos.' },
-  { icon: BarChart3, title: 'Analytics avançado', description: 'Métricas de crescimento, consumo e produtividade.' },
-  { icon: MessageCircle, title: 'Chat com especialistas', description: 'Tire dúvidas com agrônomos e referências em cannabis.' },
-  { icon: Shield, title: 'Cultivo legal', description: 'Ferramentas pra manter o cultivo dentro da legalidade.' },
-  { icon: Clock, title: 'Cronogramas automáticos', description: 'Lembretes e cronogramas por fase de cultivo.' },
-  { icon: Zap, title: 'Automação completa', description: 'Integração total com hardware Grow-X.' },
-];
-
-const METRICS = [
-  { value: 'Ambiente ideal', label: 'Clima, luz e irrigação no ponto certo' },
-  { value: 'Alertas', label: 'Receba avisos no momento exato' },
-  { value: 'Controle remoto', label: 'Gerencie sua estufa de onde estiver' },
-  { value: 'Produtividade', label: 'Cultive mais com dados precisos' },
-];
+import { SEO, softwareSchema } from '@/components/visual';
+import { PageHero } from '@/components/sections';
+import { Journey, JourneyCards, ProductScene, GxpPrices } from '@/components/sections/MarketingJourney';
+import { APP_PORTAL_URLS } from '@/lib/portalLinks';
 
 export default function GrowXAppPage() {
-  return (
-    <>
-      <SEO
-        title="Grow-X App — Cultivo controlado e cannabis medicinal"
-        description="Solução completa de monitoramento e gestão pra cannabis medicinal e cultivo controlado. IA, IoT e comunidade brasileira."
-        path="/solucoes/growx-app"
-        jsonLd={softwareSchema({
-          name: 'Grow-X App',
-          description: 'Plataforma de cultivo controlado e cannabis medicinal: IoT, IA, marketplace e comunidade.',
-          applicationCategory: 'HealthApplication',
-          os: 'iOS, Android, Web',
-        })}
-      />
-
-      <PageHero
-        eyebrow="Solução · Grow-X App"
-        eyebrowIcon={Leaf}
-        title={<>Cultivo <span className="text-emerald-glow">controlado</span> com padrão farmacêutico.</>}
-        intro="Solução pra pacientes medicinais, cultivadores estruturados e operações em escala. Hardware + software + comunidade — tudo brasileiro."
-        primaryCta={{ label: 'Assinar GXP', href: APP_PORTAL_URLS.gxp, external: true }}
-        secondaryCta={{ label: 'Falar com especialista', href: '/contato' }}
-        image={gxpScreen}
-        imageAlt="Tela real do GXP App"
-        status="Clube e app Grow-X"
-      />
-
-      <InstitutionalVideo videoId="9TTyJt6RfVA" sectionId="video-gxp" copy={GXP_VIDEO_COPY} portrait />
-      <LiveTicker />
-      <MetricStrip items={METRICS} />
-
-      <FeatureGrid
-        eyebrow="Recursos principais"
-        title="Tecnologia desenhada pra cannabis."
-        intro="Quatro pilares que diferenciam o Grow-X App de qualquer ferramenta genérica."
-        items={MAIN_FEATURES}
-        columns={4}
-      />
-
-      <FeatureGrid
-        eyebrow="Funcionalidades completas"
-        title="Tudo que cultivo profissional exige."
-        items={APP_FEATURES}
-      />
-
-      <UseCases
-        eyebrow="Para quem é"
-        title="Três perfis. Mesma plataforma."
-        intro="Da paciente que cultiva sua dose ao projeto comercial estruturado — adaptável a cada operação."
-        items={[
-          { title: 'Pacientes medicinais', description: 'Cultivo controlado e documentado pra uso medicinal com rastreabilidade clínica.', points: ['Dosagem precisa', 'Qualidade garantida', 'Documentação médica'] },
-          { title: 'Growers estruturados', description: 'Ferramentas profissionais pra cultivo doméstico com resultado de operação séria.', points: ['Cultivo otimizado', 'Comunidade ativa', 'Suporte técnico'] },
-          { title: 'Projetos em escala', description: 'Soluções escaláveis pra operações maiores e mais complexas.', points: ['Multi-estufa', 'Gestão completa', 'Relatórios avançados'] },
-        ]}
-      />
-
-      <UseCases
-        eyebrow="Comunidade"
-        title="Não é só app — é clube."
-        intro="O primeiro clube canábico virtual do Brasil. Diário de cultivo, marketplace, mentoria e troca real entre quem cultiva."
-        items={[
-          { title: 'Diário de cultivo', description: 'Compartilhe e acompanhe diários de outros growers pra aprender com prática real.', points: ['Histórico por planta', 'Comparação por strain', 'Lições aprendidas'] },
-          { title: 'Aprendizado contínuo', description: 'Acesso a experiência consolidada — dos referências do cultivo brasileiro.', points: ['Conteúdo curado', 'Mentoria estruturada', 'Troca de protocolo'] },
-          { title: 'Crescimento colaborativo', description: 'Cultive melhor com apoio de quem já passou pelos mesmos desafios.', points: ['Fórum técnico', 'Eventos', 'Ranking'] },
-        ]}
-      />
-
-      <CatalogEditorial universe />
-      <CatalogEditorial />
-
-      <FinalCTA />
-    </>
-  );
+ return <><SEO title="GXP · Jardim, Diário e sua experiência" description="Seu espaço, seus registros e sua história. Conheça Jardim, Diário, informações dos equipamentos e opções de acesso ao GXP." path="/solucoes/growx-app" jsonLd={softwareSchema({name:'GXP',description:'Organização de ambientes, registros e contexto de equipamentos.',applicationCategory:'LifestyleApplication',os:'Web'})}/>
+ <PageHero eyebrow="GXP · Experiência e registro" title={<>Seu espaço. Seus registros. <span className="text-emerald-glow">Sua história.</span></>} intro="O que mudou hoje? Reúna observações, fotos e contexto para consultar sua própria experiência no tempo." primaryCta={{label:'Conhecer as telas do GXP',href:'#experiencia-gxp'}} secondaryCta={{label:'Abrir portal GXP',href:APP_PORTAL_URLS.gxp,external:true}} imageFit="contain" image="/assets/gxp-diary.webp" imageAlt="Cena ilustrativa gerada por IA: Diário do GXP em interface real com dados de demonstração" status="Experiência web demonstrada" badge={<p className="text-sm text-muted-foreground">Cena ilustrativa gerada por IA; interface real com dados de demonstração. Comandos físicos e composição do módulo continuam em validação.</p>}/>
+ <Journey id="experiencia-gxp" eyebrow="Diário" title="O que você viu merece contexto."><ProductScene src="/assets/gxp-diary.webp" alt="Pessoa consulta um registro do Diário do GXP em cena ilustrativa" title="Fotos, notas e memória." text="O Diário ajuda a guardar o que você observou. Registre para retomar depois; uma anotação no app não é uma garantia de resultado agronômico ou clínico."/></Journey>
+ <Journey eyebrow="Jardim" title="Cada registro tem seu lugar."><ProductScene src="/assets/gxp-garden.webp" alt="Jardim do GXP exibido em um telefone em cena ilustrativa" title="Encontre o contexto antes de abrir o Diário." text="Organize ambientes e registros no mesmo percurso. Busque o espaço pelo nome e retome o que deseja consultar."/></Journey>
+ <Journey eyebrow="Equipamentos" title="O módulo também tem contexto no app."><ProductScene src="/assets/gxp-device.webp" alt="Área Módulo do GXP em cena ilustrativa" title="Consultar com clareza." text="A tela demonstrada reúne cadastro e informações de equipamentos. O acompanhamento demonstrado é informativo; sensores, acessórios, instalação e comandos físicos dependem de compatibilidade e validação do projeto."/></Journey>
+ <Journey eyebrow="Perfil e participação" title="Guardar e compartilhar são escolhas diferentes."><ProductScene src="/assets/gxp-privacy.webp" alt="Preferências de perfil do GXP em cena ilustrativa" title="Você escolhe o que compartilha." text="Consulte as preferências do perfil e as permissões de seu acesso antes de compartilhar registros. Participar do Clube e registrar no Diário são ações distintas."/></Journey>
+ <InstitutionalVideo videoId="9TTyJt6RfVA" sectionId="video-gxp" copy={{PT:{eyebrow:'Apresentação GXP',title:'Conheça o GXP e o módulo.',description:'Apresentação existente. Recursos e condições atuais dependem da validação e da proposta.',videoTitle:'Apresentação do GXP e Módulo Grow-X'},EN:{eyebrow:'GXP presentation',title:'Meet GXP and the module.',description:'Existing presentation. Current features and conditions depend on validation and the proposal.',videoTitle:'GXP and Grow-X Module presentation'}}} portrait/>
+ <GxpPrices/>
+ <CatalogEditorial universe/>
+ <Journey eyebrow="Próxima conversa" title="Um projeto que faça sentido para você."><JourneyCards items={[{title:'Seu acesso ao GXP',text:'Confira os recursos, permissões e condições de seu acesso no portal.',href:APP_PORTAL_URLS.gxp,label:'Abrir portal GXP'},{title:'Compatibilidade do módulo',text:'Avalie equipamentos e sensores antes de qualquer contratação.',to:'/produtos/modulo-sem-fio',label:'Conhecer o módulo'},{title:'Sua dúvida',text:'Converse sobre acesso, demonstração ou o escopo de seu projeto.',to:'/contato?produto=gxp',label:'Conversar sobre o GXP'}]}/></Journey></>;
 }

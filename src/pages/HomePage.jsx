@@ -1,76 +1,13 @@
 import { SEO } from '@/components/visual';
-import Hero from '@/components/sections/Hero';
-import InstitutionalVideo from '@/components/sections/InstitutionalVideo';
-import ChoosePath from '@/components/sections/ChoosePath';
-import TrustStrip from '@/components/sections/TrustStrip';
-import ProblemSection from '@/components/sections/ProblemSection';
-import BentoSolutions from '@/components/sections/BentoSolutions';
-import AppPortals from '@/components/sections/AppPortals';
-import SensorRingSection from '@/components/sections/SensorRingSection';
-import HardwareSVG from '@/components/sections/HardwareSVG';
-import Differentiators from '@/components/sections/Differentiators';
-import ByProfile from '@/components/sections/ByProfile';
+import { PageHero } from '@/components/sections';
+import { Journey, JourneyCards } from '@/components/sections/MarketingJourney';
 import GreenVeilSection from '@/components/sections/GreenVeilSection';
-import Insights from '@/components/sections/Insights';
-import StorySection from '@/components/sections/StorySection';
-import FAQ from '@/components/sections/FAQ';
-import FinalCTA from '@/components/sections/FinalCTA';
-
-const HOME_FAQ = [
-  {
-    q: 'A Grow-X é uma empresa de cannabis ou de agro?',
-    a: 'É uma empresa de tecnologia. Operamos duas frentes: agro/indústria (Supply-X, SPI, SPP) e cultivo controlado / cannabis medicinal (Grow-X App). Hardware é compartilhado, mas os funis e públicos são distintos.',
-  },
-  {
-    q: 'Quanto tempo leva pra colocar a Grow-X em produção?',
-    a: 'B2B industrial: 30–90 dias de implantação dependendo do escopo. Cultivo controlado: imediato após hardware instalado. Sempre temos plano de migração faseado pra não interromper a operação atual.',
-  },
-  {
-    q: 'O hardware Grow-X funciona onde a internet é ruim?',
-    a: 'Sim. Estação meteorológica usa LoRa de até 15 km. Módulo Sem Fio tem mesh local. Toda a stack foi desenhada pra rede precária e edge computing — decisão crítica acontece localmente, sincroniza quando dá.',
-  },
-  {
-    q: 'Vocês integram com meu ERP / sistema atual?',
-    a: 'Sim. SPI e Supply-X são API-first. Conectamos com Totvs, SAP, Sankhya e qualquer sistema com API ou export estruturado. Não substituímos seu ERP — orquestramos a operação que ele não cobre.',
-  },
-  {
-    q: 'Como funciona a cobrança / contrato?',
-    a: 'B2B industrial: contrato anual ou plurianual com setup + mensalidade. SPP e GXP: assinatura pelo portal, com hardware sob demanda quando fizer sentido.',
-  },
-  {
-    q: 'Onde a Grow-X opera?',
-    a: 'Sediada em Curitiba/PR. Atendemos todo o Brasil. Time engenharia + agronomia + jurídico no mesmo prédio.',
-  },
-];
 
 export default function HomePage() {
-  return (
-    <>
-      <SEO
-        title="Grow-X Co. — agro, dados, portais e universos digitais"
-        description="Grow-X Co. conecta Supply-X, SPI, SPP, GXP, hardware agro, portais operacionais e GreenVeil em uma marca brasileira de tecnologia aplicada."
-        path="/"
-      />
-      <Hero />
-      <InstitutionalVideo />
-      <ChoosePath />
-      <TrustStrip mode="badges" />
-      <ProblemSection />
-      <BentoSolutions />
-      <AppPortals />
-      <SensorRingSection />
-      <HardwareSVG />
-      <Differentiators />
-      <ByProfile />
-      <GreenVeilSection />
-      <Insights />
-      <StorySection />
-      <FAQ
-        title="Dúvidas que recebemos toda semana."
-        intro="Resposta direta. Se ficou faltando, chama no WhatsApp."
-        items={HOME_FAQ}
-      />
-      <FinalCTA />
-    </>
-  );
+  return <><SEO title="GXP, Módulo Grow-X e parceiros" description="Organize seus registros no GXP, conheça o módulo de seis saídas AC e converse sobre seu projeto. Supply-X conecta as jornadas de indústria e produtor." path="/"/>
+    <PageHero eyebrow="Grow-X · GXP + Módulo" title={<>Seu espaço. Seus registros. <span className="text-emerald-glow">Sua história.</span></>} intro="O GXP reúne Jardim, Diário e contexto dos equipamentos. O Módulo Grow-X é avaliado conforme as necessidades e a compatibilidade do seu projeto." primaryCta={{label:'Conhecer o GXP',href:'/solucoes/growx-app'}} secondaryCta={{label:'Conhecer o módulo',href:'/produtos/modulo-sem-fio'}} imageFit="contain" image="/assets/gxp-context.webp" imageAlt="Cena ilustrativa gerada por IA: pessoa consulta o GXP em seu espaço de cultivo" status="Pré-venda do módulo fechada" badge={<p className="text-sm text-muted-foreground">Cena ilustrativa gerada por IA; interface real com dados de demonstração.</p>}/>
+    <Journey id="portais" eyebrow="Escolha seu próximo passo" title="Uma experiência que começa no seu contexto."><JourneyCards items={[{title:'Registrar e consultar',text:'Conheça o Jardim, o Diário e as telas demonstradas do GXP antes de escolher seu acesso.',to:'/solucoes/growx-app',label:'Explorar o GXP'},{title:'Avaliar equipamentos',text:'Seis saídas AC, DHT22 e sensores compatíveis. Composição, instalação e condições são confirmadas na proposta.',to:'/produtos/modulo-sem-fio',label:'Avaliar o módulo'},{title:'Levar à sua loja',text:'Para growshops e parceiros: composição da oferta, demonstração, responsabilidades e suporte definidos no projeto.',to:'/parceiros',label:'Conhecer a parceria'}]}/></Journey>
+    <Journey id="supply-x" eyebrow="Indústria e campo" title="Sua operação é industrial ou rural?" intro="Supply-X organiza duas jornadas: SPI para indústria e SPP para produtores. Integrações são avaliadas e contratadas por projeto."><JourneyCards items={[{title:'SPI · Indústria',text:'Organize remessas, qualidade, armazenagem e responsáveis conforme o escopo de sua operação.',href:'https://www.supplyx.com.br/spi',label:'Conhecer o SPI'},{title:'SPP · Produtores',text:'Histórico de áreas, atividades e documentos para agricultura familiar, orgânicos e acompanhamento técnico.',href:'https://www.supplyx.com.br/spp',label:'Conhecer o SPP'},{title:'A Grow-X Co.',text:'Conheça a história, a equipe e os caminhos institucionais da empresa.',to:'/sobre/historia',label:'Conhecer a Grow-X'}]}/></Journey>
+    <GreenVeilSection/>
+  </>;
 }

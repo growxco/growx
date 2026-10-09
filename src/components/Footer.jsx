@@ -69,7 +69,7 @@ export default function Footer() {
               Vamos conversar sobre a sua operação?
             </h3>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              SPP e GXP entram por assinatura. SPI começa por contato corporativo qualificado.
+              Conheça GXP e SPP antes de escolher seu acesso. SPI começa por uma conversa sobre a operação.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 lg:col-span-5 lg:justify-end">
