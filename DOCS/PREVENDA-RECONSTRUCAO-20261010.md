@@ -10,7 +10,7 @@ Reconstrução de composição, hierarquia e interação, em quatro momentos:
 
 1. Módulo e GXP juntos: cultivo indoor, função do app, função da central projetada, etapa e CTA de interesse.
 2. Exploração de capturas reais: ver o cultivo, registrar o dia e consultar o percurso. Recortes editoriais identificados; botão abre a captura original inteira, com Escape/foco.
-3. Central em detalhe: painel conceitual com seis saídas AC, seleção de luz/rega/clima/ventilação e um bloco próximo de homologação. Compatibilidade parte dos equipamentos existentes, sem criar diagramas elétricos ou dimensões.
+3. Central em detalhe: painel conceitual com seis saídas AC, seleção de luz/rega/clima/ventilação e um bloco próximo de validação. Compatibilidade parte dos equipamentos existentes, sem criar diagramas elétricos ou dimensões.
 4. Interesse com intenção: aviso da abertura por cadastro existente; avaliação do setup em conversa no WhatsApp oficial.
 
 ## Inventário de ativos e limites de prova
@@ -49,9 +49,9 @@ Lacunas verificadas: template não define responsável, SLA de atendimento ou co
 
 Catálogo editorial A4 GXP + Módulo consultado: referência R$ 5.000 varejo / R$ 3.500 atacado; assinaturas separadas; composição e venda sujeitas à validação. A candidata conserva somente R$ 5.000 já público, junto das condições, sem nova oferta ou parcelamento.
 
-Manifesto `src/lib/prevendaRelease.js` permanece `approved:false`. Seis saídas AC conforme base contratual; DHT22 descrito apenas como referência documentada, não item incluído confirmado. Integração, firmware, comandos, push e vinculação não apresentados como homologados.
+Manifesto `src/lib/prevendaRelease.js` permanece `approved:false`. Seis saídas AC conforme base contratual; DHT22 descrito apenas como referência documentada, não item incluído confirmado. Integração, firmware, comandos, push e vinculação não apresentados como validados.
 
-Decisões para abrir vendas: preço/parcelamento e condições finais; composição de kit/acessórios/acesso GXP; prazo e conclusão da homologação. Não há checkout, estoque, urgência, garantia, depoimento ou resultado inventado.
+Decisões para abrir vendas: preço/parcelamento e condições finais; composição de kit/acessórios/acesso GXP; prazo e conclusão da validação. Não há checkout, estoque, urgência, garantia, depoimento ou resultado inventado.
 
 ## Evidência para revisão
 
@@ -78,8 +78,16 @@ Nenhum rollback executado. Após revisão interna, publicação seguirá PR e Gi
 
 Lint sem erros; 41 testes frontend; guarda de oferta fechada; build site + agenda sequencial no D:. Browser QA executado no build em http://127.0.0.1:5568, em 320x812, 390x844, 768x1024 e 1440x1000: zero pageerrors e zero erros de assets, sem overflow horizontal. Diálogos originais, Escape/foco, capacidades, âncoras e dois modos de contato verificados. Nome/e-mail/consentimento e e-mail inválido exercitados; 503 e 200 do cadastro interceptados localmente; mensagem qualificadora confirmada no payload. Nenhuma escrita externa, lead real ou pagamento.
 
-Contraste das notas/legendas e rótulos medidos no celular: mínimo 5,08:1, todos acima de 4,5:1; notas comerciais e de homologação em 12px. Hero e seções inspecionados visualmente. Capturas de revisão atualizadas nos mesmos quatro Library IDs, agora versão 1.
+Contraste das notas/legendas e rótulos medidos no celular: mínimo 5,08:1, todos acima de 4,5:1; notas comerciais e de validação em 12px. Hero e seções inspecionados visualmente. Capturas de revisão atualizadas nos mesmos quatro Library IDs, agora versão 1.
 
 Hashes SHA256 das duas novas imagens são idênticos às capturas fonte: jardim-foco 6a88a1fd69b3703e7e24fcafe480ed9659c2563c5ca33cbc4b3e55dd63e21245; cultivo-historia 62904bff019977fa8a4869b61004ea6921be8648485346e51538dd666803fcc3.
 
 Evidências: rebuild-qa-evidence.json, rebuild-mobile-contrast.json e rebuild-*-*.png no diretório local da tarefa. Não existe prova de conversão comercial nem entrega de aviso.
+
+## Segunda revisão interna
+
+Direção visual aprovada internamente; autorização de publicação de Fernando permanece. Correções: texto sem sugestão de certificação formal (“em validação”); abertura com Jardim c10 original em vez do Diário em rascunho, preservando dados e indicação QA; barra somente após o CTA do hero sair acima da viewport, oculta enquanto o painel do formulário estiver visível; espaço inferior e env(safe-area-inset-bottom); preservação de foco inclusive quando a barra reaparece no rodapé.
+
+Área segura de 34px é simulada por variável CSS em Chrome para conferir geometria. Não se trata de teste em iPhone físico ou Safari. Nenhuma certificação, homologação regulatória, unidade física ou entrega de lead foi comprovada por esta revisão.
+
+Testes da segunda revisão concluídos no build: barra oculta com CTA hero presente, acionada após ele sair acima da viewport e oculta no formulário; aviso legível, foco e rodapé sem cobertura em 320, 390 e 1440px; inset inferior de 34px simulado e padding inferior de 112px + offset de cookies + safe-area. Fluxo completo de browser também passou, preservando rolagem voluntária. Lint, testes frontend e build passaram; nenhum envio real de lead/pagamento. Evidência específica em sticky-review-evidence.json.
