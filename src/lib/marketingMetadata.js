@@ -16,8 +16,8 @@ export const MARKETING_METADATA = {
   },
   "/prevenda": {
     "file": "prevenda.html",
-    "title": "Módulo Grow-X + GXP — cultivo e equipamentos, no mesmo projeto",
-    "description": "Veja as telas reais do GXP e conheça a central Grow-X projetada com seis saídas AC. Receba a proposta na abertura ou converse sobre seu setup. Pré-venda fechada, sem pagamento."
+    "title": "Automação de plantio indoor | Módulo Grow-X + GXP",
+    "description": "Conheça as funções projetadas de luz, rega, clima e ventilação para o seu indoor, com Módulo Grow-X e GXP. Integração física em validação; cadastro de interesse sem pagamento ou reserva."
   },
   "/solucoes/supply-x": {
     "file": "marketing/supplyx.html",
