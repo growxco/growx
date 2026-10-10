@@ -9,14 +9,49 @@
   "background_color": "#0F1A13",
   "theme_color": "#0F1A13",
   "lang": "pt-BR",
-  "categories": ["business", "productivity", "agriculture"],
+  "categories": [
+    "business",
+    "productivity",
+    "agriculture"
+  ],
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/apple-touch-icon.svg", "sizes": "180x180", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "/favicon.svg?v=growx-original-x",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ],
   "shortcuts": [
-    { "name": "Contato corporativo SPI", "short_name": "SPI", "url": "/contato-corporativo-spi", "description": "Solicitar contato empresarial para SPI e Supply-X" },
-    { "name": "Lista de espera App", "short_name": "App", "url": "/lista-espera-app", "description": "Entrar na lista do Grow-X App" },
-    { "name": "Insights", "short_name": "Insights", "url": "/insights", "description": "Teses e conteúdo técnico" }
+    {
+      "name": "Contato corporativo SPI",
+      "short_name": "SPI",
+      "url": "/contato-corporativo-spi",
+      "description": "Solicitar contato empresarial para SPI e Supply-X"
+    },
+    {
+      "name": "Lista de espera App",
+      "short_name": "App",
+      "url": "/lista-espera-app",
+      "description": "Entrar na lista do Grow-X App"
+    },
+    {
+      "name": "Insights",
+      "short_name": "Insights",
+      "url": "/insights",
+      "description": "Teses e conteúdo técnico"
+    }
   ]
 }
