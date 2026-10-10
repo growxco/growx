@@ -64,4 +64,3 @@
  .company-conversation { padding: 44px 0; }
 }
 @media(prefers-reduced-motion: reduce) { .sector-scene-link img { transition: none; } .sector-scene-link:hover img { transform: none; } }
-
