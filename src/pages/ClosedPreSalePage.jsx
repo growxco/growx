@@ -6,9 +6,10 @@ import { track } from '@/lib/analytics';
 import { whatsappLink } from '@/lib/crm';
 import { buildInterestConsent } from '../../shared/interest-consent';
 import logo from '../assets/logo-growx-oficial.png';
-import central from '../assets/modulo-contexto.webp';
+import central from '../assets/modulo-hero.webp';
 import outlets from '../assets/modulo-tomadas.webp';
 import './PreSaleExperience.css';
+import './PreSaleIndoorDirection.css';
 
 const event = (name, details = {}) => track(name, { page: '/prevenda', ...details });
 const compatibility = whatsappLink('Olá! Tenho interesse no Módulo Grow-X com GXP e quero avaliar meu projeto. Posso informar os equipamentos que já tenho e o que desejo reunir na central?');
@@ -22,6 +23,12 @@ const capabilities = [
   { id: 'rega', icon: Droplets, name: 'Rega', title: 'Bomba e sensores avaliados juntos.', text: 'A proposta reúne leitura de sensores compatíveis e acionamento da bomba. Sensores, boia, duração e condições de segurança dependem da instalação validada.' },
   { id: 'clima', icon: Thermometer, name: 'Clima', title: 'Temperatura e umidade com contexto.', text: 'DHT22 é a referência documentada para temperatura e umidade do ar. Modelo, quantidade e inclusão de sensores serão definidos na composição final.' },
   { id: 'ar', icon: Wind, name: 'Ventilação', title: 'Equipamentos compatíveis na mesma central.', text: 'Exaustor e ventilador entram na avaliação das cargas conectadas às saídas AC. Tensão, corrente e potência precisam ser conferidas por equipamento.' },
+];
+const routines = [
+  { id: 'luz', name: 'Luz', lead: 'A iluminação faz parte da sua rotina.', text: 'A proposta de automação inclui o acionamento de iluminação compatível. O objetivo é reunir esse cuidado no projeto do seu indoor.', detail: 'Iluminação · acionamento projetado' },
+  { id: 'rega', name: 'Rega', lead: 'A água também precisa de um plano.', text: 'Bomba, reservatório e sensores precisam ser avaliados juntos. A proposta é integrar o acionamento de rega ao conjunto compatível.', detail: 'Rega · bomba e instalação a avaliar' },
+  { id: 'clima', name: 'Clima', lead: 'O ambiente entra na conversa.', text: 'Temperatura, umidade e circulação de ar fazem parte do projeto. Sensores, ventilador e exaustor compatíveis dependem da avaliação do seu setup.', detail: 'Clima · sensores a avaliar' },
+  { id: 'ar', name: 'Ventilação', lead: 'O ar também participa da rotina.', text: 'Ventilador e exaustor entram na avaliação do seu indoor. A central é projetada para reunir cargas compatíveis no mesmo conjunto.', detail: 'Ventilação · equipamentos compatíveis' },
 ];
 const questions = [
   ['O GXP já controla esta central?', 'A interface demonstrada organiza o cultivo e seus registros. A área Módulo é informativa nesta versão e não envia comandos físicos. Integração, firmware, notificações push e vinculação do dispositivo continuam em validação.'],
@@ -47,6 +54,7 @@ function revealFocusedControl(root, target) {
 
 export default function ClosedPreSalePage() {
   const [screenIndex, setScreenIndex] = useState(0);
+  const [routineIndex, setRoutineIndex] = useState(0);
   const [capabilityIndex, setCapabilityIndex] = useState(0);
   const [contactMode, setContactMode] = useState('aviso');
   const dialog = useRef(null);
@@ -89,15 +97,31 @@ export default function ClosedPreSalePage() {
   const screen = screens[screenIndex];
   const capability = capabilities[capabilityIndex];
 
-  return <div ref={pageRoot} className="px-page" onFocusCapture={keepFocusVisible}>
+  return <div ref={pageRoot} className="px-page px-indoor-direction" onFocusCapture={keepFocusVisible}>
     <SEO title="Módulo Grow-X + GXP — cultivo e equipamentos, no mesmo projeto" description="Veja as telas reais do GXP e conheça a central Grow-X projetada com seis saídas AC. Receba a proposta na abertura ou converse sobre seu setup. Pré-venda fechada, sem pagamento." path="/prevenda" />
-    <header className="px-header px-wrap"><Link to="/" aria-label="Grow-X, página inicial"><img src={logo} width="135" height="36" alt="Grow-X" /></Link><nav aria-label="Nesta página"><a href="#gxp">O aplicativo</a><a href="#modulo">A central</a><a href="#lista">Seu projeto</a></nav><a href="#lista" className="px-header-contact" onClick={() => event('click_cta_prevenda', { placement: 'header', intent: 'interest' })}>Fale com a Grow-X <ArrowUpRight size={17} aria-hidden="true" /></a></header>
+    <header className="px-header px-wrap"><Link to="/" aria-label="Grow-X, página inicial"><img src={logo} width="135" height="36" alt="Grow-X" /></Link><nav aria-label="Nesta página"><a href="#automacao">A automação</a><a href="#modulo">A central</a><a href="#lista">Seu projeto</a></nav><a href="#lista" className="px-header-contact" onClick={() => event('click_cta_prevenda', { placement: 'header', intent: 'interest' })}>Fale com a Grow-X <ArrowUpRight size={17} aria-hidden="true" /></a></header>
     <main>
-      <section ref={hero} className="px-hero px-wrap" aria-labelledby="px-title">
-        <div className="px-hero-copy"><p className="px-eyebrow">Cultivo indoor · Módulo Grow-X + GXP</p><h1 id="px-title">Seu cultivo no GXP.<br /><span>Uma central para<br />seus equipamentos.</span></h1><p className="px-intro">Registre o cultivo no app. Conheça a central projetada para luz, rega, clima e ventilação compatíveis.</p><div className="px-hero-action"><InterestCta placement="hero" /><p>Pré-venda fechada. Cadastro de interesse,<br />sem pagamento ou reserva.</p></div></div>
-        <div className="px-product-scene" aria-label="Aplicativo real e projeto da central Grow-X"><figure className="px-central-context"><img src={central} width="900" height="1125" fetchPriority="high" alt="Render conceitual já publicado da central Grow-X em bancada de cultivo indoor" /><figcaption><b>Módulo Grow-X</b><span>Central de equipamentos · em validação</span></figcaption></figure><figure className="px-hero-screen"><img src="/assets/prevenda-gxp/jardim-foco.jpg" width="780" height="1560" fetchPriority="high" alt="Recorte da captura real do Jardim GXP, com cultivo em foco e dados sintéticos de QA" /><figcaption><b>GXP</b><span>Cultivo e registros · captura de QA</span></figcaption></figure><p className="px-scene-note">Render conceitual + captura real de QA. Composição editorial; não demonstra uma instalação conectada.</p></div>
-        <div className="px-hero-caption"><span>01 / VER E REGISTRAR</span><p>O GXP organiza o cultivo hoje.</p><span>02 / REUNIR EQUIPAMENTOS</span><p>A integração física do Módulo está em validação.</p></div>
+      <section ref={hero} className="px-hero pi-hero" aria-labelledby="px-title">
+        <div className="pi-hero-inner px-wrap">
+          <div className="px-hero-copy"><p className="px-eyebrow">Grow-X / automação de plantio indoor</p><h1 id="px-title">Automação para o seu plantio indoor.</h1><p className="px-intro">Luz, rega e clima fazem parte de todo dia. Conheça a proposta Grow-X para reunir equipamentos compatíveis e acompanhar a história do seu cultivo.</p><div className="px-hero-action"><InterestCta placement="hero">Quero automatizar meu indoor</InterestCta><p>Cadastro de interesse. Sem pagamento ou reserva.</p></div><p className="pi-validation"><strong>Integração física em validação.</strong> O GXP já registra o cultivo. A automação com o Módulo é uma proposta em desenvolvimento.</p></div>
+        <img className="pi-hero-backdrop" src="/assets/prevenda-indoor/hero-ambiente-indoor-ilustrativo.png" width="1672" height="941" fetchPriority="high" alt="Ilustração IA de ambiente indoor com tenda, LED, plantas, ventilador e tubos de rega; não representa instalação Grow-X" />
+          <div className="pi-environment">
+            <p className="pi-scene-caption">Ambiente ilustrativo gerado por IA.<br />Não representa instalação real Grow-X.</p>
+          </div>
+        </div>
+        <div className="pi-purpose px-wrap"><span>O cultivo é seu.</span><p>A proposta é conectar a rotina dos equipamentos ao contexto do plantio — com o app para registrar e uma central projetada para automatizar.</p><a href="#automacao">Conheça a proposta <ArrowRight size={18} aria-hidden="true" /></a></div>
       </section>
+
+      <section id="automacao" className="pi-automation" aria-labelledby="pi-automation-title"><div className="px-wrap">
+        <div className="pi-section-heading"><div><p className="px-eyebrow">Primeiro, a rotina do seu indoor</p><h2 id="pi-automation-title">Luz. Água. Ambiente.<br /><span>Um projeto que olha o conjunto.</span></h2></div><p>Luz, rega e circulação de ar se encontram no mesmo ambiente. O projeto começa na rotina e nos equipamentos que você usa.</p></div>
+        <div className="pi-routine-layout"><div className={'pi-routine-scene pi-routine-' + routines[routineIndex].id}>
+
+          <svg className="pi-plan" viewBox="0 0 600 650" role="img" aria-label="Esquema ilustrativo das relações entre luz, reservatório de rega e ventilação; não representa instalação validada"><g className="pi-structure"><path d="M65 50H550V595H65Z M90 70H525V575H90 M110 445H160V520H110Z M200 445H250V520H200Z M290 445H340V520H290Z" /></g><g className="pi-plants"><path d="M135 445V275M225 445V245M315 445V290" /><path className="leaf" d="M135 360Q80 320 95 290Q143 290 135 360ZM135 380Q190 350 175 325Q127 325 135 380ZM225 330Q170 290 185 260Q233 260 225 330ZM225 370Q280 330 265 310Q217 310 225 370ZM315 370Q260 330 275 300Q323 300 315 370ZM315 410Q365 375 350 350Q307 350 315 410Z" /></g><g className="pi-light-line"><path d="M130 85H420M165 105L100 260M250 105V270M335 105L400 260" /></g><g className="pi-air-line"><circle cx="475" cy="175" r="38" /><path d="M475 139V211M439 175H511M451 149L499 201M451 201L499 149M442 225C365 238 402 280 325 300" /></g><g className="pi-water-line"><path d="M410 465H520V575H410ZM430 450H500M465 465V390H200V445M200 390H110V445M200 390H290V445" /><circle cx="465" cy="545" r="12" /></g><text x="110" y="35">PROJETO DO SEU INDOOR</text><text x="420" y="610">RESERVATÓRIO</text></svg>
+          <div className="pi-scene-selector" aria-label="Explorar proposta de automação">{routines.map((item,index)=><button key={item.id} type="button" aria-pressed={index===routineIndex} onClick={()=>{setRoutineIndex(index);event('prevenda_capability_view',{capability:item.id,placement:'indoor_scene'});}}><span>0{index+1}</span>{item.name}<ArrowUpRight size={15} aria-hidden="true" /></button>)}</div>
+          <p className="pi-scene-disclosure">Esquema ilustrativo da proposta. Equipamentos e sensores não são itens incluídos confirmados.</p>
+        </div><div className="pi-routine-story" aria-live="polite"><p className="px-eyebrow">{routines[routineIndex].detail}</p><h3>{routines[routineIndex].lead}</h3><p>{routines[routineIndex].text}</p><div className="pi-system-rail"><figure className="pi-module"><img src={central} width="1600" height="900" alt="Render conceitual existente do Módulo Grow-X" /><figcaption><strong>Módulo Grow-X</strong><span>Central projetada · render conceitual</span></figcaption></figure><figure className="pi-gxp"><img src="/assets/prevenda-gxp/jardim-foco.jpg" width="780" height="1560" alt="Tela original do Jardim GXP; dados sintéticos de QA" /><figcaption><strong>GXP</strong><span>App de cultivo · captura original de QA</span></figcaption></figure></div>
+<div className="pi-routine-relationship"><span>Seu equipamento</span><ArrowRight size={17} aria-hidden="true" /><span>Módulo projetado</span></div><p className="pi-routine-status"><strong>Integração física em validação.</strong> Módulo: central projetada para automação. GXP: app existente para acompanhar e registrar o cultivo.</p><a className="px-link" href="#lista">Conversar sobre meu indoor <ArrowUpRight size={17} aria-hidden="true" /></a></div></div>
+      </div></section>
 
       <section id="gxp" className="px-app" aria-labelledby="px-app-title"><div className="px-wrap">
         <div className="px-chapter-heading"><p className="px-eyebrow">01 / O aplicativo na sua rotina</p><h2 id="px-app-title">Abra o cultivo.<br />Retome de onde parou.</h2><p>O que observar, o que registrar, onde encontrar depois. Explore os três momentos nas telas originais do GXP.</p></div>
