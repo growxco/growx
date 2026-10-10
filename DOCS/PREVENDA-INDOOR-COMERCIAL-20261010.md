@@ -26,7 +26,7 @@ Não confirmado no contrato atual: medição de vazão, válvulas individuais ou
 
 ## Capturas e procedência
 
-Imagem IA de ambiente: Library libfile_a728d8f68b188191be53ea4bdd911bc5, versão 0. Hero preservado; detalhes são enquadramentos CSS, não novos assets de hardware gerados. Original PNG 2.644.761 bytes ainda sem otimização para publicação, a tratar após aprovação visual.
+Imagem IA de ambiente: Library libfile_a728d8f68b188191be53ea4bdd911bc5, versão 0. Hero preservado; detalhes são enquadramentos CSS, não novos assets de hardware gerados. Original PNG 2.644.761 bytes preservado. Derivada WebP qualidade 86 servida, 284.926 bytes (89,2% menor), sem mudança de cena, dimensões ou enquadramento; inspecionada visualmente.
 
 Área Módulo original: 390-05-modulo.jpg, c10 9927abb3, 09/10/2026, conta de QA. LEIAME explicita área informativa sem comandos, sem dispositivo cadastrado. Cópia integral public/assets/prevenda-gxp/modulo-original.jpg; SHA256 fonte e destino iguais: FF6E08C12CEB836633963F501B7C40A488247EF07A1A3B12B577E35DCBBF98FE. Jardim, Diário e ficha originais mantidos.
 
@@ -49,4 +49,8 @@ Barra, teclado, formulário e rodapé passaram em 320/390/1440 com área segura 
 
 Backend, release approved:false, consentimento, destinos, tracker já instalado, outras páginas e os 30 assets LinkedIn preservados. Sem nova condição comercial. Rollback registrado anteriormente permanece disponível, sem execução.
 
-Pendência: revisão visual da página completa pelo root. Antes de publicar, otimizar a imagem original e executar o fluxo normal de PR/CI/deploy autorizado. Para abrir cobrança, continuam necessárias oferta final, composição/condições e validação/entrega aprovadas.
+Revisão visual da página completa aprovada pelo root e pela revisão independente. Imagem otimizada; publicação autorizada pelo fluxo normal de PR/CI/deploy. Para abrir cobrança, continuam necessárias oferta final, composição/condições e validação/entrega aprovadas.
+
+## Liberação após revisão final
+
+Root e revisão independente aprovaram a página completa de automação indoor e autorizaram a publicação pelo fluxo normal. Nenhum bloqueio visual/editorial restante. QA adicional das quatro funções por Tab/Enter em 320/390/1440 passou: foco visível, contraste mínimo de texto 10,74:1 e de indicador de foco 4,05:1. As três intenções (conhecer o conjunto, setup existente, montando setup) foram conferidas no payload message com consentimento presale_and_launch_updates_only, três respostas mockadas e zero escrita externa. Evidência indoor-final-review-evidence.json. Sem lead/pagamento reais.
