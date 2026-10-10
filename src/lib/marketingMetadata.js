@@ -16,8 +16,8 @@ export const MARKETING_METADATA = {
   },
   "/prevenda": {
     "file": "prevenda.html",
-    "title": "GXP + Módulo Grow-X — seu cultivo, conectado",
-    "description": "Conheça o GXP real e o Módulo Grow-X projetado com seis saídas AC. Avalie compatibilidade e receba o aviso de abertura; pré-venda fechada, sem cobrança ou reserva."
+    "title": "Módulo Grow-X + GXP — cultivo e equipamentos, no mesmo projeto",
+    "description": "Veja as telas reais do GXP e conheça a central Grow-X projetada com seis saídas AC. Receba a proposta na abertura ou converse sobre seu setup. Pré-venda fechada, sem pagamento."
   },
   "/solucoes/supply-x": {
     "file": "marketing/supplyx.html",
