@@ -16,8 +16,8 @@ export const MARKETING_METADATA = {
   },
   "/prevenda": {
     "file": "prevenda.html",
-    "title": "Módulo Grow-X · pré-venda fechada",
-    "description": "A pré-venda permanece fechada. Conheça a base documentada do módulo e avalie compatibilidade; nenhum pagamento ou reserva será solicitado."
+    "title": "GXP + Módulo Grow-X — seu cultivo, conectado",
+    "description": "Conheça o GXP real e o Módulo Grow-X projetado com seis saídas AC. Avalie compatibilidade e receba o aviso de abertura; pré-venda fechada, sem cobrança ou reserva."
   },
   "/solucoes/supply-x": {
     "file": "marketing/supplyx.html",
